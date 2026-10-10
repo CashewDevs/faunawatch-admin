@@ -1,0 +1,38 @@
+/**
+ * FaunaWatch Admin — Design tokens.
+ *
+ * AGENTS.md palette:
+ *   #FFB800  accent-gold
+ *   #FECE01  accent-yellow
+ *   #102A43  navy  (dark navy)
+ *   #005A97  primary  (primary blue)
+ *   #087E8B  teal
+ *   #F7FAFC  background  (light background)
+ *
+ * These are the ONLY named colours permitted in components via Tailwind
+ * utility classes (e.g. bg-primary, text-navy). Do not use arbitrary
+ * hex values like bg-[#005A97].
+ */
+
+@import "tailwindcss";
+
+@theme {
+  /* ── Brand palette ───────────────────────────────────── */
+  --color-primary: #005a97;
+  --color-navy: #102a43;
+  --color-teal: #087e8b;
+  --color-accent-gold: #ffb800;
+  --color-accent-yellow: #fece01;
+  --color-background: #f7fafc;
+
+  /* ── Semantic aliases ────────────────────────────────── */
+  --color-primary-hover: #004a7c;
+  --color-error: #dc2626;
+  --color-success: #16a34a;
+  --color-warning: #d97706;
+
+  /* ── Typography ──────────────────────────────────────── */
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* ── Spacing / radius / shadows can be extended here ── */
+}

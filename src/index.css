@@ -1,0 +1,8 @@
+/*
+ * Global stylesheet — imports Tailwind + FaunaWatch design tokens.
+ *
+ * The design-token theme is defined in src/core/theme/tokens.css as
+ * required by AGENTS.md.
+ */
+
+@import "./core/theme/tokens.css";
