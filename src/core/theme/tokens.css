@@ -48,6 +48,15 @@
   --color-danger-soft: #ffdad6;
   --color-danger-tint: #feecec;
 
+  /* ── Post Approvals (approved from the Figma design) ──
+     Near-identical Figma colours reuse the tokens above: #006874 → teal,
+     #ba1a1a → danger, #717781 → muted, #001f24 → ink, #e4efff → chip. */
+  --color-deep-blue: #004271;
+  --color-cyan: #96f0ff;
+  --color-amber: #735100;
+  --color-amber-ink: #553b00;
+  --color-amber-soft: #ffdea8;
+
   /* ── Neutrals (text, borders, dividers) ──────────────── */
   --color-muted: #64748b;
   --color-muted-strong: #475569;

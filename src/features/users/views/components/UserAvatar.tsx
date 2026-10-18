@@ -1,4 +1,5 @@
-import { getInitials, type AdminUser } from "../../models/adminUser";
+import { getInitials } from "../../../../core/utils/names";
+import type { AdminUser } from "../../models/adminUser";
 
 interface UserAvatarProps {
   user: AdminUser;
