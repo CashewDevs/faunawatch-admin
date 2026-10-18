@@ -32,7 +32,12 @@ not own the data model; the app and backend define it.
 - Backend: Supabase (shared with the mobile app)
 - Styling: Tailwind CSS. Design tokens (the palette) are defined in the
   Tailwind theme config, sourced from src/core/theme/. Do not use inline
-  styles or CSS Modules.
+  styles or CSS Modules. One approved exception: the small `<style>` block
+  in `index.html` that draws the pre-React splash screen. Utilities that
+  Tailwind can't express (e.g. repeating image patterns) go in
+  `src/core/theme/` as `@utility` rules.
+- Font: Plus Jakarta Sans, self-hosted in `src/assets/shared/fonts/`
+  (SIL OFL; keep `OFL.txt` alongside the font files).
 - Charts: Recharts (analytics only)
 - Testing: Vitest + React Testing Library
 - Lint/format: ESLint + Prettier
@@ -127,8 +132,21 @@ directory. Do not create large generic folders with unrelated code.
 ### Asset Guidelines
 
 - Place static media in `src/assets/` (or `public/` when it must be served as-is).
+- Group assets by screen: one subfolder per screen, named after it
+  (e.g. `src/assets/login/`). Assets used on more than one screen (such as
+  the FaunaWatch logo) go in `src/assets/shared/`.
 - Never hardcode raw asset path strings in Views. Define typed constants in
-  `src/core/constants/app-assets.ts`.
+  `src/core/constants/appAssets.ts`.
+- **WebP reminder:** Raster and vector images exported from Figma
+  (`.svg`, `.png`, `.jpg`, `.jpeg`) may be added as temporary placeholders,
+  but must be converted to `.webp` before the screen is considered done.
+  When adding or touching any of these files, remind the developer to
+  convert them, and update the matching `appAssets.ts` import when the
+  `.webp` version replaces the original.
+- **Preloading:** Every image registered in `AppAssets` is preloaded behind
+  the loading screen (`useAssetPreloader` + `src/app/preloadManifest.ts`)
+  before the app renders. Register new images there so they preload.
+- User-facing copy lives in `src/core/constants/appStrings.ts`.
 
 ### Working Style
 

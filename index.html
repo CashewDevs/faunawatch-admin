@@ -9,9 +9,54 @@
       content="Administration dashboard for the FaunaWatch wildlife reporting platform."
     />
     <title>FaunaWatch Admin</title>
+    <!--
+      Approved exception to the "no inline styles" rule (see AGENTS.md).
+      Shows a splash while the JS bundle downloads, before Tailwind loads.
+      Must match src/core/components/LoadingScreen.tsx (colour = brand-blue
+      token, size = size-16, timing = --animate-loader-spin).
+    -->
+    <style>
+      body {
+        margin: 0;
+        background: #f7fafc;
+      }
+      .fw-splash {
+        position: fixed;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #1a5dc9;
+      }
+      .fw-splash img {
+        width: 4rem;
+        height: 4rem;
+        object-fit: contain;
+        animation: fw-spin 1.2s linear infinite;
+      }
+      @keyframes fw-spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .fw-splash img {
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Replaced by React on first render. -->
+      <div
+        class="fw-splash"
+        role="status"
+        aria-label="Loading FaunaWatch Admin"
+      >
+        <img src="/src/assets/shared/faunawatch-logomark.png" alt="" />
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

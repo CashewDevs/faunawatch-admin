@@ -1,0 +1,14 @@
+# Normalize line endings to LF for every contributor and OS.
+# Matches Prettier's default (endOfLine: "lf"), so `npm run format`
+# doesn't rewrite files that were checked out with CRLF on Windows.
+* text=auto eol=lf
+
+# Binary assets — never touch line endings or diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
