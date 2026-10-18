@@ -2,11 +2,13 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useDebouncedValue } from "../../../core/hooks/useDebouncedValue";
 import {
-  defaultUserListQuery,
-  getActiveRate,
   getPageCount,
   getPageItems,
   getPageRange,
+} from "../../../core/utils/pagination";
+import {
+  defaultUserListQuery,
+  getActiveRate,
   type UserListQuery,
   type UserSortOption,
   type UserStatusFilter,

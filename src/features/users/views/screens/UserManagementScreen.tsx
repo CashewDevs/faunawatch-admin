@@ -1,10 +1,11 @@
+import { Pagination } from "../../../../core/components/Pagination";
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { formatNumber } from "../../../../core/utils/formatters";
+import { userPageSizeOptions } from "../../models/adminUser";
 import { useUserManagementViewModel } from "../../viewmodels/useUserManagementViewModel";
 import { UserStatsCards } from "../components/UserStatsCards";
 import { UserTable } from "../components/UserTable";
-import { UserTablePagination } from "../components/UserTablePagination";
 import { UserToolbar } from "../components/UserToolbar";
 
 /**
@@ -53,7 +54,19 @@ export function UserManagementScreen() {
       <UserToolbar viewModel={viewModel} />
       <UserTable viewModel={viewModel} />
       <div className="mt-auto">
-        <UserTablePagination viewModel={viewModel} />
+        <Pagination
+          page={viewModel.page}
+          pageCount={viewModel.pageCount}
+          pageItems={viewModel.pageItems}
+          pageRange={viewModel.pageRange}
+          totalCount={viewModel.totalCount}
+          pageSize={viewModel.pageSize}
+          pageSizeOptions={userPageSizeOptions}
+          itemLabel={strings.pagination.users}
+          pageSizeLabel={strings.pagination.pageSizeLabel}
+          onPageChange={viewModel.goToPage}
+          onPageSizeChange={viewModel.changePageSize}
+        />
       </div>
     </div>
   );

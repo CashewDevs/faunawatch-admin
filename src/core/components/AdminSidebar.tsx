@@ -10,6 +10,11 @@ const navItems = [
     label: AppStrings.layout.navUsers,
     icon: AppAssets.shared.iconUsers,
   },
+  {
+    to: AppRoutes.posts,
+    label: AppStrings.layout.navPosts,
+    icon: AppAssets.shared.iconPostApprovals,
+  },
 ] as const;
 
 /**

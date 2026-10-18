@@ -9,6 +9,11 @@
  */
 import faunawatchLogomark from "../../assets/shared/faunawatch-logomark.png";
 import faunawatchLogoVertical from "../../assets/shared/faunawatch-logo-vertical.png";
+import sharedIconChevronLeft from "../../assets/shared/icon-chevron-left.svg";
+import sharedIconChevronRight from "../../assets/shared/icon-chevron-right.svg";
+import sharedIconApprove from "../../assets/shared/icon-approve.svg";
+import sharedIconDecline from "../../assets/shared/icon-decline.svg";
+import sharedIconPostApprovals from "../../assets/shared/icon-post-approvals.svg";
 import sharedIconBell from "../../assets/shared/icon-bell.svg";
 import sharedIconLogout from "../../assets/shared/icon-logout.svg";
 import sharedIconUsers from "../../assets/shared/icon-users.svg";
@@ -18,11 +23,52 @@ import loginIconLock from "../../assets/login/icon-lock.svg";
 import loginIconMail from "../../assets/login/icon-mail.svg";
 import loginIconShield from "../../assets/login/icon-shield.svg";
 import loginPawPatternTile from "../../assets/login/paw-pattern-tile.png";
+import postApprovalsIconAiInvasive from "../../assets/post-approvals/icon-ai-invasive.svg";
+import postApprovalsIconAiSparkle from "../../assets/post-approvals/icon-ai-sparkle.svg";
+import postApprovalsIconBulkApprove from "../../assets/post-approvals/icon-bulk-approve.svg";
+import postApprovalsIconBulkDecline from "../../assets/post-approvals/icon-bulk-decline.svg";
+import postApprovalsIconChevronDown from "../../assets/post-approvals/icon-chevron-down.svg";
+import postApprovalsIconClearFilters from "../../assets/post-approvals/icon-clear-filters.svg";
+import postApprovalsIconInvasive from "../../assets/post-approvals/icon-invasive.svg";
+import postApprovalsIconLocationPin from "../../assets/post-approvals/icon-location-pin.svg";
+import postApprovalsIconPhotoCount from "../../assets/post-approvals/icon-photo-count.svg";
+import postApprovalsIconSearch from "../../assets/post-approvals/icon-search.svg";
+import postDetailIconAiSeverity from "../../assets/post-detail/icon-ai-severity.svg";
+import postDetailIconAiSparkles from "../../assets/post-detail/icon-ai-sparkles.svg";
+import postDetailIconApprovalRate from "../../assets/post-detail/icon-approval-rate.svg";
+import postDetailIconArrowRight from "../../assets/post-detail/icon-arrow-right.svg";
+import postDetailIconBackArrow from "../../assets/post-detail/icon-back-arrow.svg";
+import postDetailIconBuffer from "../../assets/post-detail/icon-buffer.svg";
+import postDetailIconCalendar from "../../assets/post-detail/icon-calendar.svg";
+import postDetailIconCamera from "../../assets/post-detail/icon-camera.svg";
+import postDetailIconCategory from "../../assets/post-detail/icon-category.svg";
+import postDetailIconCheckCircle from "../../assets/post-detail/icon-check-circle.svg";
+import postDetailIconChevronDown from "../../assets/post-detail/icon-chevron-down.svg";
+import postDetailIconCoordinates from "../../assets/post-detail/icon-coordinates.svg";
+import postDetailIconCopy from "../../assets/post-detail/icon-copy.svg";
+import postDetailIconDelete from "../../assets/post-detail/icon-delete.svg";
+import postDetailIconExifVerified from "../../assets/post-detail/icon-exif-verified.svg";
+import postDetailIconExternalLink from "../../assets/post-detail/icon-external-link.svg";
+import postDetailIconFlag from "../../assets/post-detail/icon-flag.svg";
+import postDetailIconFlashOff from "../../assets/post-detail/icon-flash-off.svg";
+import postDetailIconGalleryNext from "../../assets/post-detail/icon-gallery-next.svg";
+import postDetailIconGalleryPrev from "../../assets/post-detail/icon-gallery-prev.svg";
+import postDetailIconInfo from "../../assets/post-detail/icon-info.svg";
+import postDetailIconLeaf from "../../assets/post-detail/icon-leaf.svg";
+import postDetailIconLocation from "../../assets/post-detail/icon-location.svg";
+import postDetailIconMapPin from "../../assets/post-detail/icon-map-pin.svg";
+import postDetailIconNight from "../../assets/post-detail/icon-night.svg";
+import postDetailIconNotes from "../../assets/post-detail/icon-notes.svg";
+import postDetailIconPagerNext from "../../assets/post-detail/icon-pager-next.svg";
+import postDetailIconPagerPrev from "../../assets/post-detail/icon-pager-prev.svg";
+import postDetailIconRemove from "../../assets/post-detail/icon-remove.svg";
+import postDetailIconReviewFlag from "../../assets/post-detail/icon-review-flag.svg";
+import postDetailIconSeverity from "../../assets/post-detail/icon-severity.svg";
+import postDetailIconVerified from "../../assets/post-detail/icon-verified.svg";
+import postDetailIconZoom from "../../assets/post-detail/icon-zoom.svg";
 import usersIconArrowUpRight from "../../assets/users/icon-arrow-up-right.svg";
 import usersIconCheckCircle from "../../assets/users/icon-check-circle.svg";
 import usersIconChevronDown from "../../assets/users/icon-chevron-down.svg";
-import usersIconChevronLeft from "../../assets/users/icon-chevron-left.svg";
-import usersIconChevronRight from "../../assets/users/icon-chevron-right.svg";
 import usersIconDownload from "../../assets/users/icon-download.svg";
 import usersIconSearch from "../../assets/users/icon-search.svg";
 import usersIconShieldAlert from "../../assets/users/icon-shield-alert.svg";
@@ -37,8 +83,13 @@ export const AppAssets = {
     // logo and keep index.html's splash <img> in sync.
     loaderLogo: faunawatchLogomark,
     iconBell: sharedIconBell,
+    iconChevronLeft: sharedIconChevronLeft,
+    iconChevronRight: sharedIconChevronRight,
     iconLogout: sharedIconLogout,
     iconUsers: sharedIconUsers,
+    iconApprove: sharedIconApprove,
+    iconDecline: sharedIconDecline,
+    iconPostApprovals: sharedIconPostApprovals,
   },
   login: {
     iconArrowRight: loginIconArrowRight,
@@ -54,13 +105,58 @@ export const AppAssets = {
     iconArrowUpRight: usersIconArrowUpRight,
     iconCheckCircle: usersIconCheckCircle,
     iconChevronDown: usersIconChevronDown,
-    iconChevronLeft: usersIconChevronLeft,
-    iconChevronRight: usersIconChevronRight,
     iconDownload: usersIconDownload,
     iconSearch: usersIconSearch,
     iconShieldAlert: usersIconShieldAlert,
     iconTrendUp: usersIconTrendUp,
     iconVerified: usersIconVerified,
+  },
+  postApprovals: {
+    iconAiInvasive: postApprovalsIconAiInvasive,
+    iconAiSparkle: postApprovalsIconAiSparkle,
+    iconBulkApprove: postApprovalsIconBulkApprove,
+    iconBulkDecline: postApprovalsIconBulkDecline,
+    iconChevronDown: postApprovalsIconChevronDown,
+    iconClearFilters: postApprovalsIconClearFilters,
+    iconInvasive: postApprovalsIconInvasive,
+    iconLocationPin: postApprovalsIconLocationPin,
+    iconPhotoCount: postApprovalsIconPhotoCount,
+    iconSearch: postApprovalsIconSearch,
+  },
+  postDetail: {
+    iconAiSeverity: postDetailIconAiSeverity,
+    iconAiSparkles: postDetailIconAiSparkles,
+    iconApprovalRate: postDetailIconApprovalRate,
+    iconArrowRight: postDetailIconArrowRight,
+    iconBackArrow: postDetailIconBackArrow,
+    iconBuffer: postDetailIconBuffer,
+    iconCalendar: postDetailIconCalendar,
+    iconCamera: postDetailIconCamera,
+    iconCategory: postDetailIconCategory,
+    iconCheckCircle: postDetailIconCheckCircle,
+    iconChevronDown: postDetailIconChevronDown,
+    iconCoordinates: postDetailIconCoordinates,
+    iconCopy: postDetailIconCopy,
+    iconDelete: postDetailIconDelete,
+    iconExifVerified: postDetailIconExifVerified,
+    iconExternalLink: postDetailIconExternalLink,
+    iconFlag: postDetailIconFlag,
+    iconFlashOff: postDetailIconFlashOff,
+    iconGalleryNext: postDetailIconGalleryNext,
+    iconGalleryPrev: postDetailIconGalleryPrev,
+    iconInfo: postDetailIconInfo,
+    iconLeaf: postDetailIconLeaf,
+    iconLocation: postDetailIconLocation,
+    iconMapPin: postDetailIconMapPin,
+    iconNight: postDetailIconNight,
+    iconNotes: postDetailIconNotes,
+    iconPagerNext: postDetailIconPagerNext,
+    iconPagerPrev: postDetailIconPagerPrev,
+    iconRemove: postDetailIconRemove,
+    iconReviewFlag: postDetailIconReviewFlag,
+    iconSeverity: postDetailIconSeverity,
+    iconVerified: postDetailIconVerified,
+    iconZoom: postDetailIconZoom,
   },
 } as const;
 

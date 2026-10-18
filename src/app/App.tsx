@@ -6,6 +6,8 @@ import { AppRoutes } from "../core/constants/appRoutes";
 import { AppStrings } from "../core/constants/appStrings";
 import { useAssetPreloader } from "../core/hooks/useAssetPreloader";
 import { LoginScreen } from "../features/auth/views/screens/LoginScreen";
+import { PostApprovalsScreen } from "../features/post-review/views/screens/PostApprovalsScreen";
+import { PostDetailScreen } from "../features/post-review/views/screens/PostDetailScreen";
 import { UserManagementScreen } from "../features/users/views/screens/UserManagementScreen";
 import { preloadFontDescriptors, preloadImageUrls } from "./preloadManifest";
 import { queryClient } from "./queryClient";
@@ -30,17 +32,9 @@ function App() {
           {/* TODO(auth): Wrap this layout in an admin route guard once Supabase auth exists. */}
           <Route element={<AdminLayout />}>
             <Route path={AppRoutes.users} element={<UserManagementScreen />} />
+            <Route path={AppRoutes.posts} element={<PostApprovalsScreen />} />
+            <Route path={AppRoutes.postDetail} element={<PostDetailScreen />} />
           </Route>
-          <Route
-            path={AppRoutes.posts}
-            element={
-              <div className="flex min-h-screen items-center justify-center bg-background">
-                <h1 className="text-2xl font-semibold text-navy">
-                  Post Review (Placeholder)
-                </h1>
-              </div>
-            }
-          />
           <Route
             path={AppRoutes.analytics}
             element={

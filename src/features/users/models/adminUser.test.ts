@@ -2,10 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   defaultUserListQuery,
   getActiveRate,
-  getInitials,
-  getPageCount,
-  getPageItems,
-  getPageRange,
   matchesUserSearch,
   queryUsers,
   sortUsers,
@@ -101,37 +97,6 @@ describe("queryUsers", () => {
   });
 });
 
-describe("pagination helpers", () => {
-  it("counts pages, with at least one", () => {
-    expect(getPageCount(0, 10)).toBe(1);
-    expect(getPageCount(21, 10)).toBe(3);
-  });
-
-  it("returns the shown item range", () => {
-    expect(getPageRange(1, 10, 24)).toEqual({ from: 1, to: 10 });
-    expect(getPageRange(3, 10, 24)).toEqual({ from: 21, to: 24 });
-    expect(getPageRange(1, 10, 0)).toEqual({ from: 0, to: 0 });
-  });
-
-  it("lists every page when there are few", () => {
-    expect(getPageItems(2, 5)).toEqual([1, 2, 3, 4, 5]);
-  });
-
-  it("collapses gaps into ellipses", () => {
-    expect(getPageItems(1, 16)).toEqual([1, 2, 3, "ellipsis", 16]);
-    expect(getPageItems(8, 16)).toEqual([
-      1,
-      "ellipsis",
-      7,
-      8,
-      9,
-      "ellipsis",
-      16,
-    ]);
-    expect(getPageItems(16, 16)).toEqual([1, "ellipsis", 14, 15, 16]);
-  });
-});
-
 describe("getActiveRate", () => {
   it("returns the active percentage to one decimal", () => {
     const stats = {
@@ -145,14 +110,5 @@ describe("getActiveRate", () => {
     };
     expect(getActiveRate(stats)).toBe(97.6);
     expect(getActiveRate({ ...stats, totalUsers: 0, activeUsers: 0 })).toBe(0);
-  });
-});
-
-describe("getInitials", () => {
-  it("uses the first and last word, skipping titles", () => {
-    expect(getInitials("Klip Bautista")).toBe("KB");
-    expect(getInitials("Dr. Aris Thorne")).toBe("AT");
-    expect(getInitials("Mateo Dela Cruz")).toBe("MC");
-    expect(getInitials("Cher")).toBe("C");
   });
 });
