@@ -33,6 +33,21 @@
   --color-tagline-yellow: #fdd027;
   --color-checkbox: #0075ff;
 
+  /* ── Admin shell + User Management (approved from the Figma design) ── */
+  --color-surface: #f8f9ff;
+  --color-surface-tint: #eef4ff;
+  --color-sidebar-text: #e4efff;
+  --color-badge-navy: #19324b;
+  --color-badge-text: #e9f1ff;
+  --color-ink: #011d35;
+  --color-slate: #414750;
+  --color-chip: #dbe9ff;
+  --color-avatar: #d1e4ff;
+  --color-teal-soft: #e6f7f5;
+  --color-danger: #d64545;
+  --color-danger-soft: #ffdad6;
+  --color-danger-tint: #feecec;
+
   /* ── Neutrals (text, borders, dividers) ──────────────── */
   --color-muted: #64748b;
   --color-muted-strong: #475569;
@@ -54,6 +69,9 @@
   --shadow-button:
     0 4px 6px -1px rgb(0 90 151 / 0.2), 0 2px 4px -2px rgb(0 90 151 / 0.2);
   --shadow-logomark: 0 5px 6.9px 1px rgb(0 0 0 / 0.36);
+  --shadow-header: 0 1px 8px 0 rgb(0 0 0 / 0.03);
+  --shadow-nav-active: inset 4px 0 0 0 var(--color-accent-gold);
+  --drop-shadow-sidebar: 0 1px 4px rgb(0 0 0 / 0.06);
 
   /* ── Blur ────────────────────────────────────────────── */
   --blur-orb: 32px;

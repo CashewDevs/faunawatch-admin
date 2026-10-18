@@ -88,6 +88,9 @@ Strict MVVM + separation of concerns, mirroring the mobile app:
    - **Screens / Pages**: `src/features/<feature>/views/screens/`
    - **Feature components**: `src/features/<feature>/views/components/`
    - **Shared components**: `src/core/components/`
+   - Signed-in screens render inside `AdminLayout` (sidebar + header) via a
+     layout route in `src/app/App.tsx`. Add new admin routes there and their
+     nav item in `AdminSidebar`.
 
 **Repository is optional.** Add a repository sub-layer only if a feature
 genuinely needs one (e.g. cache plus sync). Do not add one by default.

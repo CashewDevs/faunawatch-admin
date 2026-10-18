@@ -1,3 +1,4 @@
+import { BrandLogomark } from "../../../../core/components/BrandLogomark";
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import type { LoginViewModel } from "../../viewmodels/useLoginViewModel";
@@ -17,13 +18,7 @@ export function LoginCard({ viewModel }: LoginCardProps) {
     <section className="flex w-full max-w-[420px] animate-fade-in-up flex-col gap-6 rounded-2xl border border-divider bg-white p-10 shadow-card motion-reduce:animate-none">
       <header className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
-          <div className="relative size-9 shrink-0 overflow-hidden rounded-md bg-brand-blue bg-linear-to-b from-white/20 from-40% to-black/20 shadow-logomark">
-            <img
-              src={AppAssets.shared.logomark}
-              alt=""
-              className="absolute top-[1.8px] -left-[1.2px] h-[39.3px] w-[32.4px] max-w-none"
-            />
-          </div>
+          <BrandLogomark />
           <span className="text-xl leading-7 font-extrabold tracking-[-0.5px] text-navy">
             {strings.brandName}
           </span>
