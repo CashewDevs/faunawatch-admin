@@ -1,0 +1,14 @@
+/**
+ * Background pattern utilities.
+ *
+ * Repeating image fills can't be expressed with Tailwind's built-in
+ * utilities (the URL comes from a bundled asset), so they live here.
+ * Keep the asset path in sync with AppAssets in appAssets.ts.
+ */
+
+/* Paw-print tile from the login brand panel (Figma pattern fill). */
+@utility bg-paw-pattern {
+  background-image: url("../../assets/login/paw-pattern-tile.png");
+  background-size: 102px 102px;
+  background-repeat: repeat;
+}
