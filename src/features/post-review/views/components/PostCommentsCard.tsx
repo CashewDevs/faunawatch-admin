@@ -1,14 +1,16 @@
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { useNow } from "../../../../core/hooks/useNow";
-import { getInitials } from "../../../../core/utils/names";
+import {
+  getAvatarTone,
+  getInitials,
+  type AvatarTone,
+} from "../../../../core/utils/names";
 import {
   formatNumber,
   formatRelativeTime,
 } from "../../../../core/utils/formatters";
 import {
-  getAvatarTone,
-  type AvatarTone,
   type CommentSort,
   type PostComment,
   type PostDetail,

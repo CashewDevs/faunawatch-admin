@@ -5,6 +5,7 @@ import { LoadingScreen } from "../core/components/LoadingScreen";
 import { AppRoutes } from "../core/constants/appRoutes";
 import { AppStrings } from "../core/constants/appStrings";
 import { useAssetPreloader } from "../core/hooks/useAssetPreloader";
+import { AnalyticsScreen } from "../features/analytics/views/screens/AnalyticsScreen";
 import { LoginScreen } from "../features/auth/views/screens/LoginScreen";
 import { PostApprovalsScreen } from "../features/post-review/views/screens/PostApprovalsScreen";
 import { PostDetailScreen } from "../features/post-review/views/screens/PostDetailScreen";
@@ -34,17 +35,8 @@ function App() {
             <Route path={AppRoutes.users} element={<UserManagementScreen />} />
             <Route path={AppRoutes.posts} element={<PostApprovalsScreen />} />
             <Route path={AppRoutes.postDetail} element={<PostDetailScreen />} />
+            <Route path={AppRoutes.analytics} element={<AnalyticsScreen />} />
           </Route>
-          <Route
-            path={AppRoutes.analytics}
-            element={
-              <div className="flex min-h-screen items-center justify-center bg-background">
-                <h1 className="text-2xl font-semibold text-navy">
-                  Analytics (Placeholder)
-                </h1>
-              </div>
-            }
-          />
           <Route path="*" element={<Navigate to={AppRoutes.login} replace />} />
         </Routes>
       </BrowserRouter>

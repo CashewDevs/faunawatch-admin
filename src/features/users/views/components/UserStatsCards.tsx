@@ -7,20 +7,27 @@ import type { UserStats } from "../../models/adminUser";
 interface UserStatsCardsProps {
   stats: UserStats | undefined;
   activeRate: number;
+  /** Width limit of the row; Analytics lets it span the full width. */
+  widthClass?: string;
 }
 
 const placeholder = "—";
 
 /**
  * Row of four summary cards: total, active, suspended, and new users.
+ * Also shown on the Analytics Overview tab.
  */
-export function UserStatsCards({ stats, activeRate }: UserStatsCardsProps) {
+export function UserStatsCards({
+  stats,
+  activeRate,
+  widthClass = "max-w-[960px]",
+}: UserStatsCardsProps) {
   const strings = AppStrings.users.stats;
   const value = (count: number | undefined) =>
     count === undefined ? placeholder : formatNumber(count);
 
   return (
-    <ul className="flex max-w-[960px] gap-3" aria-busy={!stats}>
+    <ul className={`flex gap-3 ${widthClass}`} aria-busy={!stats}>
       <StatCard label={strings.totalUsers} value={value(stats?.totalUsers)}>
         {stats && (
           <span className="flex items-center gap-1 rounded-full bg-teal/10 px-2 py-0.5 text-[11px] leading-[14px] font-semibold tracking-[0.44px] text-teal">

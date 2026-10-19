@@ -11,12 +11,17 @@ import faunawatchLogomark from "../../assets/shared/faunawatch-logomark.png";
 import faunawatchLogoVertical from "../../assets/shared/faunawatch-logo-vertical.png";
 import sharedIconChevronLeft from "../../assets/shared/icon-chevron-left.svg";
 import sharedIconChevronRight from "../../assets/shared/icon-chevron-right.svg";
+import sharedIconAnalytics from "../../assets/shared/icon-analytics.svg";
 import sharedIconApprove from "../../assets/shared/icon-approve.svg";
 import sharedIconDecline from "../../assets/shared/icon-decline.svg";
 import sharedIconPostApprovals from "../../assets/shared/icon-post-approvals.svg";
 import sharedIconBell from "../../assets/shared/icon-bell.svg";
 import sharedIconLogout from "../../assets/shared/icon-logout.svg";
 import sharedIconUsers from "../../assets/shared/icon-users.svg";
+import analyticsIconCategory from "../../assets/analytics/icon-category.svg";
+import analyticsIconClipboardCheck from "../../assets/analytics/icon-clipboard-check.svg";
+import analyticsIconExport from "../../assets/analytics/icon-export.svg";
+import analyticsIconWarning from "../../assets/analytics/icon-warning.svg";
 import loginIconArrowRight from "../../assets/login/icon-arrow-right.svg";
 import loginIconEye from "../../assets/login/icon-eye.svg";
 import loginIconLock from "../../assets/login/icon-lock.svg";
@@ -90,6 +95,13 @@ export const AppAssets = {
     iconApprove: sharedIconApprove,
     iconDecline: sharedIconDecline,
     iconPostApprovals: sharedIconPostApprovals,
+    iconAnalytics: sharedIconAnalytics,
+  },
+  analytics: {
+    iconCategory: analyticsIconCategory,
+    iconClipboardCheck: analyticsIconClipboardCheck,
+    iconExport: analyticsIconExport,
+    iconWarning: analyticsIconWarning,
   },
   login: {
     iconArrowRight: loginIconArrowRight,

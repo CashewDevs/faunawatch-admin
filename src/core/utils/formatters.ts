@@ -22,6 +22,27 @@ const monthYearFormatter = new Intl.DateTimeFormat("en-US", {
   timeZone: "UTC",
 });
 
+const monthDayFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  day: "numeric",
+  timeZone: "UTC",
+});
+
+const monthFormatter = new Intl.DateTimeFormat("en-US", {
+  month: "short",
+  timeZone: "UTC",
+});
+
+/** "2026-10-24" → "Oct 24" */
+export function formatMonthDay(isoDate: string): string {
+  return monthDayFormatter.format(new Date(isoDate));
+}
+
+/** "2026-10-01" → "Oct" */
+export function formatMonth(isoDate: string): string {
+  return monthFormatter.format(new Date(isoDate));
+}
+
 /** "2023-09-12" → "Sep 12, 2023" */
 export function formatDate(isoDate: string): string {
   return dateFormatter.format(new Date(isoDate));

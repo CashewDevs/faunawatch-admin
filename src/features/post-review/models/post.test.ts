@@ -3,7 +3,6 @@ import {
   countPostsByTab,
   defaultPostListQuery,
   getApprovalRate,
-  getAvatarTone,
   getExtraPhotoCount,
   getQueuePosition,
   hasActiveFilters,
@@ -215,11 +214,6 @@ describe("small post helpers", () => {
     expect(
       getApprovalRate({ ...stats, approvedPosts: 0, declinedPosts: 0 }),
     ).toBe(0);
-  });
-
-  it("picks a stable avatar tone", () => {
-    expect(getAvatarTone("Clara Soriano")).toBe(getAvatarTone("Clara Soriano"));
-    expect(["primary", "amber", "teal"]).toContain(getAvatarTone("Scout_Dan"));
   });
 });
 
