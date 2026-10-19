@@ -3,6 +3,8 @@ import {
   formatCoordinates,
   formatDate,
   formatDateTime,
+  formatMonth,
+  formatMonthDay,
   formatMonthYear,
   formatNumber,
   formatRelativeTime,
@@ -21,6 +23,12 @@ describe("formatters", () => {
 
   it("formats month and year", () => {
     expect(formatMonthYear("2023-11-03")).toBe("Nov 2023");
+  });
+
+  it("formats month and day, and month alone", () => {
+    expect(formatMonthDay("2026-10-04")).toBe("Oct 4");
+    expect(formatMonthDay("2026-10-24")).toBe("Oct 24");
+    expect(formatMonth("2026-10-01")).toBe("Oct");
   });
 
   it("formats a date and 24-hour time in the given time zone", () => {
