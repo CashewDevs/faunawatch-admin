@@ -56,12 +56,12 @@ export function PostContentCard({ post }: PostContentCardProps) {
       className="flex flex-col gap-4 rounded-xl bg-white p-6 drop-shadow-xs"
     >
       <div className="flex flex-col gap-3">
-        <h1
+        <h2
           id="post-title"
           className="text-[22px] leading-7 font-semibold tracking-[-0.55px] text-deep-blue"
         >
           {post.title}
-        </h1>
+        </h2>
         <ul className="flex flex-wrap gap-2">
           <Chip
             className="bg-chip text-slate"

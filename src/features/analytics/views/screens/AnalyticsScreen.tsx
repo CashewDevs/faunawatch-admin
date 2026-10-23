@@ -17,9 +17,11 @@ export function AnalyticsScreen() {
   const viewModel = useAnalyticsViewModel();
 
   return (
-    <div className="flex flex-1 animate-fade-in flex-col gap-6 px-8 pt-9 pb-10 motion-reduce:animate-none">
-      <AnalyticsHeader viewModel={viewModel} />
-      <AnalyticsTabs viewModel={viewModel} />
+    <div className="flex flex-1 animate-fade-in flex-col gap-6 px-8 pt-5 pb-10 motion-reduce:animate-none">
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <AnalyticsTabs viewModel={viewModel} />
+        <AnalyticsHeader viewModel={viewModel} />
+      </div>
       <div
         role="tabpanel"
         id={getTabPanelId(viewModel.tab)}

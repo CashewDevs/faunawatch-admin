@@ -18,13 +18,6 @@ export function PostApprovalsScreen() {
   return (
     <div className="flex flex-1 animate-fade-in flex-col motion-reduce:animate-none">
       <div className="flex flex-col gap-3 px-8 pt-5 pb-8">
-        <div className="flex flex-col">
-          <h1 className="text-4xl leading-[44px] font-bold tracking-[-0.9px] text-deep-blue">
-            {strings.heading}
-          </h1>
-          <p className="text-sm leading-5 text-slate">{strings.description}</p>
-        </div>
-
         <div className="flex flex-col gap-2">
           <PostStatusTabs viewModel={viewModel} />
           <PostFilterToolbar viewModel={viewModel} />
