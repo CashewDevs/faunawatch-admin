@@ -27,13 +27,8 @@ describe("UserManagementScreen", () => {
     vi.mocked(fetchUserStats).mockResolvedValue(mockUserStats);
   });
 
-  it("renders the heading, stats, and a page of users", async () => {
+  it("renders the stats and a page of users", async () => {
     renderScreen();
-
-    expect(
-      screen.getByRole("heading", { name: strings.heading }),
-    ).toBeInTheDocument();
-    expect(await screen.findByText("1,420 Registered")).toBeInTheDocument();
 
     const table = screen.getByRole("table", { name: strings.table.caption });
     expect(await within(table).findByText("Enzo Morales")).toBeInTheDocument();

@@ -25,7 +25,6 @@ export const AppStrings = {
     navUsers: "User Management",
     navPosts: "Post Approvals",
     navAnalytics: "Analytics",
-    adminBadge: "Admin",
     notifications: "Notifications",
     logout: "Log out",
     // TODO(auth): Replace with the signed-in admin's name and role once
@@ -35,9 +34,6 @@ export const AppStrings = {
   },
   users: {
     heading: "User Management",
-    registeredSuffix: "Registered",
-    description:
-      "View, moderate, and inspect community members, field rangers, and contributing biologists.",
     exportCsv: "Export CSV",
     stats: {
       totalUsers: "Total Users",
@@ -93,8 +89,6 @@ export const AppStrings = {
   },
   posts: {
     heading: "Post Approvals",
-    description:
-      "Review and verify wildlife sightings submitted by rangers and community scouts.",
     tabsLabel: "Filter by review status",
     tabs: {
       pending: "Pending",

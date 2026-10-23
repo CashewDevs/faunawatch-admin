@@ -78,9 +78,6 @@ describe("AnalyticsScreen", () => {
     renderScreen();
 
     expect(
-      screen.getByRole("heading", { name: strings.heading }),
-    ).toBeInTheDocument();
-    expect(
       screen.getByRole("tab", { name: strings.tabs.overview }),
     ).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByText("1,420")).toBeInTheDocument();

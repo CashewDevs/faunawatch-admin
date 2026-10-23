@@ -1,7 +1,6 @@
 import { Pagination } from "../../../../core/components/Pagination";
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
-import { formatNumber } from "../../../../core/utils/formatters";
 import { userPageSizeOptions } from "../../models/adminUser";
 import { useUserManagementViewModel } from "../../viewmodels/useUserManagementViewModel";
 import { UserStatsCards } from "../components/UserStatsCards";
@@ -17,38 +16,19 @@ export function UserManagementScreen() {
 
   return (
     <div className="flex flex-1 animate-fade-in flex-col motion-reduce:animate-none">
-      <div className="flex flex-col gap-4 px-8 pt-9 pb-2">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-col gap-0.5">
-            <div className="flex items-center gap-2">
-              <h1 className="text-[28px] leading-[44px] font-extrabold tracking-[-0.7px] text-navy">
-                {strings.heading}
-              </h1>
-              {viewModel.stats && (
-                <span className="rounded-full bg-chip px-2.5 py-0.5 text-[11px] leading-[14px] font-bold tracking-[0.44px] text-navy">
-                  {formatNumber(viewModel.stats.totalUsers)}{" "}
-                  {strings.registeredSuffix}
-                </span>
-              )}
-            </div>
-            <p className="max-w-[440px] text-sm leading-5 text-muted">
-              {strings.description}
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={viewModel.exportCsv}
-            className="flex items-center gap-1 rounded-xl bg-white px-4 py-2.5 text-sm leading-5 font-semibold tracking-[0.14px] text-navy drop-shadow-xs transition-colors hover:bg-surface-tint focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            <img src={AppAssets.users.iconDownload} alt="" />
-            {strings.exportCsv}
-          </button>
-        </div>
-
+      <div className="flex flex-wrap items-start justify-between gap-4 px-8 pt-5 pb-2">
         <UserStatsCards
           stats={viewModel.stats}
           activeRate={viewModel.activeRate}
         />
+        <button
+          type="button"
+          onClick={viewModel.exportCsv}
+          className="flex items-center gap-1 rounded-xl bg-white px-4 py-2.5 text-sm leading-5 font-semibold tracking-[0.14px] text-navy drop-shadow-xs transition-colors hover:bg-surface-tint focus-visible:outline-2 focus-visible:outline-primary"
+        >
+          <img src={AppAssets.users.iconDownload} alt="" />
+          {strings.exportCsv}
+        </button>
       </div>
 
       <UserToolbar viewModel={viewModel} />

@@ -8,16 +8,13 @@ interface AnalyticsHeaderProps {
 }
 
 /**
- * Page title with the date-range switch and the Export report button.
+ * Date-range switch and the Export report button, beside the tab strip.
  */
 export function AnalyticsHeader({ viewModel }: AnalyticsHeaderProps) {
   const strings = AppStrings.analytics;
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4">
-      <h1 className="text-[40px] leading-12 font-semibold tracking-[-1.2px] text-ink">
-        {strings.heading}
-      </h1>
+    <div className="flex flex-wrap items-center justify-end gap-4">
       <div className="flex flex-wrap items-center gap-3">
         <SegmentedControl
           label={strings.rangeLabel}

@@ -1,20 +1,36 @@
+import { matchPath, useLocation } from "react-router";
 import { AppAssets } from "../constants/appAssets";
+import { AppRoutes } from "../constants/appRoutes";
 import { AppStrings } from "../constants/appStrings";
 
 const iconButtonClass =
   "flex items-center justify-center rounded-full p-1 transition-colors hover:bg-surface-tint focus-visible:outline-2 focus-visible:outline-primary";
 
+/** Page title per section; nested routes (post detail) use their section's. */
+const pageTitles = [
+  { path: AppRoutes.users, title: AppStrings.users.heading },
+  { path: AppRoutes.posts, title: AppStrings.posts.heading },
+  { path: AppRoutes.analytics, title: AppStrings.analytics.heading },
+] as const;
+
+function getPageTitle(pathname: string): string | undefined {
+  return pageTitles.find(({ path }) =>
+    matchPath({ path, end: false }, pathname),
+  )?.title;
+}
+
 /**
- * Sticky top bar: admin badge, notifications, and the signed-in admin.
+ * Sticky top bar: the current screen's title, notifications, and the signed-in admin.
  */
 export function AdminHeader() {
   const strings = AppStrings.layout;
+  const pageTitle = getPageTitle(useLocation().pathname);
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between bg-white/90 px-8 shadow-header backdrop-blur-[6px]">
-      <span className="rounded-full bg-badge-navy px-2 py-0.5 text-[11px] leading-[14px] font-bold tracking-[1.1px] text-badge-text uppercase">
-        {strings.adminBadge}
-      </span>
+      <h1 className="text-4xl leading-[44px] font-bold tracking-[-0.9px] text-deep-blue">
+        {pageTitle}
+      </h1>
 
       <div className="flex items-center gap-6">
         {/* TODO(notifications): No notifications feature is specified yet. */}

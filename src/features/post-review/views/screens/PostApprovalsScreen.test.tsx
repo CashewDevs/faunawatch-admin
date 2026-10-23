@@ -52,12 +52,9 @@ describe("PostApprovalsScreen", () => {
     vi.mocked(fetchPostCounts).mockResolvedValue(counts);
   });
 
-  it("renders the heading, tab counts, and a page of pending posts", async () => {
+  it("renders the tab counts and a page of pending posts", async () => {
     renderScreen();
 
-    expect(
-      screen.getByRole("heading", { name: strings.heading }),
-    ).toBeInTheDocument();
     expect(await findCards()).toHaveLength(12);
     expect(
       await screen.findByRole("button", {

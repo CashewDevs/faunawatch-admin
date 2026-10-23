@@ -51,7 +51,7 @@ describe("PostDetailScreen", () => {
     renderScreen();
 
     expect(
-      await screen.findByRole("heading", { level: 1, name: tarsier.title }),
+      await screen.findByRole("heading", { level: 2, name: tarsier.title }),
     ).toBeInTheDocument();
     expect(
       screen.getByText(`${strings.postPrefix}${String(tarsier.reference)}`),
@@ -70,7 +70,7 @@ describe("PostDetailScreen", () => {
 
   it("links back to the list it came from", async () => {
     renderScreen();
-    await screen.findByRole("heading", { level: 1 });
+    await screen.findByRole("heading", { level: 2, name: tarsier.title });
 
     expect(screen.getByRole("link", { name: strings.back })).toHaveAttribute(
       "href",
