@@ -2,13 +2,18 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { queryUsers } from "../models/adminUser";
 import { mockUserStats, mockUsers } from "../services/mockUsers";
-import { fetchUserStats, fetchUsers } from "../services/usersService";
+import {
+  fetchUserStats,
+  fetchUsers,
+  updateUserRole,
+} from "../services/usersService";
 import { createQueryWrapper } from "../../../test/queryWrapper";
 import { useUserManagementViewModel } from "./useUserManagementViewModel";
 
 vi.mock("../services/usersService", () => ({
   fetchUsers: vi.fn(),
   fetchUserStats: vi.fn(),
+  updateUserRole: vi.fn(),
 }));
 
 const fetchUsersMock = vi.mocked(fetchUsers);
@@ -139,5 +144,42 @@ describe("useUserManagementViewModel", () => {
       expect(result.current.isError).toBe(false);
     });
     expect(result.current.users).toHaveLength(10);
+  });
+
+  it("changes a user's role and reloads the list", async () => {
+    const enzo = mockUsers.find((user) => user.username === "enzo_m");
+    if (!enzo) throw new Error("fixture missing");
+    vi.mocked(updateUserRole).mockResolvedValue({ ...enzo, role: "admin" });
+    const { result } = renderViewModel();
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+    const callsBefore = fetchUsersMock.mock.calls.length;
+
+    act(() => {
+      result.current.changeRole(enzo.id, "admin");
+    });
+
+    await waitFor(() => {
+      expect(fetchUsersMock.mock.calls.length).toBeGreaterThan(callsBefore);
+    });
+    expect(vi.mocked(updateUserRole)).toHaveBeenCalledWith(enzo.id, "admin");
+    expect(result.current.isRoleUpdateError).toBe(false);
+  });
+
+  it("reports a failed role change", async () => {
+    vi.mocked(updateUserRole).mockRejectedValue(new Error("forbidden"));
+    const { result } = renderViewModel();
+    await waitFor(() => {
+      expect(result.current.isLoading).toBe(false);
+    });
+
+    act(() => {
+      result.current.changeRole("mock-user-1", "admin");
+    });
+
+    await waitFor(() => {
+      expect(result.current.isRoleUpdateError).toBe(true);
+    });
   });
 });

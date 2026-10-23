@@ -17,6 +17,7 @@ function makeUser(overrides: Partial<AdminUser>): AdminUser {
     joinedAt: "2024-01-01",
     postCount: 0,
     status: "active",
+    role: "user",
     isVerified: false,
     avatarUrl: null,
     ...overrides,

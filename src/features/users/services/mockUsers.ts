@@ -38,6 +38,7 @@ const people: ReadonlyArray<
 
 const suspendedUsernames = new Set(["klip123", "migs_t"]);
 const verifiedUsernames = new Set(["thorne_botanist"]);
+const adminUsernames = new Set(["msantos_field"]);
 
 export const mockUsers: readonly AdminUser[] = people.map(
   ([fullName, username, joinedAt, postCount], index) => ({
@@ -48,6 +49,7 @@ export const mockUsers: readonly AdminUser[] = people.map(
     joinedAt,
     postCount,
     status: suspendedUsernames.has(username) ? "suspended" : "active",
+    role: adminUsernames.has(username) ? "admin" : "user",
     isVerified: verifiedUsernames.has(username),
     avatarUrl: null,
   }),

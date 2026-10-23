@@ -11,7 +11,7 @@ const headerCellClass =
   "pt-[16.5px] pb-[17.5px] text-[11px] leading-[14px] font-bold tracking-[0.55px] text-navy uppercase";
 
 /**
- * Five-column users table with loading, empty, and error states, spanning
+ * Six-column users table with loading, empty, and error states, spanning
  * the full width with evenly spaced columns.
  */
 export function UserTable({ viewModel }: UserTableProps) {
@@ -37,12 +37,26 @@ export function UserTable({ viewModel }: UserTableProps) {
   } else if (users.length === 0) {
     body = <MessageRow>{strings.empty}</MessageRow>;
   } else {
-    body = users.map((user) => <UserTableRow key={user.id} user={user} />);
+    body = users.map((user) => (
+      <UserTableRow
+        key={user.id}
+        user={user}
+        isUpdatingRole={viewModel.updatingRoleUserId === user.id}
+        onRoleChange={(role) => {
+          viewModel.changeRole(user.id, role);
+        }}
+      />
+    ));
   }
 
   return (
     <div className="overflow-x-auto">
-      {/* Grid instead of table layout: the first four columns are sized to
+      {viewModel.isRoleUpdateError && (
+        <p role="alert" className="px-6 pb-3 text-sm text-danger">
+          {strings.roleUpdateError}
+        </p>
+      )}
+      {/* Grid instead of table layout: the first five columns are sized to
           their content and share the leftover width equally, so the gaps
           between columns stay even at any screen width. ARIA roles keep the
           table semantics that `display: grid/contents` can drop. */}
@@ -50,7 +64,7 @@ export function UserTable({ viewModel }: UserTableProps) {
         role="table"
         aria-label={strings.table.caption}
         aria-busy={isLoading}
-        className="grid w-full min-w-225 grid-cols-[repeat(4,auto)_max-content]"
+        className="grid w-full min-w-225 grid-cols-[repeat(5,auto)_max-content]"
       >
         <thead role="rowgroup" className="contents">
           <tr role="row" className="contents *:bg-surface-tint/70">
@@ -85,6 +99,13 @@ export function UserTable({ viewModel }: UserTableProps) {
             <th
               role="columnheader"
               scope="col"
+              className={`px-4 text-left ${headerCellClass}`}
+            >
+              {strings.table.role}
+            </th>
+            <th
+              role="columnheader"
+              scope="col"
               className={`pr-6 pl-4 text-right ${headerCellClass}`}
             >
               {strings.table.accountStatus}
@@ -104,7 +125,7 @@ function MessageRow({ children }: { children: ReactNode }) {
     <tr role="row" className="contents">
       <td
         role="cell"
-        colSpan={5}
+        colSpan={6}
         className="col-span-full py-16 text-center text-sm text-muted"
       >
         {children}
