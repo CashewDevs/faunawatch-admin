@@ -1,21 +1,32 @@
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { formatDate, formatNumber } from "../../../../core/utils/formatters";
-import type { AdminUser } from "../../models/adminUser";
+import {
+  userRoles,
+  type AdminUser,
+  type UserRole,
+} from "../../models/adminUser";
 import { UserAvatar } from "./UserAvatar";
 
 interface UserTableRowProps {
   user: AdminUser;
+  isUpdatingRole: boolean;
+  onRoleChange: (role: UserRole) => void;
 }
 
 /** Grid cell: fills its row height so row tints have no gaps. */
 const cellClass = "flex items-center";
 
 /**
- * One user row: identity, email, join date, post count, and account status.
+ * One user row: identity, email, join date, post count, role, and account
+ * status.
  * Rendered inside UserTable's grid (the row itself is `display: contents`).
  */
-export function UserTableRow({ user }: UserTableRowProps) {
+export function UserTableRow({
+  user,
+  isUpdatingRole,
+  onRoleChange,
+}: UserTableRowProps) {
   const strings = AppStrings.users.table;
   const isSuspended = user.status === "suspended";
 
@@ -65,6 +76,30 @@ export function UserTableRow({ user }: UserTableRowProps) {
           {formatNumber(user.postCount)}{" "}
           {user.postCount === 1 ? strings.postSuffix : strings.postsSuffix}
         </span>
+      </td>
+      <td role="cell" className={`${cellClass} px-4`}>
+        <div className="relative">
+          <select
+            aria-label={`${strings.role}: ${user.fullName}`}
+            value={user.role}
+            disabled={isUpdatingRole}
+            onChange={(event) => {
+              onRoleChange(event.target.value as UserRole);
+            }}
+            className="cursor-pointer appearance-none rounded-lg bg-surface-tint py-1 pr-7 pl-3 text-xs leading-4 font-semibold tracking-[0.24px] text-navy focus:outline-2 focus:outline-primary disabled:cursor-wait disabled:opacity-60"
+          >
+            {userRoles.map((role) => (
+              <option key={role} value={role}>
+                {strings.roles[role]}
+              </option>
+            ))}
+          </select>
+          <img
+            src={AppAssets.users.iconChevronDown}
+            alt=""
+            className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2"
+          />
+        </div>
       </td>
       <td role="cell" className={`${cellClass} justify-end gap-3 pr-6 pl-4`}>
         <span

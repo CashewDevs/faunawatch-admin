@@ -11,6 +11,12 @@ import { paginate } from "../../../core/utils/pagination";
 
 export type UserStatus = "active" | "suspended";
 
+// TODO(schema): Role names are placeholders agreed for the admin UI. Align
+// them with the role values the backend defines once the schema exists.
+export const userRoles = ["user", "admin"] as const;
+
+export type UserRole = (typeof userRoles)[number];
+
 export type UserStatusFilter = "all" | UserStatus;
 
 export type UserSortOption = "newest" | "oldest" | "name";
@@ -24,6 +30,7 @@ export interface AdminUser {
   joinedAt: string;
   postCount: number;
   status: UserStatus;
+  role: UserRole;
   isVerified: boolean;
   avatarUrl: string | null;
 }

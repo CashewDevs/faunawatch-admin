@@ -1,4 +1,9 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useState } from "react";
 import { useDebouncedValue } from "../../../core/hooks/useDebouncedValue";
 import {
@@ -10,18 +15,24 @@ import {
   defaultUserListQuery,
   getActiveRate,
   type UserListQuery,
+  type UserRole,
   type UserSortOption,
   type UserStatusFilter,
 } from "../models/adminUser";
-import { fetchUserStats, fetchUsers } from "../services/usersService";
+import {
+  fetchUserStats,
+  fetchUsers,
+  updateUserRole,
+} from "../services/usersService";
 
 export const searchDebounceMs = 300;
 
 /**
  * Presentation state and actions for the User Management screen: search,
- * status filter, sort, pagination, and the summary statistics.
+ * status filter, sort, pagination, the summary statistics, and role changes.
  */
 export function useUserManagementViewModel() {
+  const queryClient = useQueryClient();
   const [searchInput, setSearchInput] = useState(defaultUserListQuery.search);
   const [status, setStatus] = useState<UserStatusFilter>(
     defaultUserListQuery.status,
@@ -42,6 +53,13 @@ export function useUserManagementViewModel() {
   const statsQuery = useQuery({
     queryKey: ["users", "stats"],
     queryFn: fetchUserStats,
+  });
+
+  const roleMutation = useMutation({
+    mutationFn: ({ userId, role }: { userId: string; role: UserRole }) =>
+      updateUserRole(userId, role),
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["users", "list"] }),
   });
 
   const totalCount = usersQuery.data?.totalCount ?? 0;
@@ -71,6 +89,10 @@ export function useUserManagementViewModel() {
     setPage(Math.min(Math.max(1, value), pageCount));
   };
 
+  const changeRole = (userId: string, role: UserRole) => {
+    roleMutation.mutate({ userId, role });
+  };
+
   const exportCsv = () => {
     // TODO(export): CSV export is not specified yet (which columns, whether
     // emails may be exported, and whether it runs server-side). Decide
@@ -93,11 +115,17 @@ export function useUserManagementViewModel() {
     retry: () => void usersQuery.refetch(),
     stats: statsQuery.data,
     activeRate: statsQuery.data ? getActiveRate(statsQuery.data) : 0,
+    /** User whose role change is in flight, if any. */
+    updatingRoleUserId: roleMutation.isPending
+      ? roleMutation.variables.userId
+      : undefined,
+    isRoleUpdateError: roleMutation.isError,
     changeSearch,
     changeStatus,
     changeSort,
     changePageSize,
     goToPage,
+    changeRole,
     exportCsv,
   };
 }

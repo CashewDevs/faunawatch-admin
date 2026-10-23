@@ -67,6 +67,11 @@ export const AppStrings = {
       email: "Email",
       joined: "Joined",
       posts: "Posts",
+      role: "Role",
+      roles: {
+        user: "User",
+        admin: "Admin",
+      },
       accountStatus: "Account Status",
       postsSuffix: "posts",
       postSuffix: "post",
@@ -85,6 +90,7 @@ export const AppStrings = {
     loading: "Loading users…",
     empty: "No users match your search or filters.",
     error: "Couldn't load users.",
+    roleUpdateError: "Couldn't update the role. Please try again.",
     retry: "Try again",
   },
   posts: {
