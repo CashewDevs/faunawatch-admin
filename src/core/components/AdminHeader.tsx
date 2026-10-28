@@ -2,6 +2,7 @@ import { matchPath, useLocation } from "react-router";
 import { AppAssets } from "../constants/appAssets";
 import { AppRoutes } from "../constants/appRoutes";
 import { AppStrings } from "../constants/appStrings";
+import { useAuthSession } from "../../features/auth/viewmodels/authSessionContext";
 
 const iconButtonClass =
   "flex items-center justify-center rounded-full p-1 transition-colors hover:bg-surface-tint focus-visible:outline-2 focus-visible:outline-primary";
@@ -25,6 +26,8 @@ function getPageTitle(pathname: string): string | undefined {
 export function AdminHeader() {
   const strings = AppStrings.layout;
   const pageTitle = getPageTitle(useLocation().pathname);
+  const { admin, signOut } = useAuthSession();
+  const adminName = admin?.displayName ?? strings.profileFallbackName;
 
   return (
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between bg-white/90 px-8 shadow-header backdrop-blur-[6px]">
@@ -49,20 +52,23 @@ export function AdminHeader() {
               aria-hidden="true"
               className="flex size-8 items-center justify-center rounded-full bg-avatar text-xs font-bold text-primary"
             >
-              {strings.profileName.charAt(0)}
+              {adminName.charAt(0).toUpperCase()}
             </span>
             <div className="flex flex-col">
               <span className="text-xs leading-[15px] font-semibold tracking-[0.24px] text-ink">
-                {strings.profileName}
+                {adminName}
               </span>
               <span className="text-xs leading-[18px] text-slate">
                 {strings.profileRole}
               </span>
             </div>
           </div>
-          {/* TODO(auth): Sign out through the auth Service once Supabase auth exists. */}
+          {/* The route guard returns to the login screen once signed out. */}
           <button
             type="button"
+            onClick={() => {
+              void signOut();
+            }}
             aria-label={strings.logout}
             className={`ml-2 ${iconButtonClass}`}
           >

@@ -40,7 +40,7 @@ export function LoginCard({ viewModel }: LoginCardProps) {
         className="flex flex-col gap-5 pb-2"
         onSubmit={(event) => {
           event.preventDefault();
-          viewModel.submit();
+          void viewModel.submit();
         }}
       >
         <LoginInputField
@@ -110,11 +110,20 @@ export function LoginCard({ viewModel }: LoginCardProps) {
           </button>
         </div>
 
+        {/* No Figma design for sign-in errors; styled like the field errors. */}
+        {viewModel.signInError && (
+          <p role="alert" className="text-xs font-medium text-error">
+            {viewModel.signInError}
+          </p>
+        )}
+
         <button
           type="submit"
-          className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-button transition duration-200 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99] motion-reduce:transition-none"
+          disabled={viewModel.isSubmitting}
+          aria-busy={viewModel.isSubmitting}
+          className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-button transition duration-200 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99] disabled:cursor-wait disabled:opacity-80 motion-reduce:transition-none"
         >
-          {strings.submit}
+          {viewModel.isSubmitting ? strings.submitting : strings.submit}
           <img
             src={AppAssets.login.iconArrowRight}
             alt=""
