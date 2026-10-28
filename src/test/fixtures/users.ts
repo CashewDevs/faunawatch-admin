@@ -1,10 +1,8 @@
-import type { AdminUser, UserStats } from "../models/adminUser";
+import type { AdminUser } from "../../features/users/models/adminUser";
 
 /**
- * Fictional sample data for the User Management screen.
- *
- * TODO(schema): Delete this file once the users Service queries Supabase.
- * Every name and address here is made up (example.org domains).
+ * Fictional users for tests. Every name and address is made up
+ * (example.org domains).
  */
 
 const people: ReadonlyArray<
@@ -38,30 +36,17 @@ const people: ReadonlyArray<
 
 const suspendedUsernames = new Set(["klip123", "migs_t"]);
 const verifiedUsernames = new Set(["thorne_botanist"]);
-const adminUsernames = new Set(["msantos_field"]);
 
-export const mockUsers: readonly AdminUser[] = people.map(
+export const testUsers: readonly AdminUser[] = people.map(
   ([fullName, username, joinedAt, postCount], index) => ({
-    id: `mock-user-${String(index + 1)}`,
+    id: `test-user-${String(index + 1)}`,
     fullName,
     username,
     email: `${username.replace(/[^a-z0-9]/g, ".")}@example.org`,
-    joinedAt,
+    joinedAt: `${joinedAt}T08:00:00+00:00`,
     postCount,
     status: suspendedUsernames.has(username) ? "suspended" : "active",
-    role: adminUsernames.has(username) ? "admin" : "user",
     isVerified: verifiedUsernames.has(username),
-    avatarUrl: null,
+    avatar: null,
   }),
 );
-
-/** Sample aggregate figures from the Figma design. */
-export const mockUserStats: UserStats = {
-  totalUsers: 1420,
-  activeUsers: 1386,
-  suspendedUsers: 34,
-  newThisMonth: 89,
-  newThisWeek: 12,
-  suspendedThisMonth: 3,
-  newUsersChangePercent: 18,
-};

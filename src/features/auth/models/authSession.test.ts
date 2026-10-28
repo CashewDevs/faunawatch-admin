@@ -1,49 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   AuthFailure,
-  getAdminDisplayName,
   getAuthErrorKind,
   getSessionStatus,
   type SessionSnapshot,
 } from "./authSession";
-
-const noNames = { fullName: null, username: null, displayName: null };
-
-describe("getAdminDisplayName", () => {
-  it("prefers the full name", () => {
-    expect(
-      getAdminDisplayName(
-        { fullName: "Maria Santos", username: "msantos", displayName: "M" },
-        "maria@example.org",
-      ),
-    ).toBe("Maria Santos");
-  });
-
-  it("falls back to username, then the legacy display name", () => {
-    expect(
-      getAdminDisplayName(
-        { ...noNames, username: "msantos", displayName: "M" },
-        null,
-      ),
-    ).toBe("msantos");
-    expect(getAdminDisplayName({ ...noNames, displayName: "M" }, null)).toBe(
-      "M",
-    );
-  });
-
-  it("ignores blank values", () => {
-    expect(
-      getAdminDisplayName(
-        { fullName: "  ", username: "", displayName: null },
-        "admin@example.org",
-      ),
-    ).toBe("admin");
-  });
-
-  it("returns null when there is nothing to show", () => {
-    expect(getAdminDisplayName(noNames, null)).toBeNull();
-  });
-});
 
 describe("getAuthErrorKind", () => {
   it("reads the kind from an AuthFailure", () => {

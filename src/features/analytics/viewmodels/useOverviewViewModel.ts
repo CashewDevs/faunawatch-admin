@@ -1,7 +1,6 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { getActiveRate } from "../../users/models/adminUser";
-import { fetchUserStats } from "../../users/services/usersService";
+import { useUserStats } from "../../users/viewmodels/userQueries";
 import {
   getAvailableGranularities,
   resolveGranularity,
@@ -24,11 +23,8 @@ export function useOverviewViewModel(range: AnalyticsRange) {
     useState<TrendGranularity | null>(null);
   const granularity = resolveGranularity(range, requestedGranularity);
 
-  // Same key as User Management, so the two screens share the cache.
-  const statsQuery = useQuery({
-    queryKey: ["users", "stats"],
-    queryFn: fetchUserStats,
-  });
+  // Shares its queries with User Management.
+  const { stats: userStats, activeRate } = useUserStats();
 
   const trendQuery = useQuery({
     queryKey: ["analytics", "postTrend", range, granularity],
@@ -43,8 +39,8 @@ export function useOverviewViewModel(range: AnalyticsRange) {
   });
 
   return {
-    userStats: statsQuery.data,
-    activeRate: statsQuery.data ? getActiveRate(statsQuery.data) : 0,
+    userStats,
+    activeRate,
     granularity,
     availableGranularities: getAvailableGranularities(range),
     changeGranularity: setRequestedGranularity,

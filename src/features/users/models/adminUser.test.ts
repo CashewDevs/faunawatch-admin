@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   defaultUserListQuery,
   getActiveRate,
+  getStatsMonthStart,
+  getUserStats,
   matchesUserSearch,
   queryUsers,
   sortUsers,
@@ -17,9 +19,8 @@ function makeUser(overrides: Partial<AdminUser>): AdminUser {
     joinedAt: "2024-01-01",
     postCount: 0,
     status: "active",
-    role: "user",
     isVerified: false,
-    avatarUrl: null,
+    avatar: null,
     ...overrides,
   };
 }
@@ -54,6 +55,12 @@ describe("matchesUserSearch", () => {
     expect(matchesUserSearch(maria, "field")).toBe(true);
     expect(matchesUserSearch(maria, "maria@")).toBe(true);
     expect(matchesUserSearch(maria, "klip")).toBe(false);
+  });
+
+  it("skips a missing username or email", () => {
+    const anonymous = makeUser({ username: null, email: null });
+    expect(matchesUserSearch(anonymous, "test user")).toBe(true);
+    expect(matchesUserSearch(anonymous, "example")).toBe(false);
   });
 
   it("matches everything for a blank search", () => {
@@ -111,5 +118,70 @@ describe("getActiveRate", () => {
     };
     expect(getActiveRate(stats)).toBe(97.6);
     expect(getActiveRate({ ...stats, totalUsers: 0, activeUsers: 0 })).toBe(0);
+  });
+});
+
+describe("getUserStats", () => {
+  const now = new Date("2026-10-29T12:00:00Z");
+  const joined = (id: string, joinedAt: string, suspended = false) =>
+    makeUser({
+      id,
+      joinedAt,
+      status: suspended ? "suspended" : "active",
+    });
+
+  it("counts users, suspensions and new sign-ups", () => {
+    const stats = getUserStats(
+      [
+        joined("1", "2026-10-27T00:00:00Z"),
+        joined("2", "2026-10-02T00:00:00Z", true),
+        joined("3", "2026-09-15T00:00:00Z"),
+        joined("4", "2026-09-30T23:59:59Z"),
+        joined("5", "2025-01-01T00:00:00Z", true),
+      ],
+      [
+        { userId: "2", createdAt: "2026-10-05T00:00:00Z" },
+        { userId: "2", createdAt: "2026-10-06T00:00:00Z" },
+        { userId: "5", createdAt: "2026-09-20T00:00:00Z" },
+      ],
+      now,
+    );
+
+    expect(stats).toEqual({
+      totalUsers: 5,
+      activeUsers: 3,
+      suspendedUsers: 2,
+      newThisMonth: 2,
+      newThisWeek: 1,
+      // One user suspended twice this month counts once.
+      suspendedThisMonth: 1,
+      newUsersChangePercent: 0,
+    });
+  });
+
+  it("works out the change against last month", () => {
+    const stats = getUserStats(
+      [
+        joined("1", "2026-10-01T00:00:00Z"),
+        joined("2", "2026-10-02T00:00:00Z"),
+        joined("3", "2026-10-03T00:00:00Z"),
+        joined("4", "2026-09-03T00:00:00Z"),
+        joined("5", "2026-09-04T00:00:00Z"),
+      ],
+      [],
+      now,
+    );
+    expect(stats.newUsersChangePercent).toBe(50);
+  });
+
+  it("has no change figure when nobody joined last month", () => {
+    const stats = getUserStats([joined("1", "2026-10-01T00:00:00Z")], [], now);
+    expect(stats.newUsersChangePercent).toBeNull();
+  });
+
+  it("starts the stats month on the 1st, in UTC", () => {
+    expect(getStatsMonthStart(now).toISOString()).toBe(
+      "2026-10-01T00:00:00.000Z",
+    );
   });
 });

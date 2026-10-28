@@ -1,23 +1,17 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { queryUsers } from "../models/adminUser";
-import { mockUserStats, mockUsers } from "../services/mockUsers";
-import {
-  fetchUserStats,
-  fetchUsers,
-  updateUserRole,
-} from "../services/usersService";
+import { testUsers } from "../../../test/fixtures/users";
 import { createQueryWrapper } from "../../../test/queryWrapper";
+import { fetchSanctionsSince, fetchUsers } from "../services/usersService";
 import { useUserManagementViewModel } from "./useUserManagementViewModel";
 
 vi.mock("../services/usersService", () => ({
   fetchUsers: vi.fn(),
-  fetchUserStats: vi.fn(),
-  updateUserRole: vi.fn(),
+  fetchSanctionsSince: vi.fn(),
 }));
 
 const fetchUsersMock = vi.mocked(fetchUsers);
-const fetchUserStatsMock = vi.mocked(fetchUserStats);
+const fetchSanctionsMock = vi.mocked(fetchSanctionsSince);
 
 function renderViewModel() {
   return renderHook(() => useUserManagementViewModel(), {
@@ -28,11 +22,11 @@ function renderViewModel() {
 describe("useUserManagementViewModel", () => {
   beforeEach(() => {
     fetchUsersMock.mockReset();
-    fetchUserStatsMock.mockReset();
-    fetchUsersMock.mockImplementation((query) =>
-      Promise.resolve(queryUsers(mockUsers, query)),
-    );
-    fetchUserStatsMock.mockResolvedValue(mockUserStats);
+    fetchSanctionsMock.mockReset();
+    fetchUsersMock.mockResolvedValue([...testUsers]);
+    fetchSanctionsMock.mockResolvedValue([
+      { userId: "test-user-4", createdAt: new Date().toISOString() },
+    ]);
   });
 
   it("loads the first page and the stats", async () => {
@@ -43,14 +37,21 @@ describe("useUserManagementViewModel", () => {
       expect(result.current.isLoading).toBe(false);
     });
     expect(result.current.users).toHaveLength(10);
-    expect(result.current.totalCount).toBe(mockUsers.length);
+    expect(result.current.totalCount).toBe(testUsers.length);
     expect(result.current.pageRange).toEqual({ from: 1, to: 10 });
     expect(result.current.pageCount).toBe(3);
 
     await waitFor(() => {
-      expect(result.current.stats).toEqual(mockUserStats);
+      expect(result.current.stats).toBeDefined();
     });
-    expect(result.current.activeRate).toBe(97.6);
+    expect(result.current.stats).toMatchObject({
+      totalUsers: 24,
+      activeUsers: 22,
+      suspendedUsers: 2,
+      suspendedThisMonth: 1,
+    });
+    expect(result.current.activeRate).toBe(91.7);
+    expect(fetchUsersMock).toHaveBeenCalledTimes(1);
   });
 
   it("filters by status and resets to page 1", async () => {
@@ -90,9 +91,8 @@ describe("useUserManagementViewModel", () => {
       expect(result.current.totalCount).toBe(1);
     });
     expect(result.current.users[0]?.username).toBe("klip123");
-    expect(fetchUsersMock).toHaveBeenLastCalledWith(
-      expect.objectContaining({ search: "klip", page: 1 }),
-    );
+    // Filtering happens on the loaded list; nothing is refetched.
+    expect(fetchUsersMock).toHaveBeenCalledTimes(1);
   });
 
   it("keeps page navigation within bounds", async () => {
@@ -144,42 +144,5 @@ describe("useUserManagementViewModel", () => {
       expect(result.current.isError).toBe(false);
     });
     expect(result.current.users).toHaveLength(10);
-  });
-
-  it("changes a user's role and reloads the list", async () => {
-    const enzo = mockUsers.find((user) => user.username === "enzo_m");
-    if (!enzo) throw new Error("fixture missing");
-    vi.mocked(updateUserRole).mockResolvedValue({ ...enzo, role: "admin" });
-    const { result } = renderViewModel();
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-    const callsBefore = fetchUsersMock.mock.calls.length;
-
-    act(() => {
-      result.current.changeRole(enzo.id, "admin");
-    });
-
-    await waitFor(() => {
-      expect(fetchUsersMock.mock.calls.length).toBeGreaterThan(callsBefore);
-    });
-    expect(vi.mocked(updateUserRole)).toHaveBeenCalledWith(enzo.id, "admin");
-    expect(result.current.isRoleUpdateError).toBe(false);
-  });
-
-  it("reports a failed role change", async () => {
-    vi.mocked(updateUserRole).mockRejectedValue(new Error("forbidden"));
-    const { result } = renderViewModel();
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
-
-    act(() => {
-      result.current.changeRole("mock-user-1", "admin");
-    });
-
-    await waitFor(() => {
-      expect(result.current.isRoleUpdateError).toBe(true);
-    });
   });
 });

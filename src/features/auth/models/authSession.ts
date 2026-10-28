@@ -16,13 +16,6 @@ export interface AdminProfile {
   displayName: string | null;
 }
 
-/** Name fields from the `profiles` row. */
-export interface ProfileNames {
-  fullName: string | null;
-  username: string | null;
-  displayName: string | null;
-}
-
 /**
  * - loading: restoring a saved session on page load.
  * - verifying: a new sign-in is being checked for admin access.
@@ -77,25 +70,4 @@ export function getSessionStatus(snapshot: SessionSnapshot): SessionStatus {
 
 export function getAuthErrorKind(error: unknown): AuthErrorKind {
   return error instanceof AuthFailure ? error.kind : "unknown";
-}
-
-function nonBlank(value: string | null): string | null {
-  const trimmed = value?.trim();
-  return trimmed ? trimmed : null;
-}
-
-/**
- * Name to show for the admin: full name, then username, then the legacy
- * display name, then the part of the email before the "@".
- */
-export function getAdminDisplayName(
-  names: ProfileNames,
-  email: string | null,
-): string | null {
-  return (
-    nonBlank(names.fullName) ??
-    nonBlank(names.username) ??
-    nonBlank(names.displayName) ??
-    nonBlank(email?.split("@")[0] ?? null)
-  );
 }

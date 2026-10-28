@@ -9,6 +9,15 @@
  */
 import faunawatchLogomark from "../../assets/shared/faunawatch-logomark.png";
 import faunawatchLogoVertical from "../../assets/shared/faunawatch-logo-vertical.png";
+import avatarPanda from "../../assets/shared/avatars/panda.webp";
+import avatarBunny from "../../assets/shared/avatars/bunny.webp";
+import avatarTweety from "../../assets/shared/avatars/tweety.webp";
+import avatarGarfield from "../../assets/shared/avatars/garfield.webp";
+import avatarIce from "../../assets/shared/avatars/ice.webp";
+import avatarSnoop from "../../assets/shared/avatars/snoop.webp";
+import avatarJerry from "../../assets/shared/avatars/jerry.webp";
+import avatarPerry from "../../assets/shared/avatars/perry.webp";
+import avatarGrizz from "../../assets/shared/avatars/grizz.webp";
 import sharedIconChevronLeft from "../../assets/shared/icon-chevron-left.svg";
 import sharedIconChevronRight from "../../assets/shared/icon-chevron-right.svg";
 import sharedIconAnalytics from "../../assets/shared/icon-analytics.svg";
@@ -82,6 +91,7 @@ import usersIconSearch from "../../assets/users/icon-search.svg";
 import usersIconShieldAlert from "../../assets/users/icon-shield-alert.svg";
 import usersIconTrendUp from "../../assets/users/icon-trend-up.svg";
 import usersIconVerified from "../../assets/users/icon-verified.svg";
+import type { AvatarImage, PresetAvatarName } from "../utils/avatars";
 
 export const AppAssets = {
   shared: {
@@ -100,6 +110,19 @@ export const AppAssets = {
     iconPostApprovals: sharedIconPostApprovals,
     iconAnalytics: sharedIconAnalytics,
   },
+  // The mobile app's preset profile avatars (`preset:<name>`), copied from
+  // the faunawatch repo's assets/images/. Keep the names in sync with it.
+  avatars: {
+    panda: avatarPanda,
+    bunny: avatarBunny,
+    tweety: avatarTweety,
+    garfield: avatarGarfield,
+    ice: avatarIce,
+    snoop: avatarSnoop,
+    jerry: avatarJerry,
+    perry: avatarPerry,
+    grizz: avatarGrizz,
+  } satisfies Record<PresetAvatarName, string>,
   analytics: {
     iconCategory: analyticsIconCategory,
     iconClipboardCheck: analyticsIconClipboardCheck,
@@ -177,3 +200,8 @@ export const AppAssets = {
 } as const;
 
 export type AppAssetGroup = keyof typeof AppAssets;
+
+/** Image URL for an avatar: a bundled preset, or a signed photo URL. */
+export function getAvatarSrc(avatar: AvatarImage): string {
+  return avatar.kind === "preset" ? AppAssets.avatars[avatar.name] : avatar.url;
+}
