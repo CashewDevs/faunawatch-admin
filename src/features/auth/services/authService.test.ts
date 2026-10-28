@@ -4,14 +4,19 @@ import { setSessionPersistence } from "../../../core/services/authStorage";
 import { AuthFailure } from "../models/authSession";
 import {
   fetchAdminProfile,
+  getOAuthRedirectFailure,
   onSessionChange,
+  resetOAuthRedirectFailureForTests,
   signIn,
+  signInWithGoogle,
   signOut,
   toAuthFailure,
 } from "./authService";
 
 const auth = vi.hoisted(() => ({
   signInWithPassword: vi.fn(),
+  signInWithOAuth: vi.fn(),
+  initialize: vi.fn(),
   signOut: vi.fn(),
   onAuthStateChange: vi.fn(),
 }));
@@ -39,6 +44,8 @@ function mockProfileQuery(result: { data: unknown; error: unknown }) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  resetOAuthRedirectFailureForTests();
+  window.history.replaceState(null, "", "/");
 });
 
 describe("toAuthFailure", () => {
@@ -85,6 +92,128 @@ describe("signIn", () => {
   });
 });
 
+describe("signInWithGoogle", () => {
+  it("applies the remember-me choice and redirects back to the login screen", async () => {
+    auth.signInWithOAuth.mockResolvedValue({ data: {}, error: null });
+
+    await signInWithGoogle(true);
+
+    expect(vi.mocked(setSessionPersistence)).toHaveBeenCalledWith(true);
+    expect(auth.signInWithOAuth).toHaveBeenCalledWith({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/login` },
+    });
+  });
+
+  it("applies the remember-me choice before starting the redirect", async () => {
+    auth.signInWithOAuth.mockImplementation(() => {
+      expect(vi.mocked(setSessionPersistence)).toHaveBeenCalledWith(false);
+      return Promise.resolve({ data: {}, error: null });
+    });
+
+    await signInWithGoogle(false);
+
+    expect(auth.signInWithOAuth).toHaveBeenCalled();
+  });
+
+  it("throws a translated failure", async () => {
+    auth.signInWithOAuth.mockResolvedValue({
+      data: {},
+      error: new AuthRetryableFetchError("offline", 0),
+    });
+
+    await expect(signInWithGoogle(false)).rejects.toEqual(
+      new AuthFailure("network"),
+    );
+  });
+});
+
+describe("getOAuthRedirectFailure", () => {
+  it("returns null without waiting for supabase-js on a normal page load", async () => {
+    window.history.replaceState(null, "", "/login?tab=x");
+
+    await expect(getOAuthRedirectFailure()).resolves.toBeNull();
+
+    expect(auth.initialize).not.toHaveBeenCalled();
+    expect(window.location.search).toBe("?tab=x");
+  });
+
+  it("reports a redirect error from the query string and cleans the URL", async () => {
+    const state = { usr: null, key: "k", idx: 0 };
+    window.history.replaceState(
+      state,
+      "",
+      "/login?error=access_denied&error_code=x&error_description=Denied&tab=x",
+    );
+    auth.initialize.mockResolvedValue({ error: new Error("from URL") });
+
+    await expect(getOAuthRedirectFailure()).resolves.toEqual(
+      new AuthFailure("oauthFailed"),
+    );
+
+    expect(window.location.pathname).toBe("/login");
+    expect(window.location.search).toBe("?tab=x");
+    expect(window.history.state).toEqual(state);
+  });
+
+  it("reports a redirect error from the URL hash and cleans it", async () => {
+    window.history.replaceState(
+      null,
+      "",
+      "/login#error=server_error&error_description=Oops",
+    );
+    auth.initialize.mockResolvedValue({ error: new Error("from URL") });
+
+    await expect(getOAuthRedirectFailure()).resolves.toEqual(
+      new AuthFailure("oauthFailed"),
+    );
+
+    expect(window.location.hash).toBe("");
+  });
+
+  it("reports a failed code exchange and removes the code", async () => {
+    window.history.replaceState(null, "", "/login?code=abc&sb_flow_id=f1");
+    auth.initialize.mockResolvedValue({
+      error: new AuthApiError("bad code", 400, "flow_state_not_found"),
+    });
+
+    await expect(getOAuthRedirectFailure()).resolves.toEqual(
+      new AuthFailure("oauthFailed"),
+    );
+
+    expect(window.location.search).toBe("");
+  });
+
+  it("reports a network failure during the code exchange as network", async () => {
+    window.history.replaceState(null, "", "/login?code=abc");
+    auth.initialize.mockResolvedValue({
+      error: new AuthRetryableFetchError("offline", 0),
+    });
+
+    await expect(getOAuthRedirectFailure()).resolves.toEqual(
+      new AuthFailure("network"),
+    );
+  });
+
+  it("returns null after a successful code exchange", async () => {
+    window.history.replaceState(null, "", "/login?code=abc");
+    auth.initialize.mockResolvedValue({ error: null });
+
+    await expect(getOAuthRedirectFailure()).resolves.toBeNull();
+  });
+
+  it("reads the URL only once per page load", async () => {
+    window.history.replaceState(null, "", "/login?error=access_denied");
+    auth.initialize.mockResolvedValue({ error: new Error("from URL") });
+
+    const first = await getOAuthRedirectFailure();
+    const second = await getOAuthRedirectFailure();
+
+    expect(second).toBe(first);
+    expect(auth.initialize).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("signOut", () => {
   it("signs out this browser only", async () => {
     auth.signOut.mockResolvedValue({ error: null });
@@ -115,6 +244,25 @@ describe("onSessionChange", () => {
     expect(callback).toHaveBeenNthCalledWith(1, user, "restored");
     expect(callback).toHaveBeenNthCalledWith(2, null, "changed");
     expect(unsubscribe).toHaveBeenCalled();
+  });
+
+  it("reports the first event as restored even when SIGNED_IN comes first", () => {
+    let listener: (event: string, session: unknown) => void = () => undefined;
+    auth.onAuthStateChange.mockImplementation((callback) => {
+      listener = callback as typeof listener;
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
+    const callback = vi.fn();
+    const session = { user: { id: "user-1", email: "admin@example.org" } };
+
+    onSessionChange(callback);
+    listener("SIGNED_IN", session);
+    listener("INITIAL_SESSION", session);
+    listener("TOKEN_REFRESHED", session);
+
+    expect(callback).toHaveBeenNthCalledWith(1, user, "restored");
+    expect(callback).toHaveBeenNthCalledWith(2, user, "restored");
+    expect(callback).toHaveBeenNthCalledWith(3, user, "changed");
   });
 });
 

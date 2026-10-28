@@ -19,6 +19,8 @@ function setAdmin(admin: AdminProfile | null) {
     status: "signedIn",
     admin,
     signOut,
+    rejection: null,
+    clearRejection: vi.fn(),
   });
 }
 

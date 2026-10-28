@@ -39,6 +39,7 @@ export type AuthErrorKind =
   | "rateLimited"
   | "network"
   | "notAdmin"
+  | "oauthFailed"
   | "unknown";
 
 /** A sign-in or session failure, already translated from Supabase errors. */

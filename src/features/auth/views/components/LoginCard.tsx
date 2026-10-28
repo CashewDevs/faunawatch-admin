@@ -9,7 +9,8 @@ interface LoginCardProps {
 }
 
 /**
- * White login card: brand header, heading, credentials form and footer note.
+ * White login card: brand header, heading, credentials form, Google
+ * sign-in and footer note.
  */
 export function LoginCard({ viewModel }: LoginCardProps) {
   const strings = AppStrings.login;
@@ -119,11 +120,13 @@ export function LoginCard({ viewModel }: LoginCardProps) {
 
         <button
           type="submit"
-          disabled={viewModel.isSubmitting}
+          disabled={viewModel.isSubmitDisabled}
           aria-busy={viewModel.isSubmitting}
           className="group flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-white shadow-button transition duration-200 hover:bg-primary-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99] disabled:cursor-wait disabled:opacity-80 motion-reduce:transition-none"
         >
-          {viewModel.isSubmitting ? strings.submitting : strings.submit}
+          {viewModel.isSubmitting
+            ? strings.submitting
+            : (viewModel.cooldownLabel ?? strings.submit)}
           <img
             src={AppAssets.login.iconArrowRight}
             alt=""
@@ -131,6 +134,38 @@ export function LoginCard({ viewModel }: LoginCardProps) {
           />
         </button>
       </form>
+
+      {/* Divider and Google button follow the mobile Login frame; the admin
+          frame has no Google sign-in, so the card's own tokens are used. */}
+      <div className="flex flex-col gap-5">
+        <div className="flex items-center gap-3 text-xs font-medium text-muted">
+          <span aria-hidden="true" className="h-px flex-1 bg-border" />
+          {strings.googleDivider}
+          <span aria-hidden="true" className="h-px flex-1 bg-border" />
+        </div>
+
+        <button
+          type="button"
+          onClick={() => {
+            void viewModel.continueWithGoogle();
+          }}
+          disabled={viewModel.isBusy}
+          aria-busy={viewModel.isRedirecting}
+          aria-label={
+            viewModel.isRedirecting ? undefined : strings.googleButtonLabel
+          }
+          className="flex h-12 w-full items-center justify-center gap-2.5 rounded-xl border border-border bg-white text-sm font-semibold text-navy transition duration-200 hover:bg-background focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:scale-[0.99] disabled:cursor-wait disabled:opacity-80 motion-reduce:transition-none"
+        >
+          <img
+            src={AppAssets.login.iconGoogle}
+            alt=""
+            className="size-4.5 shrink-0"
+          />
+          {viewModel.isRedirecting
+            ? strings.googleRedirecting
+            : strings.googleButton}
+        </button>
+      </div>
 
       <footer className="flex items-center justify-center gap-1.5 border-t border-divider pt-5 text-center text-xs font-medium text-muted">
         <img

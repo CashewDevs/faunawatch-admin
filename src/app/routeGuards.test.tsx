@@ -16,6 +16,8 @@ function setStatus(status: SessionStatus) {
     status,
     admin: null,
     signOut: vi.fn(),
+    rejection: null,
+    clearRejection: vi.fn(),
   });
 }
 
