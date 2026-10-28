@@ -9,6 +9,7 @@ import {
 } from "../models/authSession";
 import {
   fetchAdminProfile,
+  getOAuthRedirectFailure,
   onSessionChange,
   signOut,
 } from "../services/authService";
@@ -18,6 +19,7 @@ import { useAuthSession } from "./authSessionContext";
 vi.mock("../services/authService", () => ({
   onSessionChange: vi.fn(),
   fetchAdminProfile: vi.fn(),
+  getOAuthRedirectFailure: vi.fn(),
   signOut: vi.fn(),
 }));
 
@@ -55,6 +57,7 @@ beforeEach(() => {
     return () => undefined;
   });
   vi.mocked(signOut).mockResolvedValue();
+  vi.mocked(getOAuthRedirectFailure).mockResolvedValue(null);
 });
 
 describe("AuthSessionProvider", () => {
@@ -130,6 +133,74 @@ describe("AuthSessionProvider", () => {
 
     expect(result.current.status).toBe("signedOut");
     expect(queryClient.getQueryData(["users"])).toBeUndefined();
+  });
+
+  it("explains why a non-admin returning from Google was signed out", async () => {
+    vi.mocked(fetchAdminProfile).mockResolvedValue(null);
+    vi.mocked(signOut).mockImplementation(() => {
+      listener(null, "changed");
+      return Promise.resolve();
+    });
+    const { result } = renderSession();
+    emit(user, "restored");
+
+    await waitFor(() => {
+      expect(signOut).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(result.current.status).toBe("signedOut");
+    });
+    expect(result.current.rejection).toBe("notAdmin");
+  });
+
+  it("reports a failed Google redirect", async () => {
+    vi.mocked(getOAuthRedirectFailure).mockResolvedValue(
+      new AuthFailure("oauthFailed"),
+    );
+    const { result } = renderSession();
+    emit(null, "restored");
+
+    await waitFor(() => {
+      expect(result.current.rejection).toBe("oauthFailed");
+    });
+    expect(result.current.status).toBe("signedOut");
+  });
+
+  it("reports why the admin check failed, staying signed out", async () => {
+    vi.mocked(fetchAdminProfile).mockRejectedValue(new AuthFailure("network"));
+    const { result } = renderSession();
+    emit(user, "restored");
+
+    await waitFor(() => {
+      expect(result.current.rejection).toBe("network");
+    });
+    expect(result.current.status).toBe("signedOut");
+  });
+
+  it("has nothing to explain for an admin", async () => {
+    vi.mocked(fetchAdminProfile).mockResolvedValue(admin);
+    const { result } = renderSession();
+    emit(user, "restored");
+
+    await waitFor(() => {
+      expect(result.current.status).toBe("signedIn");
+    });
+    expect(result.current.rejection).toBeNull();
+  });
+
+  it("clears the rejection once the login screen has dealt with it", async () => {
+    vi.mocked(fetchAdminProfile).mockResolvedValue(null);
+    const { result } = renderSession();
+    emit(user, "restored");
+    await waitFor(() => {
+      expect(result.current.rejection).toBe("notAdmin");
+    });
+
+    act(() => {
+      result.current.clearRejection();
+    });
+
+    expect(result.current.rejection).toBeNull();
   });
 
   it("signs out through the auth service", async () => {

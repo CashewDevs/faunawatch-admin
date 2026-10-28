@@ -10,8 +10,12 @@ import type { SupportedStorage } from "@supabase/supabase-js";
 
 type StorageTarget = "local" | "session";
 
-/** Set at sign-in; null means "keep using wherever the session already is". */
-let preferredTarget: StorageTarget | null = null;
+/**
+ * The sign-in choice is kept in this tab's sessionStorage (it is a
+ * preference, not a token) so it survives the full-page redirect of
+ * Google sign-in, where the session is only saved after the page reloads.
+ */
+const preferenceKey = "faunawatch-admin.session-persistence";
 
 function storageFor(target: StorageTarget): Storage {
   return target === "local" ? window.localStorage : window.sessionStorage;
@@ -26,7 +30,13 @@ function otherTarget(target: StorageTarget): StorageTarget {
  * `true` keeps the session after the browser closes; `false` ends it.
  */
 export function setSessionPersistence(remember: boolean): void {
-  preferredTarget = remember ? "local" : "session";
+  window.sessionStorage.setItem(preferenceKey, remember ? "local" : "session");
+}
+
+/** The choice made at sign-in in this tab, or null if none was made. */
+function preferredTarget(): StorageTarget | null {
+  const value = window.sessionStorage.getItem(preferenceKey);
+  return value === "local" || value === "session" ? value : null;
 }
 
 /** Where an existing key lives, so token refreshes stay in the same place. */
@@ -41,7 +51,7 @@ export const authStorage: SupportedStorage = {
     );
   },
   setItem(key, value) {
-    const target = preferredTarget ?? currentTarget(key);
+    const target = preferredTarget() ?? currentTarget(key);
     storageFor(target).setItem(key, value);
     storageFor(otherTarget(target)).removeItem(key);
   },
@@ -50,8 +60,3 @@ export const authStorage: SupportedStorage = {
     window.sessionStorage.removeItem(key);
   },
 };
-
-/** Test-only: forget the sign-in preference between tests. */
-export function resetSessionPersistenceForTests(): void {
-  preferredTarget = null;
-}

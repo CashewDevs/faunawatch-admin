@@ -24,6 +24,9 @@ import analyticsIconExport from "../../assets/analytics/icon-export.svg";
 import analyticsIconWarning from "../../assets/analytics/icon-warning.svg";
 import loginIconArrowRight from "../../assets/login/icon-arrow-right.svg";
 import loginIconEye from "../../assets/login/icon-eye.svg";
+// Google's "G", cropped from the icon-only button in Google's Sign-In
+// branding assets (signin-assets.zip). Don't recolour or redraw it.
+import loginIconGoogle from "../../assets/login/icon-google.png";
 import loginIconLock from "../../assets/login/icon-lock.svg";
 import loginIconMail from "../../assets/login/icon-mail.svg";
 import loginIconShield from "../../assets/login/icon-shield.svg";
@@ -106,6 +109,7 @@ export const AppAssets = {
   login: {
     iconArrowRight: loginIconArrowRight,
     iconEye: loginIconEye,
+    iconGoogle: loginIconGoogle,
     iconLock: loginIconLock,
     iconMail: loginIconMail,
     iconShield: loginIconShield,

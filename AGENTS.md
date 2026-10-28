@@ -185,6 +185,24 @@ directory. Do not create large generic folders with unrelated code.
 - Tests must mock Supabase. Never allow `npm run test` or CI to hit the live
   backend.
 
+### Auth configuration
+
+- Sign-in methods: email/password and Google (`signInWithOAuth`). Only
+  accounts for which `is_admin()` returns true get in; anything else is
+  signed out again. Never create or grant admin rights from this site.
+- The Supabase client uses the PKCE flow (`flowType: "pkce"` in
+  `supabaseClient.ts`). Google sign-in redirects back to `/login`, where
+  supabase-js exchanges the code for a session.
+- Google's OAuth client secret lives ONLY in the Supabase dashboard
+  (Authentication → Sign In / Providers → Google). Never put it in this
+  repo, `.env`, the browser or chat.
+- Supabase's Redirect URLs allow list must include each site's login URL
+  with a wildcard, e.g. `http://localhost:5173/login**`, because supabase-js
+  appends `?sb_flow_id=…` to `redirectTo`.
+- The login-form cooldown (`loginCooldown.ts`, kept in localStorage) is
+  usability only. Brute-force protection is server-side: Supabase Auth rate
+  limits (Authentication → Rate Limits).
+
 ## UI and Design Guidelines
 
 - Follow the approved Google Stitch designs. Do not invent layouts.

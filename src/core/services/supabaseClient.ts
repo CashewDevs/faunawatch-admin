@@ -16,6 +16,9 @@ if (!supabaseAnonKey) {
   );
 }
 
+// supabase-js defaults to the implicit flow, which returns tokens in the
+// URL. PKCE returns a one-time code instead; its verifier is kept in
+// authStorage until the Google sign-in redirect comes back.
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  auth: { storage: authStorage },
+  auth: { storage: authStorage, flowType: "pkce" },
 });
