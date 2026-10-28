@@ -27,9 +27,8 @@ export const AppStrings = {
     navAnalytics: "Analytics",
     notifications: "Notifications",
     logout: "Log out",
-    // TODO(auth): Replace with the signed-in admin's name and role once
-    // Supabase auth and the admin role exist.
-    profileName: "Admin User",
+    /** Shown when the signed-in admin has no name or email to display. */
+    profileFallbackName: "Admin",
     profileRole: "Administrator",
   },
   users: {
@@ -462,11 +461,18 @@ export const AppStrings = {
     rememberMe: "Remember me",
     forgotPassword: "Forgot password?",
     submit: "Log In",
+    submitting: "Logging in…",
     footerNote: "Authorized administrators only. Access is monitored.",
     errors: {
       emailRequired: "Email address is required.",
       emailInvalid: "Enter a valid email address.",
       passwordRequired: "Password is required.",
+      invalidCredentials: "Incorrect email or password.",
+      emailNotConfirmed: "Confirm your email address before logging in.",
+      rateLimited: "Too many attempts. Please wait a moment and try again.",
+      network: "Can't reach the server. Check your connection and try again.",
+      notAdmin: "This account doesn't have admin access.",
+      unknown: "Something went wrong. Please try again.",
     },
   },
 } as const;
