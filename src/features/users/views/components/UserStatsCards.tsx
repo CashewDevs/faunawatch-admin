@@ -56,7 +56,7 @@ export function UserStatsCards({
         )}
       </StatCard>
       <StatCard label={strings.newThisMonth} value={value(stats?.newThisMonth)}>
-        {stats && (
+        {stats && stats.newUsersChangePercent !== null && (
           <span className="flex items-center gap-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] text-primary">
             <img src={AppAssets.users.iconArrowUpRight} alt="" />
             {stats.newUsersChangePercent >= 0 ? "+" : ""}

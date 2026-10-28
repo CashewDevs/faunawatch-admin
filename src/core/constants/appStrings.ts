@@ -66,11 +66,6 @@ export const AppStrings = {
       email: "Email",
       joined: "Joined",
       posts: "Posts",
-      role: "Role",
-      roles: {
-        user: "User",
-        admin: "Admin",
-      },
       accountStatus: "Account Status",
       postsSuffix: "posts",
       postSuffix: "post",
@@ -81,6 +76,9 @@ export const AppStrings = {
         suspended: "Suspended",
       },
       toggleStatus: "Account active",
+      /** Shown when a profile has no name, username or email. */
+      unnamed: "Unnamed user",
+      noEmail: "No email",
     },
     pagination: {
       users: "users",
@@ -89,7 +87,6 @@ export const AppStrings = {
     loading: "Loading users…",
     empty: "No users match your search or filters.",
     error: "Couldn't load users.",
-    roleUpdateError: "Couldn't update the role. Please try again.",
     retry: "Try again",
   },
   posts: {

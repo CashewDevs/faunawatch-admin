@@ -1,3 +1,4 @@
+import { getAvatarSrc } from "../../../../core/constants/appAssets";
 import { getInitials } from "../../../../core/utils/names";
 import type { AdminUser } from "../../models/adminUser";
 
@@ -11,10 +12,10 @@ interface UserAvatarProps {
 export function UserAvatar({ user }: UserAvatarProps) {
   const isSuspended = user.status === "suspended";
 
-  if (user.avatarUrl) {
+  if (user.avatar) {
     return (
       <img
-        src={user.avatarUrl}
+        src={getAvatarSrc(user.avatar)}
         alt=""
         className="size-10 shrink-0 rounded-full bg-avatar object-cover shadow-xs"
       />

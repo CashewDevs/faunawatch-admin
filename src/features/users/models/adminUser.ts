@@ -1,21 +1,16 @@
 /**
  * User Management domain model: the user shape the admin site displays,
- * list query options, and pure list helpers.
+ * list query options, and pure list and statistics helpers.
  *
- * TODO(schema): Field names here are the admin site's presentation model,
- * not database columns. Map Supabase rows to this shape in the users
- * Service once the mobile app's schema exists.
+ * The users Service maps `admin_list_users()` rows to this shape. Admin
+ * rights are not shown or edited here: they live in `admin_users`, which
+ * only the Supabase dashboard changes.
  */
 
+import type { AvatarImage } from "../../../core/utils/avatars";
 import { paginate } from "../../../core/utils/pagination";
 
 export type UserStatus = "active" | "suspended";
-
-// TODO(schema): Role names are placeholders agreed for the admin UI. Align
-// them with the role values the backend defines once the schema exists.
-export const userRoles = ["user", "admin"] as const;
-
-export type UserRole = (typeof userRoles)[number];
 
 export type UserStatusFilter = "all" | UserStatus;
 
@@ -23,16 +18,24 @@ export type UserSortOption = "newest" | "oldest" | "name";
 
 export interface AdminUser {
   id: string;
+  /** Best available name (full name, username, …); empty when none. */
   fullName: string;
-  username: string;
-  email: string;
-  /** ISO 8601 date the account was created. */
+  username: string | null;
+  email: string | null;
+  /** ISO 8601 date-time the account was created. */
   joinedAt: string;
   postCount: number;
   status: UserStatus;
-  role: UserRole;
+  /** The user has confirmed their email address. */
   isVerified: boolean;
-  avatarUrl: string | null;
+  avatar: AvatarImage | null;
+}
+
+/** When an admin suspended a user. */
+export interface SanctionRecord {
+  userId: string;
+  /** ISO 8601 date-time. */
+  createdAt: string;
 }
 
 export interface UserListQuery {
@@ -57,8 +60,11 @@ export interface UserStats {
   newThisMonth: number;
   newThisWeek: number;
   suspendedThisMonth: number;
-  /** Percent change of new users vs last month (e.g. 18 for +18%). */
-  newUsersChangePercent: number;
+  /**
+   * Percent change of new users vs last month (e.g. 18 for +18%), or null
+   * when nobody joined last month.
+   */
+  newUsersChangePercent: number | null;
 }
 
 export const userPageSizeOptions = [10, 25, 50] as const;
@@ -76,8 +82,12 @@ export function matchesUserSearch(user: AdminUser, search: string): boolean {
   const term = search.trim().toLowerCase();
   if (!term) return true;
   return [user.fullName, user.username, user.email].some((field) =>
-    field.toLowerCase().includes(term),
+    field?.toLowerCase().includes(term),
   );
+}
+
+function byJoinDate(a: AdminUser, b: AdminUser): number {
+  return Date.parse(a.joinedAt) - Date.parse(b.joinedAt);
 }
 
 export function sortUsers(
@@ -87,9 +97,9 @@ export function sortUsers(
   const sorted = [...users];
   switch (sort) {
     case "newest":
-      return sorted.sort((a, b) => b.joinedAt.localeCompare(a.joinedAt));
+      return sorted.sort((a, b) => byJoinDate(b, a));
     case "oldest":
-      return sorted.sort((a, b) => a.joinedAt.localeCompare(b.joinedAt));
+      return sorted.sort(byJoinDate);
     case "name":
       return sorted.sort((a, b) => a.fullName.localeCompare(b.fullName));
   }
@@ -119,4 +129,56 @@ export function queryUsers(
 export function getActiveRate(stats: UserStats): number {
   if (stats.totalUsers === 0) return 0;
   return Math.round((stats.activeUsers / stats.totalUsers) * 1000) / 10;
+}
+
+const dayMs = 86_400_000;
+
+/** Start of the UTC calendar month `offset` months from `now`'s month. */
+function monthStart(now: Date, offset = 0): number {
+  return Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + offset, 1);
+}
+
+/** Start of the current UTC month, for loading this month's sanctions. */
+export function getStatsMonthStart(now: Date): Date {
+  return new Date(monthStart(now));
+}
+
+/**
+ * Summary figures for the stat cards. Months are UTC calendar months (as
+ * the table's dates are); "this week" is the last 7 days.
+ */
+export function getUserStats(
+  users: readonly AdminUser[],
+  sanctions: readonly SanctionRecord[],
+  now: Date,
+): UserStats {
+  const thisMonth = monthStart(now);
+  const lastMonth = monthStart(now, -1);
+  const weekAgo = now.getTime() - 7 * dayMs;
+  const joined = users.map((user) => Date.parse(user.joinedAt));
+  const newThisMonth = joined.filter((time) => time >= thisMonth).length;
+  const newLastMonth = joined.filter(
+    (time) => time >= lastMonth && time < thisMonth,
+  ).length;
+  const suspendedUsers = users.filter(
+    (user) => user.status === "suspended",
+  ).length;
+  const suspendedThisMonth = new Set(
+    sanctions
+      .filter((sanction) => Date.parse(sanction.createdAt) >= thisMonth)
+      .map((sanction) => sanction.userId),
+  ).size;
+
+  return {
+    totalUsers: users.length,
+    activeUsers: users.length - suspendedUsers,
+    suspendedUsers,
+    newThisMonth,
+    newThisWeek: joined.filter((time) => time >= weekAgo).length,
+    suspendedThisMonth,
+    newUsersChangePercent:
+      newLastMonth === 0
+        ? null
+        : Math.round(((newThisMonth - newLastMonth) / newLastMonth) * 100),
+  };
 }

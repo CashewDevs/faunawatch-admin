@@ -14,7 +14,8 @@ recommendations for each report.
 This repository contains the **admin website only**. Administrators use it to:
 
 - **Log in** securely as an authorized admin.
-- **Manage users** (view, search, filter, change status/role, remove).
+- **Manage users** (view, search, filter, change status, remove). Admin
+  rights are not managed here; they live in `admin_users` (dashboard only).
 - **Review posts** submitted through the app (approve, reject, flag), using
   the AI-generated fields stored with each report as decision support.
 - **View analytics** (report volume, species and severity breakdowns, user
@@ -146,6 +147,11 @@ directory. Do not create large generic folders with unrelated code.
   When adding or touching any of these files, remind the developer to
   convert them, and update the matching `appAssets.ts` import when the
   `.webp` version replaces the original.
+- **Preset avatars:** `src/assets/shared/avatars/` holds copies of the
+  mobile app's preset avatars (`profiles.avatar_path` = `preset:<name>`).
+  Keep the names in `src/core/utils/avatars.ts` in sync with the mobile
+  app. Uploaded avatars and report photos live in private buckets and are
+  shown through signed URLs (`src/core/services/storageService.ts`).
 - **Preloading:** Every image registered in `AppAssets` is preloaded behind
   the loading screen (`useAssetPreloader` + `src/app/preloadManifest.ts`)
   before the app renders. Register new images there so they preload.

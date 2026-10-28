@@ -5,10 +5,10 @@ import {
 import { AppRoutes } from "../../../core/constants/appRoutes";
 import { setSessionPersistence } from "../../../core/services/authStorage";
 import { supabase } from "../../../core/services/supabaseClient";
+import { getProfileDisplayName } from "../../../core/utils/names";
 import type { LoginCredentials } from "../models/loginCredentials";
 import {
   AuthFailure,
-  getAdminDisplayName,
   type AdminProfile,
   type AuthErrorKind,
   type SessionSource,
@@ -203,7 +203,7 @@ export async function fetchAdminProfile(
 
   return {
     id: user.id,
-    displayName: getAdminDisplayName(
+    displayName: getProfileDisplayName(
       {
         fullName: data?.full_name ?? null,
         username: data?.username ?? null,

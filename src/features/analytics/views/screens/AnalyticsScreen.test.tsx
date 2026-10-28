@@ -3,8 +3,11 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { createRouterQueryWrapper } from "../../../../test/routerWrapper";
-import { mockUserStats } from "../../../users/services/mockUsers";
-import { fetchUserStats } from "../../../users/services/usersService";
+import { testUsers } from "../../../../test/fixtures/users";
+import {
+  fetchSanctionsSince,
+  fetchUsers,
+} from "../../../users/services/usersService";
 import {
   fetchHotspots,
   fetchInvasiveAlerts,
@@ -36,7 +39,8 @@ vi.mock("../../services/analyticsService", () => ({
 }));
 
 vi.mock("../../../users/services/usersService", () => ({
-  fetchUserStats: vi.fn(),
+  fetchUsers: vi.fn(),
+  fetchSanctionsSince: vi.fn(),
 }));
 
 const strings = AppStrings.analytics;
@@ -50,7 +54,8 @@ function renderScreen(initialEntry = "/analytics") {
 
 describe("AnalyticsScreen", () => {
   beforeEach(() => {
-    vi.mocked(fetchUserStats).mockResolvedValue(mockUserStats);
+    vi.mocked(fetchUsers).mockResolvedValue([...testUsers]);
+    vi.mocked(fetchSanctionsSince).mockResolvedValue([]);
     vi.mocked(fetchPostTrend).mockImplementation((range, granularity) =>
       Promise.resolve(mockPostTrend(range, granularity, now)),
     );
@@ -80,7 +85,7 @@ describe("AnalyticsScreen", () => {
     expect(
       screen.getByRole("tab", { name: strings.tabs.overview }),
     ).toHaveAttribute("aria-selected", "true");
-    expect(await screen.findByText("1,420")).toBeInTheDocument();
+    expect(await screen.findByText("24")).toBeInTheDocument();
     expect(await screen.findByText("3,842")).toBeInTheDocument();
     expect(screen.getByText("89.1% Approved")).toBeInTheDocument();
   });

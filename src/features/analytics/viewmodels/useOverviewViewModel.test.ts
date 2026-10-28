@@ -1,8 +1,11 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createQueryWrapper } from "../../../test/queryWrapper";
-import { mockUserStats } from "../../users/services/mockUsers";
-import { fetchUserStats } from "../../users/services/usersService";
+import { testUsers } from "../../../test/fixtures/users";
+import {
+  fetchSanctionsSince,
+  fetchUsers,
+} from "../../users/services/usersService";
 import type { AnalyticsRange } from "../models/analytics";
 import {
   fetchPostTrend,
@@ -17,12 +20,12 @@ vi.mock("../services/analyticsService", () => ({
 }));
 
 vi.mock("../../users/services/usersService", () => ({
-  fetchUserStats: vi.fn(),
+  fetchUsers: vi.fn(),
+  fetchSanctionsSince: vi.fn(),
 }));
 
 const fetchPostTrendMock = vi.mocked(fetchPostTrend);
 const fetchReviewOutcomesMock = vi.mocked(fetchReviewOutcomes);
-const fetchUserStatsMock = vi.mocked(fetchUserStats);
 const now = new Date("2026-10-30T00:00:00Z");
 
 function renderViewModel(range: AnalyticsRange = "30d") {
@@ -36,14 +39,14 @@ describe("useOverviewViewModel", () => {
   beforeEach(() => {
     fetchPostTrendMock.mockReset();
     fetchReviewOutcomesMock.mockReset();
-    fetchUserStatsMock.mockReset();
+    vi.mocked(fetchUsers).mockResolvedValue([...testUsers]);
+    vi.mocked(fetchSanctionsSince).mockResolvedValue([]);
     fetchPostTrendMock.mockImplementation((range, granularity) =>
       Promise.resolve(mockPostTrend(range, granularity, now)),
     );
     fetchReviewOutcomesMock.mockImplementation((range) =>
       Promise.resolve(mockReviewOutcomes(range)),
     );
-    fetchUserStatsMock.mockResolvedValue(mockUserStats);
   });
 
   it("loads user stats, the weekly trend, and review outcomes", async () => {
@@ -62,9 +65,9 @@ describe("useOverviewViewModel", () => {
     });
     expect(result.current.outcomes?.approvalPercent).toBe(89.1);
     await waitFor(() => {
-      expect(result.current.userStats).toEqual(mockUserStats);
+      expect(result.current.userStats?.totalUsers).toBe(24);
     });
-    expect(result.current.activeRate).toBe(97.6);
+    expect(result.current.activeRate).toBe(91.7);
   });
 
   it("refetches at a new granularity", async () => {

@@ -26,3 +26,31 @@ export function getAvatarTone(name: string): AvatarTone {
   }
   return avatarTones[sum % avatarTones.length] ?? "primary";
 }
+
+/** Name fields from a `profiles` row. */
+export interface ProfileNames {
+  fullName: string | null;
+  username: string | null;
+  displayName: string | null;
+}
+
+function nonBlank(value: string | null): string | null {
+  const trimmed = value?.trim();
+  return trimmed ? trimmed : null;
+}
+
+/**
+ * Name to show for a person: full name, then username, then the legacy
+ * display name, then the part of the email before the "@".
+ */
+export function getProfileDisplayName(
+  names: ProfileNames,
+  email: string | null,
+): string | null {
+  return (
+    nonBlank(names.fullName) ??
+    nonBlank(names.username) ??
+    nonBlank(names.displayName) ??
+    nonBlank(email?.split("@")[0] ?? null)
+  );
+}

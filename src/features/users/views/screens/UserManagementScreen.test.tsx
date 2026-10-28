@@ -2,20 +2,14 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppStrings } from "../../../../core/constants/appStrings";
-import { queryUsers } from "../../models/adminUser";
-import { mockUserStats, mockUsers } from "../../services/mockUsers";
-import {
-  fetchUserStats,
-  fetchUsers,
-  updateUserRole,
-} from "../../services/usersService";
+import { testUsers } from "../../../../test/fixtures/users";
 import { createQueryWrapper } from "../../../../test/queryWrapper";
+import { fetchSanctionsSince, fetchUsers } from "../../services/usersService";
 import { UserManagementScreen } from "./UserManagementScreen";
 
 vi.mock("../../services/usersService", () => ({
   fetchUsers: vi.fn(),
-  fetchUserStats: vi.fn(),
-  updateUserRole: vi.fn(),
+  fetchSanctionsSince: vi.fn(),
 }));
 
 const strings = AppStrings.users;
@@ -26,10 +20,8 @@ function renderScreen() {
 
 describe("UserManagementScreen", () => {
   beforeEach(() => {
-    vi.mocked(fetchUsers).mockImplementation((query) =>
-      Promise.resolve(queryUsers(mockUsers, query)),
-    );
-    vi.mocked(fetchUserStats).mockResolvedValue(mockUserStats);
+    vi.mocked(fetchUsers).mockResolvedValue([...testUsers]);
+    vi.mocked(fetchSanctionsSince).mockResolvedValue([]);
   });
 
   it("renders the stats and a page of users", async () => {
@@ -89,20 +81,32 @@ describe("UserManagementScreen", () => {
     switches.forEach((toggle) => expect(toggle).toBeDisabled());
   });
 
-  it("lets the admin change a user's role", async () => {
-    const user = userEvent.setup();
-    const enzo = mockUsers.find((candidate) => candidate.username === "enzo_m");
-    if (!enzo) throw new Error("fixture missing");
-    vi.mocked(updateUserRole).mockResolvedValue({ ...enzo, role: "admin" });
+  it("has no role column", async () => {
     renderScreen();
+    await screen.findByText("Enzo Morales");
 
-    const roleSelect = await screen.findByRole("combobox", {
-      name: `${strings.table.role}: Enzo Morales`,
-    });
-    expect(roleSelect).toHaveValue("user");
+    expect(screen.getAllByRole("columnheader")).toHaveLength(5);
+    expect(
+      screen.queryByRole("columnheader", { name: "Role" }),
+    ).not.toBeInTheDocument();
+  });
 
-    await user.selectOptions(roleSelect, "admin");
+  it("shows a preset avatar and fills in missing details", async () => {
+    const [first] = testUsers;
+    if (!first) throw new Error("fixture missing");
+    vi.mocked(fetchUsers).mockResolvedValue([
+      {
+        ...first,
+        fullName: "",
+        username: null,
+        email: null,
+        avatar: { kind: "preset", name: "panda" },
+      },
+    ]);
+    const { container } = renderScreen();
 
-    expect(vi.mocked(updateUserRole)).toHaveBeenCalledWith(enzo.id, "admin");
+    expect(await screen.findByText(strings.table.unnamed)).toBeInTheDocument();
+    expect(screen.getByText(strings.table.noEmail)).toBeInTheDocument();
+    expect(container.querySelector('img[src*="panda"]')).not.toBeNull();
   });
 });
