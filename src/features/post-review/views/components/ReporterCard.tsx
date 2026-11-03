@@ -10,6 +10,7 @@ import { ReporterAvatar } from "./ReporterAvatar";
 interface ReporterCardProps {
   post: PostDetail;
   approvalRate: number;
+  isVerified: boolean;
 }
 
 const statLabelClass =
@@ -20,7 +21,11 @@ const statValueClass =
 /**
  * Who submitted the post and their track record.
  */
-export function ReporterCard({ post, approvalRate }: ReporterCardProps) {
+export function ReporterCard({
+  post,
+  approvalRate,
+  isVerified,
+}: ReporterCardProps) {
   const strings = AppStrings.posts.detail.reporter;
   const { reporter, reporterStats } = post;
 
@@ -31,8 +36,12 @@ export function ReporterCard({ post, approvalRate }: ReporterCardProps) {
     >
       <div className="flex items-center gap-3">
         <div className="relative shrink-0">
-          <ReporterAvatar reporter={reporter} size="lg" />
-          {reporterStats.isVerified && (
+          <ReporterAvatar
+            name={reporter.fullName}
+            avatar={post.reporterAvatar}
+            size="lg"
+          />
+          {isVerified && (
             <span className="absolute -right-1 -bottom-1 flex size-5 items-center justify-center rounded-full bg-deep-blue">
               <img
                 src={AppAssets.postDetail.iconVerified}
@@ -43,17 +52,16 @@ export function ReporterCard({ post, approvalRate }: ReporterCardProps) {
           )}
         </div>
         <div className="flex min-w-0 flex-col">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-base leading-6 font-bold text-deep-blue">
-              {reporter.fullName}
-            </span>
-            <span className="rounded-full bg-cyan px-2 py-0.5 text-[11px] leading-[14px] font-semibold tracking-[0.44px] text-teal">
-              {reporter.role}
-            </span>
-          </div>
+          <span className="text-base leading-6 font-bold text-deep-blue">
+            {reporter.fullName}
+          </span>
           <p className="flex flex-wrap items-center gap-2 text-[13px] leading-[18px] text-slate">
-            <span>@{reporter.username}</span>
-            <span aria-hidden="true">•</span>
+            {reporter.username && (
+              <>
+                <span>@{reporter.username}</span>
+                <span aria-hidden="true">•</span>
+              </>
+            )}
             <span>
               {strings.memberSince} {formatMonthYear(reporterStats.memberSince)}
             </span>

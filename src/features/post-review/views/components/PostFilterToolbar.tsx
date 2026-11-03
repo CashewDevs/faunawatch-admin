@@ -1,15 +1,13 @@
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import {
-  postRegions,
   postSeverities,
   postSortOptions,
-  speciesCategories,
+  reportCategories,
   type Filter,
-  type PostRegion,
   type PostSeverity,
   type PostSortOption,
-  type SpeciesCategory,
+  type ReportCategory,
 } from "../../models/post";
 import type { PostApprovalsViewModel } from "../../viewmodels/usePostApprovalsViewModel";
 
@@ -18,7 +16,7 @@ interface PostFilterToolbarProps {
 }
 
 /**
- * Search box, severity / species / region filters, sort, and clear.
+ * Search box, severity and category filters, sort, and clear.
  */
 export function PostFilterToolbar({ viewModel }: PostFilterToolbarProps) {
   const strings = AppStrings.posts;
@@ -64,7 +62,7 @@ export function PostFilterToolbar({ viewModel }: PostFilterToolbarProps) {
             })),
           ]}
         />
-        <FilterSelect<Filter<SpeciesCategory>>
+        <FilterSelect<Filter<ReportCategory>>
           label={filters.categoryLabel}
           value={viewModel.category}
           onChange={viewModel.changeCategory}
@@ -73,24 +71,9 @@ export function PostFilterToolbar({ viewModel }: PostFilterToolbarProps) {
               value: "all",
               label: `${filters.categoryPrefix} ${filters.allCategories}`,
             },
-            ...speciesCategories.map((category) => ({
+            ...reportCategories.map((category) => ({
               value: category,
               label: `${filters.categoryPrefix} ${strings.category[category]}`,
-            })),
-          ]}
-        />
-        <FilterSelect<Filter<PostRegion>>
-          label={filters.regionLabel}
-          value={viewModel.region}
-          onChange={viewModel.changeRegion}
-          options={[
-            {
-              value: "all",
-              label: `${filters.regionPrefix} ${filters.allRegions}`,
-            },
-            ...postRegions.map((region) => ({
-              value: region,
-              label: `${filters.regionPrefix} ${strings.region[region]}`,
             })),
           ]}
         />

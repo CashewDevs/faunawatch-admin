@@ -36,7 +36,7 @@ export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
         <div className="flex min-w-0 flex-col">
           <p className="truncate text-base leading-6">
             <span className="font-bold text-deep-blue">
-              {post.aiMatch.commonName}
+              {post.aiMatch?.commonName ?? strings.category[post.category]}
             </span>
             <span className="text-xs text-slate">
               {" "}
@@ -45,7 +45,7 @@ export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
           </p>
           <p className="truncate text-[11px] leading-[14px] font-semibold tracking-[0.44px] text-teal">
             {decision.priorityPrefix} {strings.severity[post.severity]}
-            {post.ai.origin === "endemic" && ` • ${decision.endemicSafeguard}`}
+            {post.ai?.origin === "endemic" && ` • ${decision.endemicSafeguard}`}
           </p>
         </div>
       </div>

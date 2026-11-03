@@ -3,10 +3,12 @@ import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { formatDateTime } from "../../../../core/utils/formatters";
 import type { PostDetail, PostSeverity } from "../../models/post";
+import type { PostDetailViewModel } from "../../viewmodels/usePostDetailViewModel";
 import { ScientificText } from "./ScientificText";
 
 interface PostContentCardProps {
   post: PostDetail;
+  viewModel: PostDetailViewModel;
 }
 
 const chipClass =
@@ -16,15 +18,18 @@ const severityChipClass: Record<PostSeverity, string> = {
   high: "bg-danger-tint text-danger",
   medium: "bg-cyan text-teal",
   low: "bg-chip text-deep-blue",
+  unrated: "bg-chip text-slate",
 };
 
 /**
- * Title, submission chips, description, and the reporter's field notes.
+ * Title, submission chips, description, the reporter's notes, and their
+ * field notes.
  */
-export function PostContentCard({ post }: PostContentCardProps) {
+export function PostContentCard({ post, viewModel }: PostContentCardProps) {
   const strings = AppStrings.posts;
   const detail = strings.detail;
   const { fieldNotes } = post;
+  const scientificName = post.aiMatch?.scientificName ?? "";
   const meters = (value: number) => `${String(value)} ${detail.metersSuffix}`;
 
   const fields: { label: string; value: string }[] = [];
@@ -43,10 +48,10 @@ export function PostContentCard({ post }: PostContentCardProps) {
   if (fieldNotes.hostTree) {
     fields.push({ label: detail.fields.hostTree, value: fieldNotes.hostTree });
   }
-  if (fieldNotes.observerDevice) {
+  if (viewModel.observerDevice) {
     fields.push({
       label: detail.fields.observerDevice,
-      value: fieldNotes.observerDevice,
+      value: viewModel.observerDevice,
     });
   }
 
@@ -60,7 +65,7 @@ export function PostContentCard({ post }: PostContentCardProps) {
           id="post-title"
           className="text-[22px] leading-7 font-semibold tracking-[-0.55px] text-deep-blue"
         >
-          {post.title}
+          {strings.category[post.category]}
         </h2>
         <ul className="flex flex-wrap gap-2">
           <Chip
@@ -68,12 +73,6 @@ export function PostContentCard({ post }: PostContentCardProps) {
             icon={AppAssets.postDetail.iconCalendar}
           >
             {detail.submittedPrefix} {formatDateTime(post.submittedAt)}
-          </Chip>
-          <Chip
-            className="bg-amber-soft text-amber-ink"
-            icon={AppAssets.postDetail.iconCategory}
-          >
-            {strings.category[post.category]}
           </Chip>
           <Chip
             className={severityChipClass[post.severity]}
@@ -86,7 +85,7 @@ export function PostContentCard({ post }: PostContentCardProps) {
           >
             {strings.severity[post.severity]} {strings.severitySuffix}
           </Chip>
-          {fieldNotes.isNightObservation && (
+          {fieldNotes.isNightObservation === true && (
             <Chip
               className="bg-avatar text-deep-blue"
               icon={AppAssets.postDetail.iconNight}
@@ -104,10 +103,23 @@ export function PostContentCard({ post }: PostContentCardProps) {
         <p className="text-sm leading-[22.75px] whitespace-pre-line text-slate">
           <ScientificText
             text={post.description}
-            scientificName={post.aiMatch.scientificName}
+            scientificName={scientificName}
           />
         </p>
       </div>
+      {post.reporterNotes && (
+        <div className="flex flex-col gap-[7px]">
+          <h2 className="text-base leading-6 font-semibold text-ink">
+            {detail.reporterNotesHeading}
+          </h2>
+          <p className="text-sm leading-[22.75px] whitespace-pre-line text-slate">
+            <ScientificText
+              text={post.reporterNotes}
+              scientificName={scientificName}
+            />
+          </p>
+        </div>
+      )}
 
       {fields.length > 0 && (
         <dl

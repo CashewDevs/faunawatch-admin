@@ -3,17 +3,20 @@ import { AppAssets } from "../../../../core/constants/appAssets";
 import { postDetailPath } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { useNow } from "../../../../core/hooks/useNow";
-import { formatRelativeTime } from "../../../../core/utils/formatters";
+import {
+  formatCoordinates,
+  formatRelativeTime,
+} from "../../../../core/utils/formatters";
 import {
   getExtraPhotoCount,
+  type PostCardData,
   type PostSeverity,
-  type PostSummary,
 } from "../../models/post";
 import { toPostLinkState } from "../../viewmodels/postNavigation";
 import { ReporterAvatar } from "./ReporterAvatar";
 
 interface PostCardProps {
-  post: PostSummary;
+  post: PostCardData;
   /** Shows the select checkbox when provided. */
   isSelected?: boolean;
   onToggleSelect?: (postId: string) => void;
@@ -28,6 +31,7 @@ const severityBadgeClass: Record<PostSeverity, string> = {
   high: "bg-danger text-white",
   medium: "bg-cyan text-ink",
   low: "bg-chip text-deep-blue",
+  unrated: "bg-chip text-slate",
 };
 
 const actionButtonClass =
@@ -49,11 +53,11 @@ export function PostCard({
   const strings = AppStrings.posts;
   const location = useLocation();
   const now = useNow();
-  const coverUrl = post.photoUrls[0];
+  const { coverUrl, aiMatch } = post;
+  const title = strings.category[post.category];
   const extraPhotos = getExtraPhotoCount(post);
   const isPending = post.status === "pending";
   const showActions = isPending && (onApprove ?? onDecline);
-  const confidence = `${String(post.aiMatch.confidencePercent)}%`;
 
   return (
     <article className="relative flex w-full flex-col overflow-hidden rounded-xl bg-white shadow-xs transition-shadow hover:shadow-md has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-primary">
@@ -85,7 +89,7 @@ export function PostCard({
                 onChange={() => {
                   onToggleSelect(post.id);
                 }}
-                aria-label={`${strings.card.select}: ${post.title}`}
+                aria-label={`${strings.card.select}: ${title}`}
                 className="size-4 cursor-pointer accent-deep-blue"
               />
             </label>
@@ -108,7 +112,11 @@ export function PostCard({
             alt=""
             className="shrink-0"
           />
-          <span className="truncate">{post.locationName}</span>
+          {/* TODO(schema): Reports store coordinates only. Show a place name
+              here once the app saves one with the report. */}
+          <span className="truncate">
+            {formatCoordinates(post.latitude, post.longitude)}
+          </span>
         </p>
         <h3 className="line-clamp-2 text-lg leading-[22.5px] font-semibold tracking-[-0.09px] text-deep-blue">
           <Link
@@ -116,47 +124,52 @@ export function PostCard({
             state={toPostLinkState(location.pathname, location.search)}
             className="outline-none after:absolute after:inset-0 after:content-['']"
           >
-            {post.title}
+            {title}
           </Link>
         </h3>
         <p className="line-clamp-2 text-sm leading-5 text-slate">
           {post.description}
         </p>
-        <p
-          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs leading-4 font-semibold tracking-[0.24px] ${
-            post.isInvasive
-              ? "bg-cyan/30 text-ink"
-              : "bg-surface-tint text-deep-blue"
-          }`}
-        >
-          <img
-            src={
+        {aiMatch && (
+          <p
+            className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs leading-4 font-semibold tracking-[0.24px] ${
               post.isInvasive
-                ? AppAssets.postApprovals.iconAiInvasive
-                : AppAssets.postApprovals.iconAiSparkle
-            }
-            alt=""
-            className="shrink-0"
-          />
-          <span className="truncate">
-            {strings.card.aiPrefix} {post.aiMatch.commonName}
-            {post.isInvasive
-              ? ` ${strings.card.invasiveSuffix}, ${confidence}`
-              : `, ${confidence} ${strings.card.matchSuffix}`}
-          </span>
-        </p>
+                ? "bg-cyan/30 text-ink"
+                : "bg-surface-tint text-deep-blue"
+            }`}
+          >
+            <img
+              src={
+                post.isInvasive
+                  ? AppAssets.postApprovals.iconAiInvasive
+                  : AppAssets.postApprovals.iconAiSparkle
+              }
+              alt=""
+              className="shrink-0"
+            />
+            <span className="truncate">
+              {strings.card.aiPrefix} {aiMatch.commonName}
+              {post.isInvasive && ` ${strings.card.invasiveSuffix}`},{" "}
+              {strings.confidence[aiMatch.confidence]}
+            </span>
+          </p>
+        )}
       </div>
 
       <div className="mt-auto flex flex-col gap-6 pb-5">
         <div className="flex items-center justify-between gap-3 bg-surface-tint/50 px-5 py-3">
           <div className="flex min-w-0 items-center gap-2.5">
-            <ReporterAvatar reporter={post.reporter} size="sm" />
+            <ReporterAvatar
+              name={post.reporter.fullName}
+              avatar={post.reporterAvatar}
+              size="sm"
+            />
             <div className="flex min-w-0 flex-col text-[13px] leading-[16.25px]">
               <span className="truncate text-deep-blue">
                 {post.reporter.fullName}
               </span>
               <span className="truncate text-muted">
-                {post.reporter.role} •{" "}
+                {post.reporter.username && `@${post.reporter.username} • `}
                 {formatRelativeTime(post.submittedAt, now)}
               </span>
             </div>

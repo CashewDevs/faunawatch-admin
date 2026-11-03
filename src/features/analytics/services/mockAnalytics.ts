@@ -1,15 +1,13 @@
 import photoCaneToad from "../../../assets/mock/posts/photo-cane-toad.jpg";
-import type {
-  PostSeverity,
-  SpeciesCategory,
-} from "../../post-review/models/post";
 import {
   getTrendPeriodStarts,
   rangeDays,
   type AnalyticsRange,
+  type AnalyticsSeverity,
   type ContributorStats,
   type DeclineReason,
   type HotspotCategoryFilter,
+  type SpeciesCategory,
   type InvasiveAlert,
   type ModerationActivity,
   type PostTrendPoint,
@@ -131,7 +129,7 @@ const categoryCounts: Record<SpeciesCategory, number> = {
   insect: 233,
 };
 
-const severityStats: Record<PostSeverity, SeverityStats> = {
+const severityStats: Record<AnalyticsSeverity, SeverityStats> = {
   low: { count: 2228, medianReviewMinutes: 324 },
   medium: { count: 1230, medianReviewMinutes: 126 },
   high: { count: 384, medianReviewMinutes: 25 },

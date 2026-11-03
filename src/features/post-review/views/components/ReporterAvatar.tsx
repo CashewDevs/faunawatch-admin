@@ -1,8 +1,10 @@
+import { getAvatarSrc } from "../../../../core/constants/appAssets";
+import type { AvatarImage } from "../../../../core/utils/avatars";
 import { getInitials } from "../../../../core/utils/names";
-import type { PostReporter } from "../../models/post";
 
 interface ReporterAvatarProps {
-  reporter: Pick<PostReporter, "fullName" | "avatarUrl">;
+  name: string;
+  avatar: AvatarImage | null;
   size: "sm" | "lg";
 }
 
@@ -12,13 +14,14 @@ const sizeClass = {
 } as const;
 
 /**
- * Round reporter photo, or their initials when there is none.
+ * Round reporter photo or preset avatar, or their initials when there is
+ * none.
  */
-export function ReporterAvatar({ reporter, size }: ReporterAvatarProps) {
-  if (reporter.avatarUrl) {
+export function ReporterAvatar({ name, avatar, size }: ReporterAvatarProps) {
+  if (avatar) {
     return (
       <img
-        src={reporter.avatarUrl}
+        src={getAvatarSrc(avatar)}
         alt=""
         className={`${sizeClass[size]} shrink-0 rounded-full bg-avatar object-cover`}
       />
@@ -30,7 +33,7 @@ export function ReporterAvatar({ reporter, size }: ReporterAvatarProps) {
       aria-hidden="true"
       className={`${sizeClass[size]} flex shrink-0 items-center justify-center rounded-full bg-avatar leading-4 font-bold text-primary`}
     >
-      {getInitials(reporter.fullName)}
+      {getInitials(name)}
     </span>
   );
 }

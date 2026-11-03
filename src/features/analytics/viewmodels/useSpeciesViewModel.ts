@@ -1,8 +1,8 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { speciesCategories } from "../../post-review/models/post";
 import {
   getBarPercent,
   getSeverityShares,
+  speciesCategories,
   toShares,
   type AnalyticsRange,
 } from "../models/analytics";

@@ -49,13 +49,17 @@ function PostDetailContent({ postId }: { postId: string }) {
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,643fr)_minmax(0,453fr)]">
         <div className="flex min-w-0 flex-col gap-6">
           <PostGallery post={post} viewModel={viewModel} />
-          <PostContentCard post={post} />
+          <PostContentCard post={post} viewModel={viewModel} />
           <PostLocationCard post={post} viewModel={viewModel} />
           <PostCommentsCard post={post} viewModel={viewModel} />
         </div>
         <div className="flex min-w-0 flex-col gap-6">
-          <ReporterCard post={post} approvalRate={viewModel.approvalRate} />
-          <AiAnalysisCard post={post} />
+          <ReporterCard
+            post={post}
+            approvalRate={viewModel.approvalRate}
+            isVerified={viewModel.isReporterVerified}
+          />
+          <AiAnalysisCard post={post} viewModel={viewModel} />
           <AdminNotesCard viewModel={viewModel} />
         </div>
       </div>

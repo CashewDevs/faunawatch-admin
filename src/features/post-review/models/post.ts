@@ -1,87 +1,131 @@
 /**
- * Post Approvals domain model: the wildlife posts the admin site reviews,
+ * Post Approvals domain model: the wildlife reports the admin site reviews,
  * list query options, and pure list helpers.
  *
- * TODO(schema): Field names here are the admin site's presentation model,
- * not database columns. The mobile app/backend owns the reports schema
- * (including where the AI-derived fields and moderation status live). Map
- * Supabase rows to these shapes in the posts Service once it exists.
+ * The posts Service maps `reports` rows (with their profile, photos, EXIF,
+ * newest completed `ai_analyses` row and comments) to these shapes. The
+ * parsers below read the AI's jsonb columns, whose agreed shapes are
+ * documented in the faunawatch repo's `harden_ai_analyses` migration.
  */
 
+import type { AvatarImage, StoredAvatar } from "../../../core/utils/avatars";
 import { paginate } from "../../../core/utils/pagination";
 
 export type PostStatus = "pending" | "approved" | "declined";
 
 export type PostTab = PostStatus | "all";
 
-export type PostSeverity = "low" | "medium" | "high";
+/**
+ * The severity a card shows. "unrated" covers the AI's `uncertain` and
+ * reports without a completed AI analysis.
+ */
+export type PostSeverity = "high" | "medium" | "low" | "unrated";
 
-export type SpeciesCategory =
-  "mammal" | "bird" | "reptile" | "amphibian" | "insect";
-
-export type PostRegion = "luzon" | "visayas" | "mindanao";
+/** `report_category` in the database. */
+export type ReportCategory =
+  | "animal_in_need"
+  | "potentially_dangerous_animal"
+  | "possible_invasive_species"
+  | "other_wildlife_incident";
 
 export type PostSortOption = "newest" | "oldest" | "severity";
 
 /** Whether the identified species belongs in the Philippines. */
 export type SpeciesOrigin = "endemic" | "native" | "introduced";
 
+/** The AI's qualitative confidence; never a number. */
+export type ConfidenceLabel = "high" | "medium" | "low" | "uncertain";
+
 export type Filter<T> = "all" | T;
 
 export interface PostReporter {
   id: string;
+  /** Best available name (full name, username, …); empty when none. */
   fullName: string;
-  username: string;
-  /** Display label such as "Senior Ranger". */
-  role: string;
-  avatarUrl: string | null;
+  username: string | null;
+  /** Not yet signed; see `PostCardData` and `PostDetail.reporterAvatar`. */
+  storedAvatar: StoredAvatar | null;
 }
 
-/** The AI's species identification for the post's photos. */
+/** One of the AI's candidate species for the post's photos. */
 export interface AiSpeciesMatch {
   commonName: string;
+  /** Empty when the AI gave none. */
   scientificName: string;
-  /** 0–100, e.g. 98.4. */
-  confidencePercent: number;
+  confidence: ConfidenceLabel;
 }
 
-/** What a post card shows. */
+/** What the list needs to filter, sort, search, and show a card. */
 export interface PostSummary {
   id: string;
-  /** Human-facing post number, e.g. 1042 for "Post #1042". */
-  reference: number;
-  title: string;
+  /** Short human-facing code, e.g. "3F2A9C1B" for "Post #3F2A9C1B". */
+  reference: string;
+  category: ReportCategory;
   description: string;
   status: PostStatus;
   severity: PostSeverity;
-  category: SpeciesCategory;
-  region: PostRegion;
-  /** Short place name, e.g. "Mount Apo Natural Park, Davao". */
-  locationName: string;
   isInvasive: boolean;
-  /** ISO 8601 date-time the post was submitted. */
+  /** ISO 8601 date-time the report was submitted. */
   submittedAt: string;
-  photoUrls: readonly string[];
-  aiMatch: AiSpeciesMatch;
+  latitude: number;
+  longitude: number;
+  /** Paths in the private `report-images` bucket, oldest first. */
+  photoPaths: readonly string[];
+  /** The AI's top candidate; null without a completed AI analysis. */
+  aiMatch: AiSpeciesMatch | null;
+  /** The species the reporter named themselves, if any. */
+  reporterSpecies: string | null;
   reporter: PostReporter;
 }
 
+/** A summary with its cover photo and reporter avatar ready to show. */
+export interface PostCardData extends PostSummary {
+  coverUrl: string | null;
+  reporterAvatar: AvatarImage | null;
+}
+
+/** EXIF data read from one photo on the reporter's device. */
+export interface PhotoExif {
+  latitude: number | null;
+  longitude: number | null;
+  deviceMake: string | null;
+  deviceModel: string | null;
+  /** e.g. "f/2.8 • 1/120s • ISO 800 • 85mm". */
+  cameraSettings: string | null;
+  flashFired: boolean | null;
+}
+
+export interface PostPhoto {
+  path: string;
+  /** Signed URL; null when the photo couldn't be signed. */
+  url: string | null;
+  exif: PhotoExif | null;
+}
+
+/**
+ * How each photo's EXIF GPS compares with the report's location:
+ * every photo with GPS is close, at least one is far, or none has GPS.
+ */
+export type ExifLocationCheck = "verified" | "mismatch" | "noGps";
+
 export interface PostLocation {
-  address: string;
   latitude: number;
   longitude: number;
   elevationMeters: number | null;
-  /** True when the coordinates come from the photo's EXIF GPS data. */
-  isExifVerified: boolean;
-  /** Public blur radius the AI recommends, or null when none is needed. */
-  recommendedBufferKm: number | null;
-  mapPreviewUrl: string | null;
+  exifCheck: ExifLocationCheck;
+}
+
+export interface PostFieldNotes {
+  perchHeightMeters: number | null;
+  hostTree: string | null;
+  /** Null when the reporter didn't say. */
+  isNightObservation: boolean | null;
 }
 
 export interface PostComment {
   id: string;
   authorName: string;
-  username: string;
+  username: string | null;
   /** ISO 8601 date-time. */
   postedAt: string;
   body: string;
@@ -89,47 +133,45 @@ export interface PostComment {
   moderationNote: string | null;
 }
 
+/** The reporter's track record, counted from their reports. */
 export interface ReporterStats {
   totalPosts: number;
   approvedPosts: number;
   declinedPosts: number;
-  /** ISO 8601 date the reporter joined. */
+  /** ISO 8601 date-time the reporter's profile was created. */
   memberSince: string;
-  isVerified: boolean;
 }
 
 export interface AiChecklistItem {
-  label: string;
+  /** The stored validation label, e.g. "image_relevant". */
+  key: string;
   passed: boolean;
 }
 
-/** AI-derived decision support stored with the report. */
+/** AI-derived decision support from the newest completed analysis. */
 export interface PostAiAnalysis {
-  severitySummary: string;
-  origin: SpeciesOrigin;
+  /** `visual_condition_assessment`. */
+  severitySummary: string | null;
+  origin: SpeciesOrigin | null;
   checklist: readonly AiChecklistItem[];
-  synthesis: string;
-  recommendations: readonly string[];
-  /** Null when the AI couldn't tell. */
-  usedArtificialFlash: boolean | null;
-}
-
-export interface PostFieldNotes {
-  perchHeightMeters: number | null;
-  hostTree: string | null;
-  observerDevice: string | null;
-  isNightObservation: boolean;
-  /** EXIF camera summary, e.g. "f/2.8 • 1/120s • ISO 800 • 85mm". */
-  cameraSettings: string | null;
+  /** `incident_summary`. */
+  synthesis: string | null;
+  /** `safety_recommendations`, one paragraph. */
+  recommendations: string | null;
 }
 
 /** Everything the post detail screen shows. */
 export interface PostDetail extends PostSummary {
+  photos: readonly PostPhoto[];
+  reporterAvatar: AvatarImage | null;
+  /** The reporter's own notes (`user_notes`). */
+  reporterNotes: string | null;
   fieldNotes: PostFieldNotes;
   location: PostLocation;
   comments: readonly PostComment[];
   reporterStats: ReporterStats;
-  ai: PostAiAnalysis;
+  /** Null without a completed AI analysis. */
+  ai: PostAiAnalysis | null;
 }
 
 /** Where a post sits in its status queue, for Prev / Next. */
@@ -145,8 +187,7 @@ export interface PostListQuery {
   tab: PostTab;
   search: string;
   severity: Filter<PostSeverity>;
-  category: Filter<SpeciesCategory>;
-  region: Filter<PostRegion>;
+  category: Filter<ReportCategory>;
   sort: PostSortOption;
   /** 1-based page number. */
   page: number;
@@ -167,27 +208,40 @@ export const postTabs: readonly PostTab[] = [
   "declined",
   "all",
 ];
+
 export const postSeverities: readonly PostSeverity[] = [
   "high",
   "medium",
   "low",
+  "unrated",
 ];
-export const speciesCategories: readonly SpeciesCategory[] = [
-  "mammal",
-  "bird",
-  "reptile",
-  "amphibian",
-  "insect",
+
+export const reportCategories: readonly ReportCategory[] = [
+  "animal_in_need",
+  "potentially_dangerous_animal",
+  "possible_invasive_species",
+  "other_wildlife_incident",
 ];
-export const postRegions: readonly PostRegion[] = [
-  "luzon",
-  "visayas",
-  "mindanao",
-];
+
 export const postSortOptions: readonly PostSortOption[] = [
   "newest",
   "oldest",
   "severity",
+];
+
+const postStatuses: readonly PostStatus[] = ["pending", "approved", "declined"];
+
+const speciesOrigins: readonly SpeciesOrigin[] = [
+  "endemic",
+  "native",
+  "introduced",
+];
+
+const confidenceLabels: readonly ConfidenceLabel[] = [
+  "high",
+  "medium",
+  "low",
+  "uncertain",
 ];
 
 /** Multiples of 2, 3, and 4 so every grid row is full. */
@@ -198,30 +252,218 @@ export const defaultPostListQuery: PostListQuery = {
   search: "",
   severity: "all",
   category: "all",
-  region: "all",
   sort: "newest",
   page: 1,
   pageSize: postPageSizeOptions[0],
 };
 
+/** A photo counts as taken at the sighting within this distance. */
+export const exifMatchRadiusMeters = 500;
+
 const severityRank: Record<PostSeverity, number> = {
   high: 3,
   medium: 2,
   low: 1,
+  unrated: 0,
 };
 
-/** Case-insensitive match on title, species, reporter, or place. */
+const confidenceRank: Record<ConfidenceLabel, number> = {
+  high: 3,
+  medium: 2,
+  low: 1,
+  uncertain: 0,
+};
+
+function pickValue<T extends string>(
+  value: unknown,
+  options: readonly T[],
+): T | null {
+  return options.find((option) => option === value) ?? null;
+}
+
+/** `report_status` to the post status; unknown values count as pending. */
+export function toPostStatus(status: string): PostStatus {
+  return pickValue(status, postStatuses) ?? "pending";
+}
+
+/** `report_category`; null for a value this site doesn't know. */
+export function toReportCategory(category: string): ReportCategory | null {
+  return pickValue(category, reportCategories);
+}
+
+/** `species_origin`; null when unset or unknown. */
+export function toSpeciesOrigin(origin: string | null): SpeciesOrigin | null {
+  return pickValue(origin, speciesOrigins);
+}
+
+/**
+ * The AI's `severity_level` to the card's severity: moderate shows as
+ * Medium, critical as High, and uncertain or none as Unrated.
+ */
+export function toPostSeverity(level: string | null): PostSeverity {
+  switch (level) {
+    case "low":
+      return "low";
+    case "moderate":
+      return "medium";
+    case "high":
+    case "critical":
+      return "high";
+    default:
+      return "unrated";
+  }
+}
+
+/** "3f2a9c1b-…" → "3F2A9C1B" */
+export function toPostReference(id: string): string {
+  return id.slice(0, 8).toUpperCase();
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readText(value: unknown): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+/**
+ * Reads `ai_analyses.possible_species`, skipping malformed entries. Older
+ * rows used `name` instead of `common_name`; both are accepted.
+ */
+export function parsePossibleSpecies(value: unknown): AiSpeciesMatch[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry: unknown) => {
+    if (!isRecord(entry)) return [];
+    const commonName = readText(entry.common_name) ?? readText(entry.name);
+    if (!commonName) return [];
+    return [
+      {
+        commonName,
+        scientificName: readText(entry.scientific_name) ?? "",
+        confidence:
+          pickValue(entry.confidence, confidenceLabels) ?? "uncertain",
+      },
+    ];
+  });
+}
+
+/** The most confident candidate; the stored order breaks ties. */
+export function pickTopSpecies(
+  candidates: readonly AiSpeciesMatch[],
+): AiSpeciesMatch | null {
+  return candidates.reduce<AiSpeciesMatch | null>(
+    (best, candidate) =>
+      !best ||
+      confidenceRank[candidate.confidence] > confidenceRank[best.confidence]
+        ? candidate
+        : best,
+    null,
+  );
+}
+
+/** Reads `ai_analyses.validation`, skipping malformed entries. */
+export function parseValidation(value: unknown): AiChecklistItem[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((entry: unknown) => {
+    if (!isRecord(entry)) return [];
+    const key = readText(entry.label);
+    if (!key || typeof entry.passed !== "boolean") return [];
+    return [{ key, passed: entry.passed }];
+  });
+}
+
+/** "location_consistent" → "Location consistent" */
+export function humanizeKey(key: string): string {
+  const words = key.replace(/[_-]+/g, " ").trim().toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+const earthRadiusMeters = 6_371_000;
+
+function toRadians(degrees: number): number {
+  return (degrees * Math.PI) / 180;
+}
+
+/** Great-circle distance between two points, in meters. */
+export function getDistanceMeters(
+  from: { latitude: number; longitude: number },
+  to: { latitude: number; longitude: number },
+): number {
+  const dLat = toRadians(to.latitude - from.latitude);
+  const dLon = toRadians(to.longitude - from.longitude);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRadians(from.latitude)) *
+      Math.cos(toRadians(to.latitude)) *
+      Math.sin(dLon / 2) ** 2;
+  return 2 * earthRadiusMeters * Math.asin(Math.min(1, Math.sqrt(a)));
+}
+
+/**
+ * Compares each photo's EXIF GPS with the report's location. Photos
+ * without both coordinates are ignored.
+ */
+export function getExifLocationCheck(
+  report: { latitude: number; longitude: number },
+  photos: readonly Pick<PostPhoto, "exif">[],
+): ExifLocationCheck {
+  const distances = photos.flatMap(({ exif }) =>
+    exif && exif.latitude !== null && exif.longitude !== null
+      ? [
+          getDistanceMeters(report, {
+            latitude: exif.latitude,
+            longitude: exif.longitude,
+          }),
+        ]
+      : [],
+  );
+  if (distances.length === 0) return "noGps";
+  return distances.every((distance) => distance <= exifMatchRadiusMeters)
+    ? "verified"
+    : "mismatch";
+}
+
+/** "Apple" + "iPhone 13" → "Apple iPhone 13"; skips a repeated make. */
+export function formatDevice(exif: PhotoExif): string | null {
+  const make = exif.deviceMake?.trim() ?? "";
+  const model = exif.deviceModel?.trim() ?? "";
+  if (!make) return model || null;
+  if (!model) return make;
+  return model.toLowerCase().startsWith(make.toLowerCase())
+    ? model
+    : `${make} ${model}`;
+}
+
+/** The distinct devices the photos were taken with, or null for none. */
+export function getObserverDevices(
+  photos: readonly Pick<PostPhoto, "exif">[],
+): string | null {
+  const devices = new Set(
+    photos.flatMap(({ exif }) => {
+      const device = exif ? formatDevice(exif) : null;
+      return device ? [device] : [];
+    }),
+  );
+  return devices.size > 0 ? [...devices].join(", ") : null;
+}
+
+/**
+ * Case-insensitive match on the description, species (the AI's and the
+ * reporter's), reporter, or post reference.
+ */
 export function matchesPostSearch(post: PostSummary, search: string): boolean {
   const term = search.trim().toLowerCase();
   if (!term) return true;
   return [
-    post.title,
-    post.aiMatch.commonName,
-    post.aiMatch.scientificName,
+    post.description,
+    post.aiMatch?.commonName,
+    post.aiMatch?.scientificName,
+    post.reporterSpecies,
     post.reporter.fullName,
     post.reporter.username,
-    post.locationName,
-  ].some((field) => field.toLowerCase().includes(term));
+    post.reference,
+  ].some((field) => field?.toLowerCase().includes(term));
 }
 
 export function matchesPostTab(post: PostSummary, tab: PostTab): boolean {
@@ -264,7 +506,6 @@ export function queryPosts(
       matchesPostTab(post, query.tab) &&
       matchesFilter(post.severity, query.severity) &&
       matchesFilter(post.category, query.category) &&
-      matchesFilter(post.region, query.region) &&
       matchesPostSearch(post, query.search),
   );
   return {
@@ -288,13 +529,9 @@ export function countPostsByTab(posts: readonly PostSummary[]): PostCounts {
 
 /** True when any dropdown filter is narrowed from "all". */
 export function hasActiveFilters(
-  query: Pick<PostListQuery, "severity" | "category" | "region">,
+  query: Pick<PostListQuery, "severity" | "category">,
 ): boolean {
-  return (
-    query.severity !== "all" ||
-    query.category !== "all" ||
-    query.region !== "all"
-  );
+  return query.severity !== "all" || query.category !== "all";
 }
 
 /**
@@ -322,7 +559,18 @@ export function getQueuePosition(
 
 /** Extra photos beyond the cover, for the "+3" badge. */
 export function getExtraPhotoCount(post: PostSummary): number {
-  return Math.max(0, post.photoUrls.length - 1);
+  return Math.max(0, post.photoPaths.length - 1);
+}
+
+/** Counts a reporter's reports by status. */
+export function countReporterPosts(
+  statuses: readonly PostStatus[],
+): Pick<ReporterStats, "totalPosts" | "approvedPosts" | "declinedPosts"> {
+  return {
+    totalPosts: statuses.length,
+    approvedPosts: statuses.filter((status) => status === "approved").length,
+    declinedPosts: statuses.filter((status) => status === "declined").length,
+  };
 }
 
 /** Approved posts as a percentage of decided posts, to one decimal place. */
@@ -400,8 +648,7 @@ export function parsePostListParams(params: URLSearchParams): PostListQuery {
     tab: pickOption(params.get("tab"), postTabs, defaultPostListQuery.tab),
     search: params.get("q") ?? defaultPostListQuery.search,
     severity: pickFilter(params.get("severity"), postSeverities),
-    category: pickFilter(params.get("species"), speciesCategories),
-    region: pickFilter(params.get("region"), postRegions),
+    category: pickFilter(params.get("category"), reportCategories),
     sort: pickOption(
       params.get("sort"),
       postSortOptions,
@@ -421,8 +668,7 @@ export function toPostListParams(query: PostListQuery): URLSearchParams {
     ["tab", query.tab, defaultPostListQuery.tab],
     ["q", query.search, defaultPostListQuery.search],
     ["severity", query.severity, defaultPostListQuery.severity],
-    ["species", query.category, defaultPostListQuery.category],
-    ["region", query.region, defaultPostListQuery.region],
+    ["category", query.category, defaultPostListQuery.category],
     ["sort", query.sort, defaultPostListQuery.sort],
     ["page", String(query.page), String(defaultPostListQuery.page)],
     ["size", String(query.pageSize), String(defaultPostListQuery.pageSize)],

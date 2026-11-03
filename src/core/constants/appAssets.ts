@@ -55,10 +55,8 @@ import postDetailIconAiSparkles from "../../assets/post-detail/icon-ai-sparkles.
 import postDetailIconApprovalRate from "../../assets/post-detail/icon-approval-rate.svg";
 import postDetailIconArrowRight from "../../assets/post-detail/icon-arrow-right.svg";
 import postDetailIconBackArrow from "../../assets/post-detail/icon-back-arrow.svg";
-import postDetailIconBuffer from "../../assets/post-detail/icon-buffer.svg";
 import postDetailIconCalendar from "../../assets/post-detail/icon-calendar.svg";
 import postDetailIconCamera from "../../assets/post-detail/icon-camera.svg";
-import postDetailIconCategory from "../../assets/post-detail/icon-category.svg";
 import postDetailIconCheckCircle from "../../assets/post-detail/icon-check-circle.svg";
 import postDetailIconChevronDown from "../../assets/post-detail/icon-chevron-down.svg";
 import postDetailIconCoordinates from "../../assets/post-detail/icon-coordinates.svg";
@@ -168,10 +166,8 @@ export const AppAssets = {
     iconApprovalRate: postDetailIconApprovalRate,
     iconArrowRight: postDetailIconArrowRight,
     iconBackArrow: postDetailIconBackArrow,
-    iconBuffer: postDetailIconBuffer,
     iconCalendar: postDetailIconCalendar,
     iconCamera: postDetailIconCamera,
-    iconCategory: postDetailIconCategory,
     iconCheckCircle: postDetailIconCheckCircle,
     iconChevronDown: postDetailIconChevronDown,
     iconCoordinates: postDetailIconCoordinates,
