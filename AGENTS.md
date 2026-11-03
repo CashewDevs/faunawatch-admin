@@ -39,7 +39,11 @@ not own the data model; the app and backend define it.
   `src/core/theme/` as `@utility` rules.
 - Font: Plus Jakarta Sans, self-hosted in `src/assets/shared/fonts/`
   (SIL OFL; keep `OFL.txt` alongside the font files).
-- Charts: Recharts (analytics only)
+- Charts: Recharts (analytics only). The Analytics screen is lazy-loaded
+  (`React.lazy` in `src/app/App.tsx`), so Recharts ships in its own chunk;
+  don't import it, or the Analytics screen, from other features.
+  `vite.config.ts` also splits React, Supabase and TanStack Query into
+  vendor chunks.
 - Testing: Vitest + React Testing Library
 - Lint/format: ESLint + Prettier
 - Node.js LTS, npm
