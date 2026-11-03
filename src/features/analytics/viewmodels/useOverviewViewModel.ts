@@ -1,17 +1,16 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo, useState } from "react";
 import { useUserStats } from "../../users/viewmodels/userQueries";
 import {
   getAvailableGranularities,
+  getPostTrend,
+  getReviewOutcomeCounts,
   resolveGranularity,
   summarizeReviewOutcomes,
   type AnalyticsRange,
   type TrendGranularity,
 } from "../models/analytics";
-import {
-  fetchPostTrend,
-  fetchReviewOutcomes,
-} from "../services/analyticsService";
+import { analyticsDataQuery } from "./analyticsQueries";
 import { toCardQueryState } from "./cardQueryState";
 
 /**
@@ -26,17 +25,17 @@ export function useOverviewViewModel(range: AnalyticsRange) {
   // Shares its queries with User Management.
   const { stats: userStats, activeRate } = useUserStats();
 
-  const trendQuery = useQuery({
-    queryKey: ["analytics", "postTrend", range, granularity],
-    queryFn: () => fetchPostTrend(range, granularity),
-    placeholderData: keepPreviousData,
-  });
+  const dataQuery = useQuery(analyticsDataQuery(range));
+  const data = dataQuery.data;
 
-  const outcomesQuery = useQuery({
-    queryKey: ["analytics", "reviewOutcomes", range],
-    queryFn: () => fetchReviewOutcomes(range),
-    placeholderData: keepPreviousData,
-  });
+  const trend = useMemo(
+    () =>
+      data
+        ? getPostTrend(data.reports, data.reviews, range, granularity, data.now)
+        : [],
+    [data, range, granularity],
+  );
+  const state = toCardQueryState(dataQuery);
 
   return {
     userStats,
@@ -44,12 +43,12 @@ export function useOverviewViewModel(range: AnalyticsRange) {
     granularity,
     availableGranularities: getAvailableGranularities(range),
     changeGranularity: setRequestedGranularity,
-    trend: trendQuery.data ?? [],
-    trendState: toCardQueryState(trendQuery),
-    outcomes: outcomesQuery.data
-      ? summarizeReviewOutcomes(outcomesQuery.data)
+    trend,
+    trendState: state,
+    outcomes: data
+      ? summarizeReviewOutcomes(getReviewOutcomeCounts(data.reports))
       : undefined,
-    outcomesState: toCardQueryState(outcomesQuery),
+    outcomesState: state,
   };
 }
 

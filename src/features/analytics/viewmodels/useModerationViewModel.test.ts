@@ -1,70 +1,90 @@
 import { renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AppStrings } from "../../../core/constants/appStrings";
 import { createQueryWrapper } from "../../../test/queryWrapper";
-import {
-  fetchModerationActivity,
-  fetchTopContributors,
-} from "../services/analyticsService";
-import {
-  mockModerationActivity,
-  mockTopContributors,
-} from "../services/mockAnalytics";
+import { testAnalyticsData } from "../../../test/fixtures/analytics";
+import { fetchAnalyticsData } from "../services/analyticsService";
 import { useModerationViewModel } from "./useModerationViewModel";
 
 vi.mock("../services/analyticsService", () => ({
-  fetchModerationActivity: vi.fn(),
-  fetchTopContributors: vi.fn(),
+  fetchAnalyticsData: vi.fn(),
 }));
 
-const fetchModerationActivityMock = vi.mocked(fetchModerationActivity);
-const fetchTopContributorsMock = vi.mocked(fetchTopContributors);
+const fetchAnalyticsDataMock = vi.mocked(fetchAnalyticsData);
+
+function renderViewModel() {
+  return renderHook(() => useModerationViewModel("30d"), {
+    wrapper: createQueryWrapper(),
+  });
+}
 
 describe("useModerationViewModel", () => {
   beforeEach(() => {
-    fetchModerationActivityMock.mockReset();
-    fetchTopContributorsMock.mockReset();
-    fetchTopContributorsMock.mockImplementation((range) =>
-      Promise.resolve(mockTopContributors(range, 5)),
-    );
-    fetchModerationActivityMock.mockImplementation((range) =>
-      Promise.resolve(mockModerationActivity(range)),
+    fetchAnalyticsDataMock.mockReset();
+    fetchAnalyticsDataMock.mockImplementation((range) =>
+      Promise.resolve(testAnalyticsData(range)),
     );
   });
 
   it("ranks contributors and derives approval rates", async () => {
-    const { result } = renderHook(() => useModerationViewModel("30d"), {
-      wrapper: createQueryWrapper(),
-    });
+    const { result } = renderViewModel();
 
     await waitFor(() => {
-      expect(result.current.contributors).toHaveLength(5);
+      expect(result.current.contributors).toHaveLength(3);
     });
+    expect(
+      result.current.contributors.map((c) => [c.fullName, c.submissions]),
+    ).toEqual([
+      ["Maria Santos", 7],
+      ["Mateo Dela Cruz", 7],
+      ["Dr. Aris Thorne", 6],
+    ]);
     expect(result.current.contributors[0]).toMatchObject({
-      fullName: "Dr. Aris Thorne",
       rank: 1,
-      approvalRate: 96,
+      approvalRate: 60,
     });
   });
 
-  it("shares reviewer decisions and sorts decline reasons", async () => {
-    const { result } = renderHook(() => useModerationViewModel("30d"), {
-      wrapper: createQueryWrapper(),
-    });
+  it("shares reviewer decisions and sorts the decline reasons used", async () => {
+    const { result } = renderViewModel();
 
     await waitFor(() => {
       expect(result.current.activityState.isLoading).toBe(false);
     });
-    expect(result.current.reviewerShares.map((s) => s.percent)).toEqual([
-      52, 34, 14,
+    expect(
+      result.current.reviewerShares.map((s) => [s.reviewerName, s.percent]),
+    ).toEqual([
+      ["Ana Reyes", 33],
+      ["Ben Cruz", 33],
+      ["Cora Lim", 33],
     ]);
     expect(
       result.current.declineReasonShares.map((s) => [s.key, s.percent]),
     ).toEqual([
-      ["inaccurateSpecies", 38],
-      ["lowQualityPhoto", 26],
-      ["domesticSpecimen", 18],
-      ["duplicateSighting", 12],
-      ["inaccurateLocation", 6],
+      ["inaccurateSpecies", 60],
+      ["lowQualityPhoto", 40],
     ]);
+  });
+
+  it("names reviewers without a profile", async () => {
+    const data = testAnalyticsData("30d");
+    fetchAnalyticsDataMock.mockResolvedValue({
+      ...data,
+      reviewerNames: new Map(),
+    });
+    const { result } = renderViewModel();
+
+    // Still one slice per reviewer, each with the fallback name.
+    await waitFor(() => {
+      expect(result.current.reviewerShares).toHaveLength(3);
+    });
+    result.current.reviewerShares.forEach((share) => {
+      expect(share.reviewerName).toBe(
+        AppStrings.analytics.moderation.unknownReviewer,
+      );
+    });
+    expect(
+      new Set(result.current.reviewerShares.map((s) => s.reviewerId)).size,
+    ).toBe(3);
   });
 });
