@@ -1,7 +1,8 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AppStrings } from "../../../core/constants/appStrings";
-import { createQueryWrapper } from "../../../test/queryWrapper";
+import { AppRoutes } from "../../../core/constants/appRoutes";
+import { createRouterQueryWrapper } from "../../../test/routerWrapper";
 import { AuthFailure, type AuthErrorKind } from "../models/authSession";
 import {
   fetchAdminProfile,
@@ -9,6 +10,7 @@ import {
   signInWithGoogle,
   signOut,
 } from "../services/authService";
+import { loadReturnPath, saveReturnPath } from "../services/returnPathStorage";
 import { useAuthSession } from "./authSessionContext";
 import { useLoginViewModel } from "./useLoginViewModel";
 
@@ -37,9 +39,10 @@ function setRejection(rejection: AuthErrorKind | null) {
 
 const user = { id: "user-1", email: "admin@example.org" };
 
-function renderLogin() {
+/** The login screen, with the router state the admin guard leaves. */
+function renderLogin(state: unknown = null) {
   return renderHook(() => useLoginViewModel(), {
-    wrapper: createQueryWrapper(),
+    wrapper: createRouterQueryWrapper({ pathname: AppRoutes.login, state }),
   });
 }
 
@@ -69,6 +72,7 @@ beforeEach(() => {
   vi.mocked(signInWithGoogle).mockReturnValue(new Promise(() => undefined));
   setRejection(null);
   window.localStorage.clear();
+  window.sessionStorage.clear();
 });
 
 afterEach(() => {
@@ -250,6 +254,43 @@ describe("useLoginViewModel with Google", () => {
 
     expect(result.current.signInError).toBe(AppStrings.login.errors.network);
     expect(result.current.isRedirecting).toBe(false);
+  });
+
+  it("keeps the requested page for the return from Google", () => {
+    const { result } = renderLogin({ returnTo: "/posts?tab=approved" });
+
+    act(() => {
+      void result.current.continueWithGoogle();
+    });
+
+    expect(loadReturnPath()).toBe("/posts?tab=approved");
+  });
+
+  it("forgets an older page when none was requested, or it isn't safe", () => {
+    saveReturnPath("/analytics");
+    const { result } = renderLogin();
+    act(() => {
+      void result.current.continueWithGoogle();
+    });
+    expect(loadReturnPath()).toBeNull();
+
+    saveReturnPath("/analytics");
+    const unsafe = renderLogin({ returnTo: "//evil.example" });
+    act(() => {
+      void unsafe.result.current.continueWithGoogle();
+    });
+    expect(loadReturnPath()).toBeNull();
+  });
+
+  it("forgets the page when the redirect couldn't start", async () => {
+    vi.mocked(signInWithGoogle).mockRejectedValue(new AuthFailure("network"));
+    const { result } = renderLogin({ returnTo: "/posts" });
+
+    await act(async () => {
+      await result.current.continueWithGoogle();
+    });
+
+    expect(loadReturnPath()).toBeNull();
   });
 
   it("ignores email sign-in while redirecting to Google", async () => {

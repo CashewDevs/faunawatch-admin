@@ -1,6 +1,7 @@
 import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
+import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { createQueryWrapper } from "../../../../test/queryWrapper";
@@ -42,7 +43,9 @@ function renderLogin() {
   return render(<LoginScreen />, {
     wrapper: ({ children }: { children: ReactNode }) => (
       <QueryWrapper>
-        <AuthSessionProvider>{children}</AuthSessionProvider>
+        <MemoryRouter>
+          <AuthSessionProvider>{children}</AuthSessionProvider>
+        </MemoryRouter>
       </QueryWrapper>
     ),
   });
