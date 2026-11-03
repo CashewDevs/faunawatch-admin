@@ -4,6 +4,10 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../core/constants/appRoutes";
 import { AppStrings } from "../core/constants/appStrings";
 import type { SessionStatus } from "../features/auth/models/authSession";
+import {
+  loadReturnPath,
+  saveReturnPath,
+} from "../features/auth/services/returnPathStorage";
 import { useAuthSession } from "../features/auth/viewmodels/authSessionContext";
 import { RedirectIfSignedIn, RequireAdmin } from "./routeGuards";
 
@@ -44,6 +48,7 @@ function renderAt(path: string) {
 
 beforeEach(() => {
   vi.clearAllMocks();
+  window.sessionStorage.clear();
 });
 
 describe("RequireAdmin", () => {
@@ -104,5 +109,44 @@ describe("RedirectIfSignedIn", () => {
     rerender(appAt(AppRoutes.posts));
 
     expect(screen.getByText("Posts page")).toBeInTheDocument();
+  });
+
+  it("returns to the page saved before a Google sign-in, then forgets it", () => {
+    // Back from Google: a fresh page load on /login without router state.
+    saveReturnPath(AppRoutes.posts);
+    setStatus("signedIn");
+    renderAt(AppRoutes.login);
+
+    expect(screen.getByText("Posts page")).toBeInTheDocument();
+    expect(loadReturnPath()).toBeNull();
+  });
+
+  it("prefers the page in router state over a saved one", () => {
+    saveReturnPath(AppRoutes.users);
+    setStatus("signedOut");
+    const { rerender } = renderAt(AppRoutes.posts);
+
+    setStatus("signedIn");
+    rerender(appAt(AppRoutes.posts));
+
+    expect(screen.getByText("Posts page")).toBeInTheDocument();
+  });
+
+  it("keeps the saved page while nobody is signed in", () => {
+    // e.g. a Google account that isn't an admin was signed out again.
+    saveReturnPath(AppRoutes.posts);
+    setStatus("signedOut");
+    renderAt(AppRoutes.login);
+
+    expect(screen.getByText("Login page")).toBeInTheDocument();
+    expect(loadReturnPath()).toBe(AppRoutes.posts);
+  });
+
+  it("ignores an unsafe saved page", () => {
+    saveReturnPath("//evil.example");
+    setStatus("signedIn");
+    renderAt(AppRoutes.login);
+
+    expect(screen.getByText("Users page")).toBeInTheDocument();
   });
 });

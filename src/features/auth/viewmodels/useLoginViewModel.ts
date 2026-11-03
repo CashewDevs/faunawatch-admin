@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { useLocation } from "react-router";
 import { AppStrings } from "../../../core/constants/appStrings";
 import { getAuthErrorKind, type AuthErrorKind } from "../models/authSession";
 import {
@@ -9,7 +10,9 @@ import {
   type LoginValidationErrors,
   type PasswordError,
 } from "../models/loginCredentials";
+import { isSafeReturnPath, readReturnTo } from "../models/returnPath";
 import { signIn, signInWithGoogle, signOut } from "../services/authService";
+import { clearReturnPath, saveReturnPath } from "../services/returnPathStorage";
 import { adminProfileQuery } from "./adminProfileQuery";
 import { useAuthSession } from "./authSessionContext";
 import { useLoginCooldown } from "./useLoginCooldown";
@@ -46,6 +49,7 @@ const signInErrorMessages: Record<AuthErrorKind, string> = {
  */
 export function useLoginViewModel() {
   const queryClient = useQueryClient();
+  const location = useLocation();
   const { rejection, clearRejection } = useAuthSession();
   const cooldown = useLoginCooldown();
   const [email, setEmail] = useState("");
@@ -125,10 +129,16 @@ export function useLoginViewModel() {
     if (isBusy) return;
     clearSignInError();
     setIsRedirecting(true);
+    // Router state doesn't survive the trip to Google and back, so keep
+    // the page the admin asked for (or forget an older one).
+    const returnTo = readReturnTo(location.state);
+    if (isSafeReturnPath(returnTo)) saveReturnPath(returnTo);
+    else clearReturnPath();
     try {
       // Stays "redirecting" on success: the page is leaving for Google.
       await signInWithGoogle(rememberMe);
     } catch (error) {
+      clearReturnPath();
       setSignInError(getAuthErrorKind(error));
       setIsRedirecting(false);
     }

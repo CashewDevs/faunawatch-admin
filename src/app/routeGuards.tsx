@@ -2,8 +2,9 @@ import { Navigate, Outlet, useLocation } from "react-router";
 import { LoadingScreen } from "../core/components/LoadingScreen";
 import { AppRoutes } from "../core/constants/appRoutes";
 import { AppStrings } from "../core/constants/appStrings";
+import { toReturnPathState } from "../features/auth/models/returnPath";
 import { useAuthSession } from "../features/auth/viewmodels/authSessionContext";
-import { getReturnPath, toReturnPathState } from "./returnPath";
+import { useReturnPath } from "../features/auth/viewmodels/useReturnPath";
 
 /**
  * Admin-only routes. Signed-out visitors go to the login screen, which
@@ -35,11 +36,10 @@ export function RequireAdmin() {
  */
 export function RedirectIfSignedIn() {
   const { status } = useAuthSession();
-  // Router state is untyped; getReturnPath validates it.
-  const state: unknown = useLocation().state;
+  const returnPath = useReturnPath(status === "signedIn");
 
   if (status === "signedIn") {
-    return <Navigate to={getReturnPath(state)} replace />;
+    return <Navigate to={returnPath} replace />;
   }
   if (status === "loading") {
     return <LoadingScreen label={AppStrings.common.loading} />;
