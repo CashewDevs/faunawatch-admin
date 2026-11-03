@@ -321,6 +321,7 @@ export const AppStrings = {
     exportReport: "Export report",
     exportUnavailable: "Report export isn't available yet",
     loading: "Loading…",
+    loadingScreen: "Loading analytics…",
     error: "Couldn't load this data.",
     retry: "Try again",
     empty: "No data for this date range.",

@@ -1,11 +1,11 @@
 import { QueryClientProvider } from "@tanstack/react-query";
+import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AdminLayout } from "../core/components/AdminLayout";
 import { LoadingScreen } from "../core/components/LoadingScreen";
 import { AppRoutes } from "../core/constants/appRoutes";
 import { AppStrings } from "../core/constants/appStrings";
 import { useAssetPreloader } from "../core/hooks/useAssetPreloader";
-import { AnalyticsScreen } from "../features/analytics/views/screens/AnalyticsScreen";
 import { AuthSessionProvider } from "../features/auth/viewmodels/AuthSessionProvider";
 import { LoginScreen } from "../features/auth/views/screens/LoginScreen";
 import { PostApprovalsScreen } from "../features/post-review/views/screens/PostApprovalsScreen";
@@ -14,6 +14,14 @@ import { UserManagementScreen } from "../features/users/views/screens/UserManage
 import { preloadFontDescriptors, preloadImageUrls } from "./preloadManifest";
 import { queryClient } from "./queryClient";
 import { RedirectIfSignedIn, RequireAdmin } from "./routeGuards";
+
+// Analytics is the only screen that uses Recharts, so it loads on first
+// visit instead of with the rest of the app.
+const AnalyticsScreen = lazy(() =>
+  import("../features/analytics/views/screens/AnalyticsScreen").then(
+    (module) => ({ default: module.AnalyticsScreen }),
+  ),
+);
 
 /**
  * Root application component: preloads assets behind a loading screen,
@@ -50,7 +58,11 @@ function App() {
                 />
                 <Route
                   path={AppRoutes.analytics}
-                  element={<AnalyticsScreen />}
+                  element={
+                    <Suspense fallback={<ScreenLoading />}>
+                      <AnalyticsScreen />
+                    </Suspense>
+                  }
                 />
               </Route>
             </Route>
@@ -63,6 +75,20 @@ function App() {
         </BrowserRouter>
       </AuthSessionProvider>
     </QueryClientProvider>
+  );
+}
+
+/** Shown inside the admin layout while a lazily loaded screen downloads. */
+function ScreenLoading() {
+  return (
+    <div className="px-8 pt-5 pb-8">
+      <p
+        aria-busy="true"
+        className="rounded-xl bg-white py-16 text-center text-sm text-muted"
+      >
+        {AppStrings.analytics.loadingScreen}
+      </p>
+    </div>
   );
 }
 
