@@ -3,6 +3,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AdminLayout } from "../core/components/AdminLayout";
 import { LoadingScreen } from "../core/components/LoadingScreen";
+import { ScreenErrorBoundary } from "../core/components/ScreenErrorBoundary";
 import { AppRoutes } from "../core/constants/appRoutes";
 import { AppStrings } from "../core/constants/appStrings";
 import { useAssetPreloader } from "../core/hooks/useAssetPreloader";
@@ -59,9 +60,11 @@ function App() {
                 <Route
                   path={AppRoutes.analytics}
                   element={
-                    <Suspense fallback={<ScreenLoading />}>
-                      <AnalyticsScreen />
-                    </Suspense>
+                    <ScreenErrorBoundary>
+                      <Suspense fallback={<ScreenLoading />}>
+                        <AnalyticsScreen />
+                      </Suspense>
+                    </ScreenErrorBoundary>
                   }
                 />
               </Route>

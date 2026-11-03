@@ -7,6 +7,11 @@
 export const AppStrings = {
   common: {
     loading: "Loading FaunaWatch Admin",
+    /** Shown when a screen fails to load, e.g. its code couldn't download. */
+    screenError: {
+      message: "Couldn't load this screen.",
+      reload: "Reload",
+    },
     pagination: {
       showing: "Showing",
       of: "of",
