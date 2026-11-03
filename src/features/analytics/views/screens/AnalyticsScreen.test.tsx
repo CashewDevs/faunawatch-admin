@@ -3,39 +3,26 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { createRouterQueryWrapper } from "../../../../test/routerWrapper";
+import {
+  testAnalyticsData,
+  testSectorCells,
+} from "../../../../test/fixtures/analytics";
 import { testUsers } from "../../../../test/fixtures/users";
 import {
   fetchSanctionsSince,
   fetchUsers,
 } from "../../../users/services/usersService";
 import {
-  fetchHotspots,
-  fetchInvasiveAlerts,
-  fetchModerationActivity,
-  fetchPostTrend,
-  fetchReviewOutcomes,
-  fetchSpeciesBreakdown,
-  fetchTopContributors,
+  fetchAnalyticsData,
+  fetchSectorCells,
+  signAlertPhotos,
 } from "../../services/analyticsService";
-import {
-  mockHotspots,
-  mockInvasiveAlerts,
-  mockModerationActivity,
-  mockPostTrend,
-  mockReviewOutcomes,
-  mockSpeciesBreakdown,
-  mockTopContributors,
-} from "../../services/mockAnalytics";
 import { AnalyticsScreen } from "./AnalyticsScreen";
 
 vi.mock("../../services/analyticsService", () => ({
-  fetchPostTrend: vi.fn(),
-  fetchReviewOutcomes: vi.fn(),
-  fetchSpeciesBreakdown: vi.fn(),
-  fetchHotspots: vi.fn(),
-  fetchInvasiveAlerts: vi.fn(),
-  fetchTopContributors: vi.fn(),
-  fetchModerationActivity: vi.fn(),
+  fetchAnalyticsData: vi.fn(),
+  fetchSectorCells: vi.fn(),
+  signAlertPhotos: vi.fn(),
 }));
 
 vi.mock("../../../users/services/usersService", () => ({
@@ -44,7 +31,6 @@ vi.mock("../../../users/services/usersService", () => ({
 }));
 
 const strings = AppStrings.analytics;
-const now = new Date("2026-10-30T00:00:00Z");
 
 function renderScreen(initialEntry = "/analytics") {
   return render(<AnalyticsScreen />, {
@@ -56,26 +42,12 @@ describe("AnalyticsScreen", () => {
   beforeEach(() => {
     vi.mocked(fetchUsers).mockResolvedValue([...testUsers]);
     vi.mocked(fetchSanctionsSince).mockResolvedValue([]);
-    vi.mocked(fetchPostTrend).mockImplementation((range, granularity) =>
-      Promise.resolve(mockPostTrend(range, granularity, now)),
+    vi.mocked(fetchAnalyticsData).mockImplementation((range) =>
+      Promise.resolve(testAnalyticsData(range)),
     );
-    vi.mocked(fetchReviewOutcomes).mockImplementation((range) =>
-      Promise.resolve(mockReviewOutcomes(range)),
-    );
-    vi.mocked(fetchSpeciesBreakdown).mockImplementation((range) =>
-      Promise.resolve(mockSpeciesBreakdown(range)),
-    );
-    vi.mocked(fetchHotspots).mockImplementation((range, category) =>
-      Promise.resolve(mockHotspots(range, category)),
-    );
-    vi.mocked(fetchInvasiveAlerts).mockImplementation((range) =>
-      Promise.resolve(mockInvasiveAlerts(range, now)),
-    );
-    vi.mocked(fetchTopContributors).mockImplementation((range) =>
-      Promise.resolve(mockTopContributors(range, 5)),
-    );
-    vi.mocked(fetchModerationActivity).mockImplementation((range) =>
-      Promise.resolve(mockModerationActivity(range)),
+    vi.mocked(fetchSectorCells).mockResolvedValue([...testSectorCells]);
+    vi.mocked(signAlertPhotos).mockImplementation((alerts) =>
+      Promise.resolve([...alerts]),
     );
   });
 
@@ -86,12 +58,15 @@ describe("AnalyticsScreen", () => {
       screen.getByRole("tab", { name: strings.tabs.overview }),
     ).toHaveAttribute("aria-selected", "true");
     expect(await screen.findByText("24")).toBeInTheDocument();
-    expect(await screen.findByText("3,842")).toBeInTheDocument();
-    expect(screen.getByText("89.1% Approved")).toBeInTheDocument();
+    expect(await screen.findByText("66.7% Approved")).toBeInTheDocument();
+    expect(
+      screen.getByText(strings.reviewOutcomes.outcomes.awaitingTriage),
+    ).toBeInTheDocument();
   });
 
   it("keeps report export and custom ranges disabled", () => {
     renderScreen();
+
     expect(
       screen.getByRole("button", { name: strings.exportReport }),
     ).toBeDisabled();
@@ -107,42 +82,65 @@ describe("AnalyticsScreen", () => {
     await user.click(screen.getByRole("tab", { name: strings.tabs.species }));
     const panel = screen.getByRole("tabpanel");
     expect(
-      await within(panel).findByText("Philippine Tarsier"),
+      await within(panel).findByText("Philippine Eagle"),
+    ).toBeInTheDocument();
+    expect(
+      within(panel).getByText(strings.severity.tiers.unrated.name),
     ).toBeInTheDocument();
 
     await user.keyboard("{ArrowRight}");
     expect(
       screen.getByRole("tab", { name: strings.tabs.hotspots }),
     ).toHaveFocus();
-    expect(await screen.findByText("Cane Toad")).toBeInTheDocument();
+    expect(await screen.findAllByText("Cane Toad")).not.toHaveLength(0);
+    expect(
+      screen.getByText(`5 ${strings.invasive.activeSuffix}`),
+    ).toBeInTheDocument();
 
     await user.keyboard("{End}");
     expect(
       await screen.findByRole("table", { name: strings.contributors.caption }),
     ).toBeInTheDocument();
-    expect(await screen.findByText("Dr. Aris Thorne")).toBeInTheDocument();
+    expect(await screen.findByText("Maria Santos")).toBeInTheDocument();
   });
 
-  it("reloads the tab's data for a new date range", async () => {
+  it("reloads the data for a new date range", async () => {
     const user = userEvent.setup();
     renderScreen("/analytics?tab=species");
-    expect(await screen.findByText("482")).toBeInTheDocument();
+
+    // The Philippine Eagle's 30-day count.
+    expect(await screen.findByText("6")).toBeInTheDocument();
 
     await user.click(
       screen.getByRole("button", { name: strings.ranges["7d"] }),
     );
 
-    expect(await screen.findByText("116")).toBeInTheDocument();
-    expect(fetchSpeciesBreakdown).toHaveBeenLastCalledWith("7d");
+    await screen.findByText(strings.ranges["7d"]);
+    expect(fetchAnalyticsData).toHaveBeenLastCalledWith("7d");
+    await screen.findAllByText("2");
+    expect(screen.queryByText("6")).not.toBeInTheDocument();
   });
 
-  it("shows an error with a retry when a card fails to load", async () => {
-    vi.mocked(fetchTopContributors).mockRejectedValue(new Error("offline"));
+  it("shows an error with a retry when the data fails to load", async () => {
+    vi.mocked(fetchAnalyticsData).mockRejectedValue(new Error("offline"));
     renderScreen("/analytics?tab=moderation");
 
-    expect(await screen.findByText(strings.error)).toBeInTheDocument();
+    expect(await screen.findAllByText(strings.error)).not.toHaveLength(0);
     expect(
-      screen.getByRole("button", { name: strings.retry }),
-    ).toBeInTheDocument();
+      screen.getAllByRole("button", { name: strings.retry }).length,
+    ).toBeGreaterThan(0);
+  });
+
+  it("shows the empty state for a range without reports", async () => {
+    vi.mocked(fetchAnalyticsData).mockImplementation((range) =>
+      Promise.resolve({
+        ...testAnalyticsData(range),
+        reports: [],
+        reviews: [],
+      }),
+    );
+    renderScreen("/analytics?tab=species");
+
+    expect(await screen.findAllByText(strings.empty)).toHaveLength(3);
   });
 });

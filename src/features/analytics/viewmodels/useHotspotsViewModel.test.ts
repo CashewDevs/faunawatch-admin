@@ -2,73 +2,107 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createQueryWrapper } from "../../../test/queryWrapper";
 import {
-  fetchHotspots,
-  fetchInvasiveAlerts,
+  testAnalyticsData,
+  testSectorCells,
+} from "../../../test/fixtures/analytics";
+import {
+  fetchAnalyticsData,
+  fetchSectorCells,
+  signAlertPhotos,
 } from "../services/analyticsService";
-import { mockHotspots, mockInvasiveAlerts } from "../services/mockAnalytics";
 import { useHotspotsViewModel } from "./useHotspotsViewModel";
 
 vi.mock("../services/analyticsService", () => ({
-  fetchHotspots: vi.fn(),
-  fetchInvasiveAlerts: vi.fn(),
+  fetchAnalyticsData: vi.fn(),
+  fetchSectorCells: vi.fn(),
+  signAlertPhotos: vi.fn(),
 }));
 
-const fetchHotspotsMock = vi.mocked(fetchHotspots);
-const fetchInvasiveAlertsMock = vi.mocked(fetchInvasiveAlerts);
-const now = new Date("2026-10-30T00:00:00Z");
+const fetchSectorCellsMock = vi.mocked(fetchSectorCells);
+const signAlertPhotosMock = vi.mocked(signAlertPhotos);
+
+function renderViewModel() {
+  return renderHook(() => useHotspotsViewModel("30d"), {
+    wrapper: createQueryWrapper(),
+  });
+}
 
 describe("useHotspotsViewModel", () => {
   beforeEach(() => {
-    fetchHotspotsMock.mockReset();
-    fetchInvasiveAlertsMock.mockReset();
-    fetchHotspotsMock.mockImplementation((range, category) =>
-      Promise.resolve(mockHotspots(range, category)),
+    vi.mocked(fetchAnalyticsData).mockImplementation((range) =>
+      Promise.resolve(testAnalyticsData(range)),
     );
-    fetchInvasiveAlertsMock.mockImplementation((range) =>
-      Promise.resolve(mockInvasiveAlerts(range, now)),
+    fetchSectorCellsMock.mockReset();
+    fetchSectorCellsMock.mockResolvedValue([...testSectorCells]);
+    signAlertPhotosMock.mockReset();
+    signAlertPhotosMock.mockImplementation((alerts) =>
+      Promise.resolve(
+        alerts.map((alert) => ({
+          ...alert,
+          photoUrl: `https://signed/${alert.photoPath ?? ""}`,
+        })),
+      ),
     );
   });
 
-  it("places hotspots and loads the alerts for the range", async () => {
-    const { result } = renderHook(() => useHotspotsViewModel("30d"), {
-      wrapper: createQueryWrapper(),
-    });
+  it("places the range's grid cells, named by their centre", async () => {
+    const { result } = renderViewModel();
 
     await waitFor(() => {
-      expect(result.current.hotspots).toHaveLength(6);
+      expect(result.current.hotspots).toHaveLength(3);
     });
-    const mtApo = result.current.hotspots.find((h) => h.id === "mt-apo");
-    expect(mtApo).toMatchObject({
-      sightingCount: 812,
+    expect(fetchSectorCellsMock).toHaveBeenCalledWith("30d");
+    expect(result.current.hotspots[0]).toMatchObject({
+      name: "7.05°N, 125.25°E",
+      sightingCount: 12,
       density: "critical",
       isLabelled: true,
     });
-
-    await waitFor(() => {
-      expect(result.current.alerts).toHaveLength(4);
-    });
-    expect(result.current.alerts[0]?.reportedOn).toBe("2026-10-30");
-    expect(result.current.isViewAllAlertsAvailable).toBe(false);
   });
 
-  it("refetches hotspots for a species category", async () => {
-    const { result } = renderHook(() => useHotspotsViewModel("30d"), {
-      wrapper: createQueryWrapper(),
-    });
+  it("filters cells by category without reloading", async () => {
+    const { result } = renderViewModel();
     await waitFor(() => {
       expect(result.current.hotspotsState.isLoading).toBe(false);
     });
 
     act(() => {
-      result.current.changeCategory("bird");
+      result.current.changeCategory("animal_in_need");
     });
 
-    expect(result.current.category).toBe("bird");
+    expect(result.current.category).toBe("animal_in_need");
+    expect(
+      result.current.hotspots.map((h) => [h.name, h.sightingCount]),
+    ).toEqual([
+      ["7.05°N, 125.25°E", 8],
+      ["10.35°N, 123.95°E", 2],
+    ]);
+    expect(fetchSectorCellsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("lists the newest invasive reports and signs their photos", async () => {
+    const { result } = renderViewModel();
+
     await waitFor(() => {
-      expect(
-        result.current.hotspots.find((h) => h.id === "mt-apo")?.sightingCount,
-      ).toBe(300);
+      expect(result.current.alerts[0]?.photoUrl).toMatch(/^https:\/\/signed/);
     });
-    expect(fetchHotspotsMock).toHaveBeenLastCalledWith("30d", "bird");
+    expect(result.current.alertCount).toBe(5);
+    expect(result.current.alerts).toHaveLength(5);
+    expect(result.current.alerts[0]).toMatchObject({
+      id: "report-2",
+      commonName: "Cane Toad",
+    });
+    expect(signAlertPhotosMock).toHaveBeenCalledTimes(1);
+    expect(result.current.isViewAllAlertsAvailable).toBe(false);
+  });
+
+  it("shows alerts without photos until they are signed", async () => {
+    signAlertPhotosMock.mockReturnValue(new Promise(() => undefined));
+    const { result } = renderViewModel();
+
+    await waitFor(() => {
+      expect(result.current.alerts).toHaveLength(5);
+    });
+    expect(result.current.alerts[0]?.photoUrl).toBeNull();
   });
 });

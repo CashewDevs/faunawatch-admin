@@ -9,7 +9,6 @@ import {
   densityLevels,
   type AnalyticsRange,
   type DensityLevel,
-  type InvasiveThreat,
 } from "../../models/analytics";
 import {
   useHotspotsViewModel,
@@ -173,15 +172,9 @@ function HotspotsCard({ viewModel }: CardProps) {
   );
 }
 
-const threatPillClass: Record<InvasiveThreat, string> = {
-  colony: "bg-cyan/40 text-ink",
-  aquatic: "bg-cyan/40 text-ink",
-  ecosystem: "bg-cyan/40 text-ink",
-  biosecurity: "bg-danger-soft text-danger",
-};
-
 function InvasiveAlertsCard({ viewModel }: CardProps) {
   const strings = AppStrings.analytics.invasive;
+  const categoryNames = AppStrings.analytics.categories.names;
   const { alerts } = viewModel;
 
   return (
@@ -190,7 +183,7 @@ function InvasiveAlertsCard({ viewModel }: CardProps) {
       titleBadge={
         viewModel.alertsState.isLoading ? undefined : (
           <span className="rounded-full bg-cyan px-2.5 py-0.5 text-xs leading-4 font-bold text-ink">
-            {formatNumber(alerts.length)} {strings.activeSuffix}
+            {formatNumber(viewModel.alertCount)} {strings.activeSuffix}
           </span>
         )
       }
@@ -212,52 +205,48 @@ function InvasiveAlertsCard({ viewModel }: CardProps) {
     >
       <CardContent state={viewModel.alertsState} isEmpty={alerts.length === 0}>
         <ul aria-label={strings.listLabel} className="flex flex-col gap-3">
-          {alerts.map((alert) => (
-            <li
-              key={alert.id}
-              className="flex items-center gap-3 rounded-xl bg-surface-tint p-3"
-            >
-              {alert.photoUrl ? (
-                <img
-                  src={alert.photoUrl}
-                  alt=""
-                  className="size-14 shrink-0 rounded-lg object-cover"
-                />
-              ) : (
-                <span
-                  aria-hidden="true"
-                  className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-chip text-sm font-bold text-primary"
-                >
-                  {getInitials(alert.commonName)}
-                </span>
-              )}
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <div className="flex flex-wrap items-start justify-between gap-x-2 gap-y-1">
-                  <p className="min-w-0 text-sm leading-5">
-                    <span className="font-bold text-ink">
-                      {alert.commonName}
-                    </span>{" "}
-                    <span className="text-slate italic">
-                      ({alert.scientificName})
-                    </span>
-                  </p>
+          {alerts.map((alert) => {
+            const name = alert.commonName ?? categoryNames[alert.category];
+            return (
+              <li
+                key={alert.id}
+                className="flex items-center gap-3 rounded-xl bg-surface-tint p-3"
+              >
+                {alert.photoUrl ? (
+                  <img
+                    src={alert.photoUrl}
+                    alt=""
+                    className="size-14 shrink-0 rounded-lg object-cover"
+                  />
+                ) : (
                   <span
-                    className={`shrink-0 rounded-md px-2 py-0.5 text-xs leading-4 font-semibold ${threatPillClass[alert.threat]}`}
+                    aria-hidden="true"
+                    className="flex size-14 shrink-0 items-center justify-center rounded-lg bg-chip text-sm font-bold text-primary"
                   >
-                    {strings.threats[alert.threat]}
+                    {getInitials(name)}
                   </span>
+                )}
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <p className="min-w-0 text-sm leading-5">
+                    <span className="font-bold text-ink">{name}</span>
+                    {alert.scientificName && (
+                      <>
+                        {" "}
+                        <span className="text-slate italic">
+                          ({alert.scientificName})
+                        </span>
+                      </>
+                    )}
+                  </p>
+                  <p className="text-xs leading-4 font-semibold text-slate">
+                    <time dateTime={alert.reportedAt}>
+                      {formatMonthDay(alert.reportedAt)}
+                    </time>
+                  </p>
                 </div>
-                <p className="flex flex-wrap items-center gap-x-1.5 text-xs leading-4 font-semibold text-slate">
-                  <img src={AppAssets.postApprovals.iconLocationPin} alt="" />
-                  {alert.locationName}
-                  <span aria-hidden="true">•</span>
-                  <time dateTime={alert.reportedOn}>
-                    {formatMonthDay(alert.reportedOn)}
-                  </time>
-                </p>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       </CardContent>
     </AnalyticsCard>

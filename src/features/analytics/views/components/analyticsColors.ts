@@ -1,9 +1,11 @@
 import type {
-  AnalyticsSeverity,
+  PostSeverity,
+  ReportCategory,
+} from "../../../post-review/models/post";
+import type {
   DeclineReason,
   DensityLevel,
   ReviewOutcome,
-  SpeciesCategory,
   TrendSeries,
 } from "../../models/analytics";
 
@@ -38,18 +40,18 @@ export const reviewOutcomeColor: Record<ReviewOutcome, string> = {
   awaitingTriage: "var(--color-cyan)",
 };
 
-export const categoryFill: Record<SpeciesCategory, string> = {
-  mammal: "fill-primary",
-  bird: "fill-amber-ink",
-  reptile: "fill-accent-gold",
-  amphibian: "fill-cyan",
-  insect: "fill-navy",
+export const categoryFill: Record<ReportCategory, string> = {
+  animal_in_need: "fill-primary",
+  potentially_dangerous_animal: "fill-danger",
+  possible_invasive_species: "fill-cyan",
+  other_wildlife_incident: "fill-amber-ink",
 };
 
-export const severityFill: Record<AnalyticsSeverity, string> = {
+export const severityFill: Record<PostSeverity, string> = {
   low: "fill-amber-ink",
   medium: "fill-cyan",
   high: "fill-danger",
+  unrated: "fill-muted",
 };
 
 export const densityFill: Record<DensityLevel, string> = {

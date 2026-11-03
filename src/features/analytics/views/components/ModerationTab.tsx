@@ -134,9 +134,11 @@ function TopContributorsCard({
                       <span className="truncate text-sm leading-5 font-bold text-ink">
                         {contributor.fullName}
                       </span>
-                      <span className="truncate text-xs leading-4 font-semibold text-slate">
-                        @{contributor.username}
-                      </span>
+                      {contributor.username && (
+                        <span className="truncate text-xs leading-4 font-semibold text-slate">
+                          @{contributor.username}
+                        </span>
+                      )}
                     </span>
                   </td>
                   <td
@@ -185,7 +187,7 @@ function ModerationActivityCard({
   const { reviewerShares, declineReasonShares } = viewModel;
   const reviewers = reviewerShares.map((share, index) => ({
     ...share,
-    key: share.reviewerName ?? "others",
+    key: share.reviewerId ?? "others",
     label: share.reviewerName ?? strings.otherReviewers,
     fillClass:
       share.reviewerName === null

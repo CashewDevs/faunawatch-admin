@@ -1,15 +1,16 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
+import { AppStrings } from "../../../core/constants/appStrings";
 import {
   declineReasons,
   getContributorApprovalRate,
+  getModerationActivity,
   getReviewerShares,
+  getTopContributors,
   toShares,
   type AnalyticsRange,
 } from "../models/analytics";
-import {
-  fetchModerationActivity,
-  fetchTopContributors,
-} from "../services/analyticsService";
+import { analyticsDataQuery } from "./analyticsQueries";
 import { toCardQueryState } from "./cardQueryState";
 
 /**
@@ -17,35 +18,42 @@ import { toCardQueryState } from "./cardQueryState";
  * were split between reviewers, and the most common decline reasons.
  */
 export function useModerationViewModel(range: AnalyticsRange) {
-  const contributorsQuery = useQuery({
-    queryKey: ["analytics", "topContributors", range],
-    queryFn: () => fetchTopContributors(range),
-    placeholderData: keepPreviousData,
-  });
+  const dataQuery = useQuery(analyticsDataQuery(range));
+  const data = dataQuery.data;
 
-  const activityQuery = useQuery({
-    queryKey: ["analytics", "moderationActivity", range],
-    queryFn: () => fetchModerationActivity(range),
-    placeholderData: keepPreviousData,
-  });
-
-  const activity = activityQuery.data;
+  const contributors = useMemo(
+    () => (data ? getTopContributors(data.reports) : []),
+    [data],
+  );
+  const activity = useMemo(
+    () =>
+      data
+        ? getModerationActivity(
+            data.reviews,
+            data.reviewerNames,
+            AppStrings.analytics.moderation.unknownReviewer,
+          )
+        : undefined,
+    [data],
+  );
+  const state = toCardQueryState(dataQuery);
 
   return {
-    contributors: (contributorsQuery.data ?? []).map((contributor, index) => ({
+    contributors: contributors.map((contributor, index) => ({
       ...contributor,
       rank: index + 1,
       approvalRate: getContributorApprovalRate(contributor),
     })),
-    contributorsState: toCardQueryState(contributorsQuery),
+    contributorsState: state,
     reviewerShares: activity ? getReviewerShares(activity.reviewers) : [],
-    // Largest first; each reason keeps its own colour whatever its rank.
+    // Largest first, without reasons nobody used; each reason keeps its own
+    // colour whatever its rank.
     declineReasonShares: activity
-      ? toShares(activity.declineReasonCounts, declineReasons).sort(
-          (a, b) => b.count - a.count,
-        )
+      ? toShares(activity.declineReasonCounts, declineReasons)
+          .filter((share) => share.count > 0)
+          .sort((a, b) => b.count - a.count)
       : [],
-    activityState: toCardQueryState(activityQuery),
+    activityState: state,
   };
 }
 

@@ -119,6 +119,7 @@ const reviewTimeText = {
   low: "text-amber-ink",
   medium: "text-deep-blue",
   high: "text-danger",
+  unrated: "text-slate",
 } as const;
 
 function SeverityCard({ viewModel }: CardProps) {

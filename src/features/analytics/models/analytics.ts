@@ -1,35 +1,21 @@
 /**
  * Analytics domain model: the tabs and date ranges of the Analytics screen,
- * the shape of each widget's data, and pure helpers that derive every
- * percentage, share, and level from raw counts.
+ * the raw report and review records loaded for a range, the shape of each
+ * widget's data, and pure helpers that derive every count, percentage,
+ * share, and level from those records.
  *
- * Services only ever return raw counts, so real data drops in without any
- * View or ViewModel changes and the derived figures always agree.
- *
- * TODO(schema): These are the admin site's presentation shapes, not database
- * columns. The mobile app/backend owns the reports schema; map Supabase rows
- * (or aggregate views / RPCs) to these shapes in the analytics Service.
+ * The Service loads a range's reports and reviews once and every card is
+ * worked out here, so figures on different tabs always agree.
  */
 
-import type { Filter } from "../../post-review/models/post";
-
-// TODO(schema): Legacy mock categories and severities, kept here so the
-// mock Analytics screen is unchanged while Post Approvals moves to the
-// real report categories and AI severities. The Supabase analytics work
-// (Phase 3) replaces both with the post model's ReportCategory and
-// PostSeverity.
-export type SpeciesCategory =
-  "mammal" | "bird" | "reptile" | "amphibian" | "insect";
-
-export const speciesCategories: readonly SpeciesCategory[] = [
-  "mammal",
-  "bird",
-  "reptile",
-  "amphibian",
-  "insect",
-];
-
-export type AnalyticsSeverity = "low" | "medium" | "high";
+import {
+  reportCategories,
+  type AiSpeciesMatch,
+  type Filter,
+  type PostSeverity,
+  type PostStatus,
+  type ReportCategory,
+} from "../../post-review/models/post";
 
 // ── Screen state ─────────────────────────────────────────────
 
@@ -99,6 +85,17 @@ export function toAnalyticsParams(view: AnalyticsView): URLSearchParams {
   return params;
 }
 
+const dayMs = 86_400_000;
+
+function startOfUtcDay(date: Date): number {
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+/** Midnight UTC on the range's first day; the range ends at `now`. */
+export function getRangeStart(range: AnalyticsRange, now: Date): Date {
+  return new Date(startOfUtcDay(now) - (rangeDays[range] - 1) * dayMs);
+}
+
 // ── Shared helpers ───────────────────────────────────────────
 
 /** `part` as a percentage of `total`, rounded; 0 when the total is 0. */
@@ -133,6 +130,86 @@ export function toShares<T extends string>(
 export function getBarPercent(count: number, maxCount: number): number {
   if (maxCount <= 0) return 0;
   return Math.min(100, Math.max(0, (count / maxCount) * 100));
+}
+
+/** The middle value (mean of the middle two); null for no values. */
+export function getMedian(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  const upper = sorted[middle] ?? 0;
+  return sorted.length % 2 === 1
+    ? upper
+    : ((sorted[middle - 1] ?? 0) + upper) / 2;
+}
+
+function countBy<T extends string>(
+  keys: readonly T[],
+  values: readonly T[],
+): Record<T, number> {
+  const counts = Object.fromEntries(keys.map((key) => [key, 0])) as Record<
+    T,
+    number
+  >;
+  values.forEach((value) => {
+    counts[value] += 1;
+  });
+  return counts;
+}
+
+// ── Raw records ──────────────────────────────────────────────
+
+/** A report submitted in the selected range. */
+export interface AnalyticsReport {
+  id: string;
+  /** ISO 8601 date-time. */
+  submittedAt: string;
+  category: ReportCategory;
+  status: PostStatus;
+  severity: PostSeverity;
+  isInvasive: boolean;
+  /** The AI's top species; null without a completed analysis. */
+  species: AiSpeciesMatch | null;
+  reporter: {
+    id: string;
+    /** Best available name; empty when none. */
+    fullName: string;
+    username: string | null;
+  };
+  /** First photo in the private `report-images` bucket. */
+  coverPhotoPath: string | null;
+  /** When the report was first approved or declined; null while pending. */
+  firstDecidedAt: string | null;
+}
+
+export type ReviewDecision = "approved" | "declined";
+
+/** A moderation decision made in the selected range. */
+export interface AnalyticsReview {
+  reportId: string;
+  decision: ReviewDecision;
+  /** Set for declines. */
+  declineReason: DeclineReason | null;
+  reviewerId: string;
+  /** ISO 8601 date-time. */
+  decidedAt: string;
+}
+
+/**
+ * Each report's latest decision. A re-reviewed report then counts once,
+ * with the outcome it has now.
+ */
+export function getLatestReviews(
+  reviews: readonly AnalyticsReview[],
+): AnalyticsReview[] {
+  const latest = new Map<string, AnalyticsReview>();
+  reviews.forEach((review) => {
+    const current = latest.get(review.reportId);
+    if (!current || review.decidedAt > current.decidedAt) {
+      latest.set(review.reportId, review);
+    }
+  });
+  return [...latest.values()];
 }
 
 // ── Overview: posts over time ────────────────────────────────
@@ -195,8 +272,6 @@ export function resolveGranularity(
     : defaultGranularity[range];
 }
 
-const dayMs = 86_400_000;
-
 function toIsoDate(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
@@ -211,11 +286,7 @@ export function getTrendPeriodStarts(
   granularity: TrendGranularity,
   end: Date,
 ): string[] {
-  const endDay = Date.UTC(
-    end.getUTCFullYear(),
-    end.getUTCMonth(),
-    end.getUTCDate(),
-  );
+  const endDay = startOfUtcDay(end);
   const startDay = endDay - (rangeDays[range] - 1) * dayMs;
 
   if (granularity === "monthly") {
@@ -242,6 +313,44 @@ export function getTrendPeriodStarts(
   return starts;
 }
 
+/**
+ * Reports submitted, and reports approved or declined (at their latest
+ * decision), per period. Events before the first whole period are left out.
+ */
+export function getPostTrend(
+  reports: readonly AnalyticsReport[],
+  reviews: readonly AnalyticsReview[],
+  range: AnalyticsRange,
+  granularity: TrendGranularity,
+  now: Date,
+): PostTrendPoint[] {
+  const starts = getTrendPeriodStarts(range, granularity, now);
+  const points: PostTrendPoint[] = starts.map((periodStart) => ({
+    periodStart,
+    submitted: 0,
+    approved: 0,
+    declined: 0,
+  }));
+  const pointFor = (isoDateTime: string) => {
+    const day = toIsoDate(new Date(isoDateTime));
+    let index = -1;
+    starts.forEach((start, position) => {
+      if (start <= day) index = position;
+    });
+    return points[index];
+  };
+
+  reports.forEach((report) => {
+    const point = pointFor(report.submittedAt);
+    if (point) point.submitted += 1;
+  });
+  getLatestReviews(reviews).forEach((review) => {
+    const point = pointFor(review.decidedAt);
+    if (point) point[review.decision] += 1;
+  });
+  return points;
+}
+
 // ── Overview: review outcomes ────────────────────────────────
 
 export interface ReviewOutcomeCounts {
@@ -258,6 +367,21 @@ export const reviewOutcomes: readonly ReviewOutcome[] = [
   "declined",
   "awaitingTriage",
 ];
+
+/** Reports submitted in the range, by their current review status. */
+export function getReviewOutcomeCounts(
+  reports: readonly AnalyticsReport[],
+): ReviewOutcomeCounts {
+  const counts = countBy(
+    ["pending", "approved", "declined"],
+    reports.map((report) => report.status),
+  );
+  return {
+    approved: counts.approved,
+    declined: counts.declined,
+    awaitingTriage: counts.pending,
+  };
+}
 
 export interface ReviewOutcomeSummary {
   /** Every post counted, decided or not. */
@@ -297,25 +421,82 @@ export interface SeverityStats {
 export interface SpeciesBreakdown {
   /** Most-reported species, largest first. */
   topSpecies: SpeciesCount[];
-  categoryCounts: Record<SpeciesCategory, number>;
-  severity: Record<AnalyticsSeverity, SeverityStats>;
+  categoryCounts: Record<ReportCategory, number>;
+  severity: Record<PostSeverity, SeverityStats>;
 }
 
-/** Display order of the severity tiers, mildest first. */
-export const severityOrder: readonly AnalyticsSeverity[] = [
+/** How many species the Top Reported Species card lists. */
+export const topSpeciesLimit = 8;
+
+/** Display order of the severity tiers, mildest first, then unrated. */
+export const severityOrder: readonly PostSeverity[] = [
   "low",
   "medium",
   "high",
+  "unrated",
 ];
 
+/**
+ * Top species (the AI's top match, grouped case-insensitively), reports
+ * per category, and each severity tier's size and median review time.
+ */
+export function getSpeciesBreakdown(
+  reports: readonly AnalyticsReport[],
+): SpeciesBreakdown {
+  const species = new Map<string, SpeciesCount>();
+  reports.forEach((report) => {
+    if (!report.species) return;
+    const key = report.species.commonName.toLowerCase();
+    const entry = species.get(key);
+    if (entry) entry.count += 1;
+    else species.set(key, { commonName: report.species.commonName, count: 1 });
+  });
+
+  const severityStats = (tier: PostSeverity): SeverityStats => {
+    const inTier = reports.filter((report) => report.severity === tier);
+    const reviewMinutes = inTier.flatMap((report) =>
+      report.firstDecidedAt
+        ? [
+            (new Date(report.firstDecidedAt).getTime() -
+              new Date(report.submittedAt).getTime()) /
+              60_000,
+          ]
+        : [],
+    );
+    return {
+      count: inTier.length,
+      medianReviewMinutes: getMedian(reviewMinutes),
+    };
+  };
+
+  return {
+    topSpecies: [...species.values()]
+      .sort(
+        (a, b) => b.count - a.count || a.commonName.localeCompare(b.commonName),
+      )
+      .slice(0, topSpeciesLimit),
+    categoryCounts: countBy(
+      reportCategories,
+      reports.map((report) => report.category),
+    ),
+    severity: {
+      low: severityStats("low"),
+      medium: severityStats("medium"),
+      high: severityStats("high"),
+      unrated: severityStats("unrated"),
+    },
+  };
+}
+
 export function getSeverityShares(
-  severity: Record<AnalyticsSeverity, SeverityStats>,
-): Share<AnalyticsSeverity>[] {
+  severity: Record<PostSeverity, SeverityStats>,
+): Share<PostSeverity>[] {
   return toShares(
     {
       low: severity.low.count,
       medium: severity.medium.count,
       high: severity.high.count,
+      unrated: severity.unrated.count,
     },
     severityOrder,
   );
@@ -329,17 +510,55 @@ export function formatReviewTime(minutes: number): string {
 
 // ── Hotspots & invasives ─────────────────────────────────────
 
+/** One grid cell from `admin_sector_stats()`. */
+export interface SectorCell {
+  /** Centre of the cell. */
+  latitude: number;
+  longitude: number;
+  reportCount: number;
+  categoryCounts: Partial<Record<ReportCategory, number>>;
+}
+
 export interface SightingHotspot {
   id: string;
-  /** Conservation sector name, e.g. "Mt. Apo Sector". */
+  /** The cell's centre as text, e.g. "7.05°N, 125.25°E". */
   name: string;
   /**
-   * Coarse sector centroid. Never an individual sighting's coordinates,
+   * Centre of a grid cell. Never an individual sighting's coordinates,
    * so endangered-species locations aren't exposed.
    */
   latitude: number;
   longitude: number;
   sightingCount: number;
+}
+
+export type HotspotCategoryFilter = Filter<ReportCategory>;
+
+/** (7.05, 125.25) → "7.05°N, 125.25°E" */
+export function formatCellName(latitude: number, longitude: number): string {
+  const lat = `${Math.abs(latitude).toFixed(2)}°${latitude < 0 ? "S" : "N"}`;
+  const lng = `${Math.abs(longitude).toFixed(2)}°${longitude < 0 ? "W" : "E"}`;
+  return `${lat}, ${lng}`;
+}
+
+/** Each cell's report count, for every category or just one. */
+export function toSightingHotspots(
+  cells: readonly SectorCell[],
+  category: HotspotCategoryFilter,
+): SightingHotspot[] {
+  return cells.map((cell) => {
+    const name = formatCellName(cell.latitude, cell.longitude);
+    return {
+      id: name,
+      name,
+      latitude: cell.latitude,
+      longitude: cell.longitude,
+      sightingCount:
+        category === "all"
+          ? cell.reportCount
+          : (cell.categoryCounts[category] ?? 0),
+    };
+  });
 }
 
 export type DensityLevel = "low" | "moderate" | "high" | "critical";
@@ -422,19 +641,46 @@ export function placeHotspots(
     }));
 }
 
-export type HotspotCategoryFilter = Filter<SpeciesCategory>;
-
-export type InvasiveThreat = "colony" | "aquatic" | "ecosystem" | "biosecurity";
-
 export interface InvasiveAlert {
   id: string;
-  commonName: string;
+  category: ReportCategory;
+  /** The AI's species; null when it named none. */
+  commonName: string | null;
+  /** Empty when the AI gave none. */
   scientificName: string;
-  locationName: string;
-  /** ISO date the report was submitted ("2026-10-24"). */
-  reportedOn: string;
-  threat: InvasiveThreat;
+  /** ISO 8601 date-time the report was submitted. */
+  reportedAt: string;
+  photoPath: string | null;
+  /** Signed URL; null until signed, or when it can't be. */
   photoUrl: string | null;
+}
+
+/** How many of the newest invasive reports the alerts card lists. */
+export const invasiveAlertLimit = 10;
+
+/**
+ * Reports the AI flagged as possibly invasive: how many in the range, and
+ * the newest few (photos not yet signed).
+ */
+export function getInvasiveAlerts(reports: readonly AnalyticsReport[]): {
+  total: number;
+  alerts: InvasiveAlert[];
+} {
+  const invasive = reports
+    .filter((report) => report.isInvasive)
+    .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
+  return {
+    total: invasive.length,
+    alerts: invasive.slice(0, invasiveAlertLimit).map((report) => ({
+      id: report.id,
+      category: report.category,
+      commonName: report.species?.commonName ?? null,
+      scientificName: report.species?.scientificName ?? "",
+      reportedAt: report.submittedAt,
+      photoPath: report.coverPhotoPath,
+      photoUrl: null,
+    })),
+  };
 }
 
 // ── Contributors & moderation ────────────────────────────────
@@ -442,10 +688,40 @@ export interface InvasiveAlert {
 export interface ContributorStats {
   id: string;
   fullName: string;
-  username: string;
+  username: string | null;
   submissions: number;
   approved: number;
   declined: number;
+}
+
+export const topContributorLimit = 5;
+
+/**
+ * Reporters with the most reports submitted in the range, busiest first;
+ * approved and declined count those reports' current status.
+ */
+export function getTopContributors(
+  reports: readonly AnalyticsReport[],
+): ContributorStats[] {
+  const contributors = new Map<string, ContributorStats>();
+  reports.forEach((report) => {
+    const stats = contributors.get(report.reporter.id) ?? {
+      ...report.reporter,
+      submissions: 0,
+      approved: 0,
+      declined: 0,
+    };
+    stats.submissions += 1;
+    if (report.status === "approved") stats.approved += 1;
+    if (report.status === "declined") stats.declined += 1;
+    contributors.set(report.reporter.id, stats);
+  });
+  return [...contributors.values()]
+    .sort(
+      (a, b) =>
+        b.submissions - a.submissions || a.fullName.localeCompare(b.fullName),
+    )
+    .slice(0, topContributorLimit);
 }
 
 /** Approved as a whole-number share of decided posts. */
@@ -459,6 +735,7 @@ export function getContributorApprovalRate(
 }
 
 export interface ReviewerDecisions {
+  reviewerId: string;
   reviewerName: string;
   decisions: number;
 }
@@ -478,15 +755,62 @@ export const declineReasons: readonly DeclineReason[] = [
   "inaccurateLocation",
 ];
 
+const declineReasonByValue: Record<string, DeclineReason | undefined> = {
+  inaccurate_species: "inaccurateSpecies",
+  low_quality_photo: "lowQualityPhoto",
+  domestic_specimen: "domesticSpecimen",
+  duplicate: "duplicateSighting",
+  inaccurate_gps: "inaccurateLocation",
+};
+
+/** `decline_reason` to its key; null when unset or unknown. */
+export function toDeclineReason(value: string | null): DeclineReason | null {
+  return value ? (declineReasonByValue[value] ?? null) : null;
+}
+
 export interface ModerationActivity {
   reviewers: ReviewerDecisions[];
   declineReasonCounts: Record<DeclineReason, number>;
+}
+
+/**
+ * Decisions per reviewer (every decision counts as work done), and the
+ * reasons behind reports whose latest decision is a decline.
+ */
+export function getModerationActivity(
+  reviews: readonly AnalyticsReview[],
+  reviewerNames: ReadonlyMap<string, string>,
+  unknownReviewerName: string,
+): ModerationActivity {
+  const reviewers = new Map<string, ReviewerDecisions>();
+  reviews.forEach((review) => {
+    const entry = reviewers.get(review.reviewerId) ?? {
+      reviewerId: review.reviewerId,
+      reviewerName: reviewerNames.get(review.reviewerId) ?? unknownReviewerName,
+      decisions: 0,
+    };
+    entry.decisions += 1;
+    reviewers.set(review.reviewerId, entry);
+  });
+  return {
+    reviewers: [...reviewers.values()],
+    declineReasonCounts: countBy(
+      declineReasons,
+      getLatestReviews(reviews).flatMap((review) =>
+        review.decision === "declined" && review.declineReason
+          ? [review.declineReason]
+          : [],
+      ),
+    ),
+  };
 }
 
 /** Reviewers shown by name; the rest fold into "Others". */
 export const namedReviewerLimit = 3;
 
 export interface ReviewerShare {
+  /** Null for the folded "Others" slice. */
+  reviewerId: string | null;
   /** Null for the folded "Others" slice. */
   reviewerName: string | null;
   decisions: number;
@@ -503,18 +827,25 @@ export function getReviewerShares(
   const total = reviewers.reduce((sum, r) => sum + r.decisions, 0);
   const sorted = [...reviewers]
     .filter((reviewer) => reviewer.decisions > 0)
-    .sort((a, b) => b.decisions - a.decisions);
+    .sort(
+      (a, b) =>
+        b.decisions - a.decisions ||
+        a.reviewerName.localeCompare(b.reviewerName),
+    );
   const named = sorted.slice(0, namedReviewerLimit);
   const others = sorted
     .slice(namedReviewerLimit)
     .reduce((sum, r) => sum + r.decisions, 0);
+
   const shares: ReviewerShare[] = named.map((reviewer) => ({
+    reviewerId: reviewer.reviewerId,
     reviewerName: reviewer.reviewerName,
     decisions: reviewer.decisions,
     percent: toPercent(reviewer.decisions, total),
   }));
   if (others > 0) {
     shares.push({
+      reviewerId: null,
       reviewerName: null,
       decisions: others,
       percent: toPercent(others, total),
