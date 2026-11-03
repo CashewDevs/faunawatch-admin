@@ -1,6 +1,6 @@
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
-import type { PostDetail } from "../../models/post";
+import type { ExifLocationCheck, PostDetail } from "../../models/post";
 import type { PostDetailViewModel } from "../../viewmodels/usePostDetailViewModel";
 
 interface PostLocationCardProps {
@@ -8,13 +8,24 @@ interface PostLocationCardProps {
   viewModel: PostDetailViewModel;
 }
 
+const exifBadgeClass: Record<ExifLocationCheck, string> = {
+  verified: "bg-amber-soft text-amber-ink",
+  mismatch: "bg-danger-tint text-danger",
+  noGps: "bg-chip text-slate",
+};
+
 /**
- * Address, EXIF verification, copyable coordinates, and a map preview with
- * the AI's recommended public blur radius.
+ * Whether the photos' EXIF GPS matches the report, copyable coordinates,
+ * and a map placeholder.
  */
 export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
   const strings = AppStrings.posts.detail.location;
   const { location } = post;
+  const exifLabel: Record<ExifLocationCheck, string> = {
+    verified: strings.exifVerified,
+    mismatch: strings.exifMismatch,
+    noGps: strings.exifNoGps,
+  };
 
   return (
     <section
@@ -26,24 +37,21 @@ export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
           <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-avatar">
             <img src={AppAssets.postDetail.iconLocation} alt="" />
           </span>
-          <div className="flex flex-col">
-            <h2
-              id="post-location-heading"
-              className="text-base leading-6 font-bold text-deep-blue"
-            >
-              {strings.heading}
-            </h2>
-            <p className="text-[13px] leading-[18px] text-slate">
-              {location.address}
-            </p>
-          </div>
+          <h2
+            id="post-location-heading"
+            className="text-base leading-6 font-bold text-deep-blue"
+          >
+            {strings.heading}
+          </h2>
         </div>
-        {location.isExifVerified && (
-          <span className="flex items-center gap-1.5 rounded-full bg-amber-soft px-2.5 py-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] text-amber-ink">
+        <span
+          className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] ${exifBadgeClass[location.exifCheck]}`}
+        >
+          {location.exifCheck === "verified" && (
             <img src={AppAssets.postDetail.iconExifVerified} alt="" />
-            {strings.exifVerified}
-          </span>
-        )}
+          )}
+          {exifLabel[location.exifCheck]}
+        </span>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-tint px-3.5 py-2.5">
@@ -71,14 +79,6 @@ export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
       </div>
 
       <div className="relative h-64 overflow-hidden rounded-xl bg-chip shadow-[inset_0_2px_4px_0_rgb(0_0_0/0.05)]">
-        {location.mapPreviewUrl && (
-          <img
-            src={location.mapPreviewUrl}
-            alt={strings.mapAlt}
-            className="size-full object-cover"
-          />
-        )}
-
         <div
           aria-hidden="true"
           className="absolute inset-0 flex items-center justify-center"
@@ -92,16 +92,7 @@ export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
           </span>
         </div>
 
-        <div className="absolute inset-x-3 bottom-3 flex flex-wrap items-center justify-between gap-2">
-          {location.recommendedBufferKm !== null ? (
-            <span className="flex items-center gap-1.5 rounded-lg bg-white/90 px-3 py-1.5 text-[11px] leading-[14px] font-bold tracking-[0.44px] text-teal shadow-md backdrop-blur-[4px]">
-              <img src={AppAssets.postDetail.iconBuffer} alt="" />
-              {location.recommendedBufferKm}
-              {strings.kilometersSuffix} {strings.bufferSuffix}
-            </span>
-          ) : (
-            <span />
-          )}
+        <div className="absolute right-3 bottom-3">
           {/* TODO(map): Opening an external map would send the sighting's
               exact coordinates (possibly of an endangered species) to a
               third party. Decide on a map provider and whether to blur

@@ -4,20 +4,21 @@ import { Route, Routes, useLocation, useParams } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
-import { countPostsByTab, queryPosts } from "../../models/post";
-import { mockPosts } from "../../services/mockPosts";
-import { fetchPostCounts, fetchPosts } from "../../services/postsService";
+import { formatCoordinates } from "../../../../core/utils/formatters";
+import { countPostsByTab, sortPosts } from "../../models/post";
+import { fetchAllPosts, fetchPostCardMedia } from "../../services/postsService";
+import { testPosts, toTestCardData } from "../../../../test/fixtures/posts";
 import { createRouterQueryWrapper } from "../../../../test/routerWrapper";
 import { getReturnPath } from "../../viewmodels/postNavigation";
 import { PostApprovalsScreen } from "./PostApprovalsScreen";
 
 vi.mock("../../services/postsService", () => ({
-  fetchPosts: vi.fn(),
-  fetchPostCounts: vi.fn(),
+  fetchAllPosts: vi.fn(),
+  fetchPostCardMedia: vi.fn(),
 }));
 
 const strings = AppStrings.posts;
-const counts = countPostsByTab(mockPosts);
+const counts = countPostsByTab(testPosts);
 
 function DetailProbe() {
   const { postId } = useParams();
@@ -46,10 +47,10 @@ async function findCards() {
 
 describe("PostApprovalsScreen", () => {
   beforeEach(() => {
-    vi.mocked(fetchPosts).mockImplementation((query) =>
-      Promise.resolve(queryPosts(mockPosts, query)),
+    vi.mocked(fetchAllPosts).mockResolvedValue([...testPosts]);
+    vi.mocked(fetchPostCardMedia).mockImplementation((posts) =>
+      Promise.resolve(posts.map(toTestCardData)),
     );
-    vi.mocked(fetchPostCounts).mockResolvedValue(counts);
   });
 
   it("renders the tab counts and a page of pending posts", async () => {
@@ -63,6 +64,38 @@ describe("PostApprovalsScreen", () => {
     ).toHaveAttribute("aria-pressed", "true");
     expect(screen.getByText(/^Showing/)).toHaveTextContent(
       `Showing 1-12 of ${String(counts.pending)} posts`,
+    );
+  });
+
+  it("titles cards by category and shows the AI match only when rated", async () => {
+    renderScreen("/posts?tab=all");
+    const [newest] = sortPosts(testPosts, "newest");
+    if (!newest?.aiMatch) throw new Error("Newest post needs an AI match");
+    const unrated = testPosts.find((post) => post.aiMatch === null);
+    if (!unrated) throw new Error("No unrated post");
+
+    const [firstCard] = await findCards();
+    if (!firstCard) throw new Error("No cards rendered");
+    expect(
+      within(firstCard).getByRole("link", {
+        name: strings.category[newest.category],
+      }),
+    ).toBeInTheDocument();
+    expect(firstCard).toHaveTextContent(
+      formatCoordinates(newest.latitude, newest.longitude),
+    );
+    expect(firstCard).toHaveTextContent(
+      `${strings.card.aiPrefix} ${newest.aiMatch.commonName}, ${strings.confidence[newest.aiMatch.confidence]}`,
+    );
+    expect(firstCard).toHaveTextContent(`@${newest.reporter.username ?? ""}`);
+
+    const unratedCard = (await findCards()).find((card) =>
+      within(card).queryByText(unrated.description),
+    );
+    if (!unratedCard) throw new Error("Unrated card not on the first page");
+    expect(unratedCard).not.toHaveTextContent(strings.card.aiPrefix);
+    expect(unratedCard).toHaveTextContent(
+      `${strings.severity.unrated} ${strings.severitySuffix}`,
     );
   });
 
@@ -102,6 +135,29 @@ describe("PostApprovalsScreen", () => {
         within(card).getByText(strings.status.declined),
       ).toBeInTheDocument();
     });
+  });
+
+  it("filters by category", async () => {
+    const user = userEvent.setup();
+    renderScreen();
+    await findCards();
+
+    await user.selectOptions(
+      screen.getByRole("combobox", { name: strings.filters.categoryLabel }),
+      "potentially_dangerous_animal",
+    );
+
+    const cards = await findCards();
+    cards.forEach((card) => {
+      expect(
+        within(card).getByRole("link", {
+          name: strings.category.potentially_dangerous_animal,
+        }),
+      ).toBeInTheDocument();
+    });
+    expect(
+      screen.queryByRole("combobox", { name: /region/i }),
+    ).not.toBeInTheDocument();
   });
 
   it("shows the bulk bar while posts are selected", async () => {
@@ -163,7 +219,7 @@ describe("PostApprovalsScreen", () => {
   });
 
   it("shows the error state with a retry button", async () => {
-    vi.mocked(fetchPosts).mockRejectedValueOnce(new Error("network"));
+    vi.mocked(fetchAllPosts).mockRejectedValueOnce(new Error("network"));
     renderScreen();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(strings.error);

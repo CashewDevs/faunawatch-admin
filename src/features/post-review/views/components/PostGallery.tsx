@@ -16,14 +16,18 @@ const arrowButtonClass =
   "absolute top-1/2 flex size-9 -translate-y-1/2 items-center justify-center rounded-full bg-white/80 shadow-lg transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-primary";
 
 /**
- * Main photo with camera settings, flash check, zoom, and arrows, plus a
- * thumbnail strip when there are several photos.
+ * Main photo with its EXIF camera settings and flash, zoom, and arrows,
+ * plus a thumbnail strip when there are several photos.
  */
 export function PostGallery({ post, viewModel }: PostGalleryProps) {
   const strings = AppStrings.posts.detail.gallery;
-  const { photoIndex, photoCount, currentPhotoUrl } = viewModel;
+  const { photoIndex, photoCount, currentPhotoUrl, currentPhotoExif } =
+    viewModel;
   const zoomUrl = currentPhotoUrl ? toSafeLinkUrl(currentPhotoUrl) : undefined;
-  const flash = post.ai.usedArtificialFlash;
+  const flash = currentPhotoExif?.flashFired ?? null;
+  const cameraSettings = currentPhotoExif?.cameraSettings ?? null;
+  const subject =
+    post.aiMatch?.commonName ?? AppStrings.posts.category[post.category];
 
   return (
     <section
@@ -34,17 +38,17 @@ export function PostGallery({ post, viewModel }: PostGalleryProps) {
         {currentPhotoUrl && (
           <img
             src={currentPhotoUrl}
-            alt={`${strings.photo} ${String(photoIndex + 1)} / ${String(photoCount)}: ${post.aiMatch.commonName}`}
+            alt={`${strings.photo} ${String(photoIndex + 1)} / ${String(photoCount)}: ${subject}`}
             className="size-full object-cover"
           />
         )}
         <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-deep-blue/60 via-deep-blue/0 via-50% to-deep-blue/20" />
 
-        {post.fieldNotes.cameraSettings && (
+        {cameraSettings && (
           <span className="absolute top-3 left-3 flex items-center gap-1.5 rounded-md bg-deep-blue/70 px-2.5 py-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] text-white backdrop-blur-[6px]">
             <img src={AppAssets.postDetail.iconCamera} alt="" />
             <span className="sr-only">{strings.cameraSettings}: </span>
-            {post.fieldNotes.cameraSettings}
+            {cameraSettings}
           </span>
         )}
 
@@ -109,10 +113,10 @@ export function PostGallery({ post, viewModel }: PostGalleryProps) {
 
       {photoCount > 1 && (
         <ul className="flex flex-wrap gap-3">
-          {post.photoUrls.map((url, index) => {
+          {post.photos.map((photo, index) => {
             const isCurrent = index === photoIndex;
             return (
-              <li key={`${url}-${String(index)}`}>
+              <li key={photo.path}>
                 <button
                   type="button"
                   aria-label={`${strings.photo} ${String(index + 1)}`}
@@ -126,7 +130,13 @@ export function PostGallery({ post, viewModel }: PostGalleryProps) {
                       : "opacity-75 hover:opacity-100"
                   }`}
                 >
-                  <img src={url} alt="" className="size-full object-cover" />
+                  {photo.url && (
+                    <img
+                      src={photo.url}
+                      alt=""
+                      className="size-full object-cover"
+                    />
+                  )}
                   {isCurrent && (
                     <span className="absolute inset-0 bg-deep-blue/10" />
                   )}

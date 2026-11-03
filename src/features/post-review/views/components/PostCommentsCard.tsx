@@ -98,7 +98,7 @@ export function PostCommentsCard({ post, viewModel }: PostCommentsCardProps) {
             <CommentItem
               key={comment.id}
               comment={comment}
-              scientificName={post.aiMatch.scientificName}
+              scientificName={post.aiMatch?.scientificName ?? ""}
               timeLabel={formatRelativeTime(comment.postedAt, now)}
             />
           ))}
@@ -157,9 +157,11 @@ function CommentItem({ comment, scientificName, timeLabel }: CommentItemProps) {
               <span className="text-base leading-6 font-bold text-deep-blue">
                 {comment.authorName}
               </span>
-              <span className="text-[13px] leading-[18px] text-slate">
-                @{comment.username}
-              </span>
+              {comment.username && (
+                <span className="text-[13px] leading-[18px] text-slate">
+                  @{comment.username}
+                </span>
+              )}
               <span
                 aria-hidden="true"
                 className="size-1 rounded-full bg-border"
@@ -183,9 +185,9 @@ function CommentItem({ comment, scientificName, timeLabel }: CommentItemProps) {
           </div>
         </div>
 
-        {/* TODO(moderation): Deleting comments and resolving flags need a
-            comments table, a flag/report model, and admin RLS policies.
-            Visual only until then. */}
+        {/* TODO(moderation): Removing comments and resolving flags write
+            to comment_moderation. Visual only until the team switches
+            moderation on. */}
         {comment.isFlagged ? (
           <div className="flex shrink-0 items-center gap-1">
             <button

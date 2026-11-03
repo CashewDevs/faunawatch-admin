@@ -1,4 +1,4 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import { useDebouncedValue } from "../../../core/hooks/useDebouncedValue";
@@ -8,19 +8,22 @@ import {
   getPageRange,
 } from "../../../core/utils/pagination";
 import {
+  countPostsByTab,
   defaultPostListQuery,
   hasActiveFilters,
   parsePostListParams,
+  queryPosts,
   toPostListParams,
+  type PostCardData,
   type Filter,
   type PostListQuery,
-  type PostRegion,
   type PostSeverity,
   type PostSortOption,
   type PostTab,
-  type SpeciesCategory,
+  type ReportCategory,
 } from "../models/post";
-import { fetchPostCounts, fetchPosts } from "../services/postsService";
+import { fetchPostCardMedia } from "../services/postsService";
+import { allPostsQuery, signedUrlStaleTimeMs } from "./postQueries";
 
 export const searchDebounceMs = 300;
 
@@ -39,19 +42,31 @@ export function usePostApprovalsViewModel() {
     () => new Set(),
   );
 
-  const postsQuery = useQuery({
-    queryKey: ["posts", "list", query],
-    queryFn: () => fetchPosts(query),
-    placeholderData: keepPreviousData,
-  });
+  const postsQuery = useQuery(allPostsQuery);
+  const allPosts = postsQuery.data;
+  const result = allPosts ? queryPosts(allPosts, query) : undefined;
+  const pagePosts = result?.posts ?? [];
+  const pageIds = pagePosts.map((post) => post.id);
 
-  const countsQuery = useQuery({
-    queryKey: ["posts", "counts"],
-    queryFn: fetchPostCounts,
+  // Only this page's cover photos and avatars are signed.
+  const mediaQuery = useQuery({
+    queryKey: ["posts", "media", pageIds],
+    queryFn: () => fetchPostCardMedia(pagePosts),
+    enabled: pagePosts.length > 0,
+    staleTime: signedUrlStaleTimeMs,
   });
-
-  const posts = postsQuery.data?.posts ?? [];
-  const totalCount = postsQuery.data?.totalCount ?? 0;
+  const mediaById = new Map(
+    (mediaQuery.data ?? []).map((card) => [card.id, card]),
+  );
+  const posts: PostCardData[] = pagePosts.map(
+    (post) =>
+      mediaById.get(post.id) ?? {
+        ...post,
+        coverUrl: null,
+        reporterAvatar: null,
+      },
+  );
+  const totalCount = result?.totalCount ?? 0;
   const pageCount = getPageCount(totalCount, urlQuery.pageSize);
 
   /** Merges a change into the URL; every change but paging returns to page 1. */
@@ -93,9 +108,9 @@ export function usePostApprovalsViewModel() {
     });
   };
 
-  // TODO(moderation): Approve/decline need the reports moderation status
-  // column, an admin-only RLS policy (or Edge Function), and a decision on
-  // whether declining notifies the reporter. Visual only until then.
+  // TODO(moderation): Approve/decline go through admin_decide_report (and
+  // need a decision on whether declining notifies the reporter). Visual
+  // only until the team switches moderation on.
   const approvePost: (postId: string) => void = () => undefined;
   const declinePost: (postId: string) => void = () => undefined;
   const approveSelected = () => undefined;
@@ -106,7 +121,6 @@ export function usePostApprovalsViewModel() {
     searchInput: urlQuery.search,
     severity: urlQuery.severity,
     category: urlQuery.category,
-    region: urlQuery.region,
     sort: urlQuery.sort,
     page: urlQuery.page,
     pageSize: urlQuery.pageSize,
@@ -115,7 +129,7 @@ export function usePostApprovalsViewModel() {
     pageCount,
     pageItems: getPageItems(urlQuery.page, pageCount),
     pageRange: getPageRange(urlQuery.page, urlQuery.pageSize, totalCount),
-    counts: countsQuery.data,
+    counts: allPosts ? countPostsByTab(allPosts) : undefined,
     isLoading: postsQuery.isPending,
     isError: postsQuery.isError,
     retry: () => void postsQuery.refetch(),
@@ -131,11 +145,8 @@ export function usePostApprovalsViewModel() {
     changeSeverity: (value: Filter<PostSeverity>) => {
       update({ severity: value });
     },
-    changeCategory: (value: Filter<SpeciesCategory>) => {
+    changeCategory: (value: Filter<ReportCategory>) => {
       update({ category: value });
-    },
-    changeRegion: (value: Filter<PostRegion>) => {
-      update({ region: value });
     },
     changeSort: (value: PostSortOption) => {
       update({ sort: value });
@@ -144,7 +155,6 @@ export function usePostApprovalsViewModel() {
       update({
         severity: defaultPostListQuery.severity,
         category: defaultPostListQuery.category,
-        region: defaultPostListQuery.region,
       });
     },
     changePageSize: (value: number) => {

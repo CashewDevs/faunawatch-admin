@@ -1,11 +1,9 @@
 import type {
-  PostSeverity,
-  SpeciesCategory,
-} from "../../../post-review/models/post";
-import type {
+  AnalyticsSeverity,
   DeclineReason,
   DensityLevel,
   ReviewOutcome,
+  SpeciesCategory,
   TrendSeries,
 } from "../../models/analytics";
 
@@ -48,7 +46,7 @@ export const categoryFill: Record<SpeciesCategory, string> = {
   insect: "fill-navy",
 };
 
-export const severityFill: Record<PostSeverity, string> = {
+export const severityFill: Record<AnalyticsSeverity, string> = {
   low: "fill-amber-ink",
   medium: "fill-cyan",
   high: "fill-danger",

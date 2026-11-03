@@ -1,14 +1,20 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
+import { AppStrings } from "../../../core/constants/appStrings";
 import { formatCoordinates } from "../../../core/utils/formatters";
+import { allUsersQuery } from "../../users/viewmodels/userQueries";
 import {
   getApprovalRate,
+  getObserverDevices,
+  getQueuePosition,
+  humanizeKey,
   sortComments,
   type CommentSort,
 } from "../models/post";
-import { fetchPost, fetchPostQueuePosition } from "../services/postsService";
+import { fetchPost } from "../services/postsService";
 import { getReturnPath } from "./postNavigation";
+import { allPostsQuery, signedUrlStaleTimeMs } from "./postQueries";
 
 /** Comments shown before "Show more comments". */
 export const initialCommentCount = 3;
@@ -33,13 +39,16 @@ export function usePostDetailViewModel(postId: string) {
   const postQuery = useQuery({
     queryKey: ["posts", "detail", postId],
     queryFn: () => fetchPost(postId),
+    staleTime: signedUrlStaleTimeMs,
   });
 
-  const queueQuery = useQuery({
-    queryKey: ["posts", "queue", postId],
-    queryFn: () => fetchPostQueuePosition(postId),
-    placeholderData: keepPreviousData,
-  });
+  // The same list the Post Approvals screen loads, usually already cached.
+  const allPosts = useQuery(allPostsQuery).data;
+
+  // TODO(schema): Email confirmation lives in auth.users, which only
+  // admin_list_users() exposes, so this loads every user for one flag. A
+  // single-user admin RPC would be cheaper.
+  const users = useQuery(allUsersQuery).data;
 
   useEffect(() => {
     if (!isCopied) return;
@@ -52,7 +61,8 @@ export function usePostDetailViewModel(postId: string) {
   }, [isCopied]);
 
   const post = postQuery.data ?? undefined;
-  const photoCount = post?.photoUrls.length ?? 0;
+  const photoCount = post?.photos.length ?? 0;
+  const currentPhoto = post?.photos[photoIndex];
   const sortedComments = post ? sortComments(post.comments, commentSort) : [];
   const visibleComments = showAllComments
     ? sortedComments
@@ -60,6 +70,7 @@ export function usePostDetailViewModel(postId: string) {
   const coordinatesLabel = post
     ? formatCoordinates(post.location.latitude, post.location.longitude)
     : "";
+  const checkLabels = AppStrings.posts.detail.ai.checks;
 
   const showPhoto = (index: number) => {
     if (photoCount === 0) return;
@@ -75,10 +86,9 @@ export function usePostDetailViewModel(postId: string) {
     }
   };
 
-  // TODO(moderation): Approve, decline, and request changes need the
-  // reports moderation status column, an admin-only RLS policy (or Edge
-  // Function), and a place to store the admin note with the decision.
-  // Visual only until then.
+  // TODO(moderation): Approve, decline, and request changes go through
+  // admin_decide_report, with the admin note stored in admin_notes.
+  // Visual only until the team switches moderation on.
   const approve = () => undefined;
   const decline = () => undefined;
   const requestChanges = () => undefined;
@@ -89,13 +99,17 @@ export function usePostDetailViewModel(postId: string) {
     isError: postQuery.isError,
     isNotFound: postQuery.isSuccess && postQuery.data === null,
     retry: () => void postQuery.refetch(),
-    queue: queueQuery.data ?? undefined,
+    queue: allPosts
+      ? (getQueuePosition(allPosts, postId) ?? undefined)
+      : undefined,
     returnPath: getReturnPath(location.state),
     /** Router state to forward on Prev / Next so Back still works. */
     linkState: location.state as unknown,
     photoIndex,
     photoCount,
-    currentPhotoUrl: post?.photoUrls[photoIndex],
+    currentPhotoUrl: currentPhoto?.url ?? undefined,
+    /** EXIF of the photo being shown, for the camera and flash overlays. */
+    currentPhotoExif: currentPhoto?.exif ?? null,
     showPhoto,
     showPreviousPhoto: () => {
       showPhoto(photoIndex - 1);
@@ -103,6 +117,12 @@ export function usePostDetailViewModel(postId: string) {
     showNextPhoto: () => {
       showPhoto(photoIndex + 1);
     },
+    observerDevice: post ? getObserverDevices(post.photos) : null,
+    aiChecklist:
+      post?.ai?.checklist.map((item) => ({
+        ...item,
+        label: checkLabels[item.key] ?? humanizeKey(item.key),
+      })) ?? [],
     commentSort,
     changeCommentSort: setCommentSort,
     comments: visibleComments,
@@ -115,6 +135,8 @@ export function usePostDetailViewModel(postId: string) {
     coordinatesLabel,
     copyCoordinates: () => void copyCoordinates(),
     isCopied,
+    isReporterVerified:
+      users?.find((user) => user.id === post?.reporter.id)?.isVerified ?? false,
     approvalRate: post ? getApprovalRate(post.reporterStats) : 0,
     adminNote,
     changeAdminNote: setAdminNote,

@@ -11,11 +11,25 @@
  * (or aggregate views / RPCs) to these shapes in the analytics Service.
  */
 
-import type {
-  Filter,
-  PostSeverity,
-  SpeciesCategory,
-} from "../../post-review/models/post";
+import type { Filter } from "../../post-review/models/post";
+
+// TODO(schema): Legacy mock categories and severities, kept here so the
+// mock Analytics screen is unchanged while Post Approvals moves to the
+// real report categories and AI severities. The Supabase analytics work
+// (Phase 3) replaces both with the post model's ReportCategory and
+// PostSeverity.
+export type SpeciesCategory =
+  "mammal" | "bird" | "reptile" | "amphibian" | "insect";
+
+export const speciesCategories: readonly SpeciesCategory[] = [
+  "mammal",
+  "bird",
+  "reptile",
+  "amphibian",
+  "insect",
+];
+
+export type AnalyticsSeverity = "low" | "medium" | "high";
 
 // ── Screen state ─────────────────────────────────────────────
 
@@ -284,15 +298,19 @@ export interface SpeciesBreakdown {
   /** Most-reported species, largest first. */
   topSpecies: SpeciesCount[];
   categoryCounts: Record<SpeciesCategory, number>;
-  severity: Record<PostSeverity, SeverityStats>;
+  severity: Record<AnalyticsSeverity, SeverityStats>;
 }
 
 /** Display order of the severity tiers, mildest first. */
-export const severityOrder: readonly PostSeverity[] = ["low", "medium", "high"];
+export const severityOrder: readonly AnalyticsSeverity[] = [
+  "low",
+  "medium",
+  "high",
+];
 
 export function getSeverityShares(
-  severity: Record<PostSeverity, SeverityStats>,
-): Share<PostSeverity>[] {
+  severity: Record<AnalyticsSeverity, SeverityStats>,
+): Share<AnalyticsSeverity>[] {
   return toShares(
     {
       low: severity.low.count,

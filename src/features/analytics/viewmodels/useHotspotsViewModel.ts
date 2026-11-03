@@ -1,8 +1,8 @@
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { speciesCategories } from "../../post-review/models/post";
 import {
   placeHotspots,
+  speciesCategories,
   type AnalyticsRange,
   type HotspotCategoryFilter,
 } from "../models/analytics";

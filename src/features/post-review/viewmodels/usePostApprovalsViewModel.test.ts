@@ -1,18 +1,19 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { countPostsByTab, queryPosts } from "../models/post";
-import { mockPosts } from "../services/mockPosts";
-import { fetchPostCounts, fetchPosts } from "../services/postsService";
+import { countPostsByTab } from "../models/post";
+import { fetchAllPosts, fetchPostCardMedia } from "../services/postsService";
+import { testPosts, toTestCardData } from "../../../test/fixtures/posts";
 import { createRouterQueryWrapper } from "../../../test/routerWrapper";
 import { usePostApprovalsViewModel } from "./usePostApprovalsViewModel";
 
 vi.mock("../services/postsService", () => ({
-  fetchPosts: vi.fn(),
-  fetchPostCounts: vi.fn(),
+  fetchAllPosts: vi.fn(),
+  fetchPostCardMedia: vi.fn(),
 }));
 
-const fetchPostsMock = vi.mocked(fetchPosts);
-const counts = countPostsByTab(mockPosts);
+const fetchAllPostsMock = vi.mocked(fetchAllPosts);
+const fetchPostCardMediaMock = vi.mocked(fetchPostCardMedia);
+const counts = countPostsByTab(testPosts);
 
 function renderViewModel(initialEntry = "/posts") {
   return renderHook(() => usePostApprovalsViewModel(), {
@@ -30,11 +31,12 @@ async function renderLoaded(initialEntry?: string) {
 
 describe("usePostApprovalsViewModel", () => {
   beforeEach(() => {
-    fetchPostsMock.mockReset();
-    fetchPostsMock.mockImplementation((query) =>
-      Promise.resolve(queryPosts(mockPosts, query)),
+    fetchAllPostsMock.mockReset();
+    fetchAllPostsMock.mockResolvedValue([...testPosts]);
+    fetchPostCardMediaMock.mockReset();
+    fetchPostCardMediaMock.mockImplementation((posts) =>
+      Promise.resolve(posts.map(toTestCardData)),
     );
-    vi.mocked(fetchPostCounts).mockResolvedValue(counts);
   });
 
   it("loads the first page of pending posts and the tab counts", async () => {
@@ -44,6 +46,7 @@ describe("usePostApprovalsViewModel", () => {
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
     });
+
     expect(result.current.tab).toBe("pending");
     expect(result.current.posts).toHaveLength(12);
     expect(result.current.posts.every((p) => p.status === "pending")).toBe(
@@ -51,21 +54,54 @@ describe("usePostApprovalsViewModel", () => {
     );
     expect(result.current.totalCount).toBe(counts.pending);
     expect(result.current.pageCount).toBe(2);
+    expect(result.current.counts).toEqual(counts);
+    expect(fetchAllPostsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("signs only the current page's covers", async () => {
+    const { result } = await renderLoaded();
 
     await waitFor(() => {
-      expect(result.current.counts).toEqual(counts);
+      expect(result.current.posts[0]?.coverUrl).toMatch(/^https:\/\/signed/);
     });
+    expect(fetchPostCardMediaMock).toHaveBeenCalledTimes(1);
+    expect(fetchPostCardMediaMock.mock.calls[0]?.[0]).toHaveLength(12);
+
+    act(() => {
+      result.current.goToPage(2);
+    });
+    await waitFor(() => {
+      expect(fetchPostCardMediaMock).toHaveBeenCalledTimes(2);
+    });
+    expect(fetchPostCardMediaMock.mock.calls[1]?.[0]).toHaveLength(
+      counts.pending - 12,
+    );
+    // Paging doesn't reload the list.
+    expect(fetchAllPostsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows cards without images until they are signed", async () => {
+    fetchPostCardMediaMock.mockReturnValue(new Promise(() => undefined));
+    const { result } = await renderLoaded();
+
+    expect(result.current.posts).toHaveLength(12);
+    expect(result.current.posts[0]?.coverUrl).toBeNull();
+    expect(result.current.posts[0]?.reporterAvatar).toBeNull();
   });
 
   it("reads the tab, filters, and page from the URL", async () => {
-    const { result } = await renderLoaded("/posts?tab=approved&severity=high");
+    const { result } = await renderLoaded(
+      "/posts?tab=all&severity=unrated&category=animal_in_need",
+    );
 
-    expect(result.current.tab).toBe("approved");
-    expect(result.current.severity).toBe("high");
+    expect(result.current.tab).toBe("all");
+    expect(result.current.severity).toBe("unrated");
+    expect(result.current.category).toBe("animal_in_need");
     expect(result.current.hasActiveFilters).toBe(true);
+    expect(result.current.posts.length).toBeGreaterThan(0);
     expect(
       result.current.posts.every(
-        (p) => p.status === "approved" && p.severity === "high",
+        (p) => p.severity === "unrated" && p.category === "animal_in_need",
       ),
     ).toBe(true);
   });
@@ -82,54 +118,52 @@ describe("usePostApprovalsViewModel", () => {
     act(() => {
       result.current.changeTab("declined");
     });
+
     expect(result.current.tab).toBe("declined");
     expect(result.current.page).toBe(1);
     expect(result.current.selectedCount).toBe(0);
-    await waitFor(() => {
-      expect(result.current.totalCount).toBe(counts.declined);
-    });
+    expect(result.current.totalCount).toBe(counts.declined);
   });
 
-  it("filters, then clears filters", async () => {
+  it("filters by category, then clears filters", async () => {
     const { result } = await renderLoaded();
 
     act(() => {
-      result.current.changeCategory("bird");
+      result.current.changeCategory("possible_invasive_species");
     });
-    await waitFor(() => {
-      expect(result.current.posts.every((p) => p.category === "bird")).toBe(
-        true,
-      );
-    });
+
+    expect(
+      result.current.posts.every(
+        (p) => p.category === "possible_invasive_species",
+      ),
+    ).toBe(true);
     expect(result.current.hasActiveFilters).toBe(true);
 
     act(() => {
       result.current.clearFilters();
     });
+
     expect(result.current.category).toBe("all");
     expect(result.current.hasActiveFilters).toBe(false);
   });
 
-  it("debounces search before querying", async () => {
+  it("debounces search before filtering", async () => {
     const { result } = await renderLoaded();
 
     act(() => {
-      result.current.changeSearch("tarsier");
+      result.current.changeSearch("eagle");
     });
-    expect(result.current.searchInput).toBe("tarsier");
+    expect(result.current.searchInput).toBe("eagle");
+    expect(result.current.totalCount).toBe(counts.pending);
 
     await waitFor(() => {
-      expect(fetchPostsMock).toHaveBeenLastCalledWith(
-        expect.objectContaining({ search: "tarsier", page: 1 }),
-      );
+      expect(result.current.totalCount).toBeLessThan(counts.pending);
     });
-    await waitFor(() => {
-      expect(
-        result.current.posts.every((p) =>
-          p.aiMatch.commonName.includes("Tarsier"),
-        ),
-      ).toBe(true);
-    });
+    expect(
+      result.current.posts.every(
+        (p) => p.aiMatch?.commonName === "Philippine Eagle",
+      ),
+    ).toBe(true);
   });
 
   it("keeps page navigation within bounds", async () => {
@@ -139,6 +173,7 @@ describe("usePostApprovalsViewModel", () => {
       result.current.goToPage(99);
     });
     expect(result.current.page).toBe(2);
+
     act(() => {
       result.current.goToPage(0);
     });
@@ -153,6 +188,7 @@ describe("usePostApprovalsViewModel", () => {
       result.current.toggleSelection(firstId);
     });
     expect(result.current.selectedIds.has(firstId)).toBe(true);
+
     act(() => {
       result.current.toggleSelection(firstId);
     });
@@ -174,15 +210,17 @@ describe("usePostApprovalsViewModel", () => {
   });
 
   it("exposes the error state and retries", async () => {
-    fetchPostsMock.mockRejectedValueOnce(new Error("network"));
+    fetchAllPostsMock.mockRejectedValueOnce(new Error("network"));
     const { result } = renderViewModel();
 
     await waitFor(() => {
       expect(result.current.isError).toBe(true);
     });
+
     act(() => {
       result.current.retry();
     });
+
     await waitFor(() => {
       expect(result.current.isError).toBe(false);
     });
