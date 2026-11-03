@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   formatCellName,
   formatReviewTime,
+  formerReviewerId,
   getInvasiveAlerts,
   getLatestReviews,
   getMedian,
@@ -475,18 +476,26 @@ describe("getModerationActivity", () => {
           declineReason: "duplicateSighting",
         }),
         makeReview({ reportId: "c", reviewerId: "ghost" }),
+        // Both made by admins whose accounts were deleted.
+        makeReview({ reportId: "d", reviewerId: null }),
+        makeReview({ reportId: "e", reviewerId: null }),
       ],
       new Map([
         ["admin-1", "Ana Admin"],
         ["admin-2", "Ben Admin"],
       ]),
-      "Unknown reviewer",
+      { unknown: "Unknown reviewer", former: "Former admin" },
     );
 
     expect(activity.reviewers).toEqual([
       { reviewerId: "admin-1", reviewerName: "Ana Admin", decisions: 2 },
       { reviewerId: "admin-2", reviewerName: "Ben Admin", decisions: 1 },
       { reviewerId: "ghost", reviewerName: "Unknown reviewer", decisions: 1 },
+      {
+        reviewerId: formerReviewerId,
+        reviewerName: "Former admin",
+        decisions: 2,
+      },
     ]);
     expect(activity.declineReasonCounts).toEqual({
       inaccurateSpecies: 0,

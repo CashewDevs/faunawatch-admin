@@ -439,6 +439,8 @@ export const AppStrings = {
       reviewerBarLabel: "Share of decisions by reviewer",
       otherReviewers: "Others",
       unknownReviewer: "Unknown reviewer",
+      /** Decisions by admins whose accounts were deleted. */
+      formerReviewer: "Former admin",
       declineReasons: "Most Common Decline Reasons",
       reasons: {
         inaccurateSpecies: "Inaccurate Species ID",
