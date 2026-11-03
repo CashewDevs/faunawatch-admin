@@ -41,7 +41,10 @@ not own the data model; the app and backend define it.
   (SIL OFL; keep `OFL.txt` alongside the font files).
 - Charts: Recharts (analytics only). The Analytics screen is lazy-loaded
   (`React.lazy` in `src/app/App.tsx`), so Recharts ships in its own chunk;
-  don't import it, or the Analytics screen, from other features.
+  don't import it, or the Analytics screen, from other features. It is
+  wrapped in `ScreenErrorBoundary`, so a chunk that fails to download
+  (network drop, or an old tab after a deploy) shows a Reload button
+  instead of a blank app.
   `vite.config.ts` also splits React, Supabase and TanStack Query into
   vendor chunks.
 - Testing: Vitest + React Testing Library
@@ -233,6 +236,8 @@ directory. Do not create large generic folders with unrelated code.
 - TypeScript strict mode. No `any` (use `unknown` and narrow). No non-null
   assertions without a justification comment.
 - Function components and hooks only. Prefer composition over inheritance.
+  One exception: `src/core/components/ScreenErrorBoundary.tsx` is a class
+  component because React has no hook for error boundaries.
 - Name files consistently: components `PascalCase.tsx`, hooks and utilities
   `camelCase.ts`, ViewModels `use<Name>ViewModel.ts`.
 - Do not introduce a new state management library, UI framework, or
