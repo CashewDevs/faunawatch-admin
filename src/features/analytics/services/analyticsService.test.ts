@@ -181,6 +181,40 @@ describe("fetchAnalyticsData", () => {
     expect(data.reviewerNames).toEqual(new Map([["admin-1", "Ana Admin"]]));
   });
 
+  it("keeps decisions by deleted admins without looking them up", async () => {
+    const queries = mockTables({
+      reports: { data: [reportRow], error: null },
+      report_reviews: {
+        data: [reviewRow, { ...reviewRow, decided_by: null }],
+        error: null,
+      },
+      profiles: { data: [], error: null },
+    });
+
+    const data = await fetchAnalyticsData("7d");
+
+    expect(queries.profiles?.in).toHaveBeenCalledWith("id", ["admin-1"]);
+    expect(data.reviews.map((review) => review.reviewerId)).toEqual([
+      "admin-1",
+      null,
+    ]);
+  });
+
+  it("skips the profile lookup when every reviewer was deleted", async () => {
+    mockTables({
+      reports: { data: [reportRow], error: null },
+      report_reviews: {
+        data: [{ ...reviewRow, decided_by: null }],
+        error: null,
+      },
+    });
+
+    const data = await fetchAnalyticsData("7d");
+
+    expect(from).not.toHaveBeenCalledWith("profiles");
+    expect(data.reviews).toHaveLength(1);
+  });
+
   it("skips the profile lookup without reviews", async () => {
     mockTables({
       reports: {

@@ -28,11 +28,10 @@ export function useModerationViewModel(range: AnalyticsRange) {
   const activity = useMemo(
     () =>
       data
-        ? getModerationActivity(
-            data.reviews,
-            data.reviewerNames,
-            AppStrings.analytics.moderation.unknownReviewer,
-          )
+        ? getModerationActivity(data.reviews, data.reviewerNames, {
+            unknown: AppStrings.analytics.moderation.unknownReviewer,
+            former: AppStrings.analytics.moderation.formerReviewer,
+          })
         : undefined,
     [data],
   );

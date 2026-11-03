@@ -60,7 +60,8 @@ interface ReviewRow {
   report_id: string;
   decision: string;
   decline_reason: string | null;
-  decided_by: string;
+  /** Null once the deciding admin's account is deleted (on delete set null). */
+  decided_by: string | null;
   decided_at: string;
 }
 
@@ -186,12 +187,19 @@ async function fetchReviews(start: Date): Promise<AnalyticsReview[]> {
 
 /**
  * Reviewer names. `decided_by` references auth.users, so profiles (which
- * share its ids) are looked up separately rather than embedded.
+ * share its ids) are looked up separately rather than embedded. Deleted
+ * reviewers have no id to look up.
  */
 async function fetchReviewerNames(
   reviews: readonly AnalyticsReview[],
 ): Promise<Map<string, string>> {
-  const ids = [...new Set(reviews.map((review) => review.reviewerId))];
+  const ids = [
+    ...new Set(
+      reviews.flatMap((review) =>
+        review.reviewerId === null ? [] : [review.reviewerId],
+      ),
+    ),
+  ];
   const names = new Map<string, string>();
   if (ids.length === 0) return names;
 

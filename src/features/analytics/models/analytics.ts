@@ -190,7 +190,8 @@ export interface AnalyticsReview {
   decision: ReviewDecision;
   /** Set for declines. */
   declineReason: DeclineReason | null;
-  reviewerId: string;
+  /** Null when the reviewing admin's account has since been deleted. */
+  reviewerId: string | null;
   /** ISO 8601 date-time. */
   decidedAt: string;
 }
@@ -774,23 +775,40 @@ export interface ModerationActivity {
 }
 
 /**
+ * Groups decisions made by admins whose accounts were deleted. Real
+ * reviewer ids are UUIDs, so this can't clash with one.
+ */
+export const formerReviewerId = "former-reviewer";
+
+export interface ReviewerFallbackNames {
+  /** A reviewer with no name on their profile. */
+  unknown: string;
+  /** A reviewer whose account was deleted. */
+  former: string;
+}
+
+/**
  * Decisions per reviewer (every decision counts as work done), and the
  * reasons behind reports whose latest decision is a decline.
  */
 export function getModerationActivity(
   reviews: readonly AnalyticsReview[],
   reviewerNames: ReadonlyMap<string, string>,
-  unknownReviewerName: string,
+  fallbackNames: ReviewerFallbackNames,
 ): ModerationActivity {
   const reviewers = new Map<string, ReviewerDecisions>();
-  reviews.forEach((review) => {
-    const entry = reviewers.get(review.reviewerId) ?? {
-      reviewerId: review.reviewerId,
-      reviewerName: reviewerNames.get(review.reviewerId) ?? unknownReviewerName,
+  reviews.forEach(({ reviewerId }) => {
+    const id = reviewerId ?? formerReviewerId;
+    const entry = reviewers.get(id) ?? {
+      reviewerId: id,
+      reviewerName:
+        reviewerId === null
+          ? fallbackNames.former
+          : (reviewerNames.get(reviewerId) ?? fallbackNames.unknown),
       decisions: 0,
     };
     entry.decisions += 1;
-    reviewers.set(review.reviewerId, entry);
+    reviewers.set(id, entry);
   });
   return {
     reviewers: [...reviewers.values()],
