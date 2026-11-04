@@ -1,6 +1,9 @@
 import { AuthApiError, AuthRetryableFetchError } from "@supabase/supabase-js";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { setSessionPersistence } from "../../../core/services/authStorage";
+import {
+  hasStoredSession,
+  setSessionPersistence,
+} from "../../../core/services/authStorage";
 import { AuthFailure } from "../models/authSession";
 import {
   fetchAdminProfile,
@@ -28,6 +31,7 @@ vi.mock("../../../core/services/supabaseClient", () => ({
 }));
 
 vi.mock("../../../core/services/authStorage", () => ({
+  hasStoredSession: vi.fn(),
   setSessionPersistence: vi.fn(),
 }));
 
@@ -250,9 +254,11 @@ describe("onSessionChange", () => {
     const callback = vi.fn();
 
     const stop = onSessionChange(callback);
+    vi.mocked(hasStoredSession).mockReturnValue(true);
     listener("INITIAL_SESSION", {
       user: { id: "user-1", email: "admin@example.org" },
     });
+    vi.mocked(hasStoredSession).mockReturnValue(false);
     listener("SIGNED_OUT", null);
     stop();
 
@@ -270,6 +276,7 @@ describe("onSessionChange", () => {
     const callback = vi.fn();
     const session = { user: { id: "user-1", email: "admin@example.org" } };
 
+    vi.mocked(hasStoredSession).mockReturnValue(true);
     onSessionChange(callback);
     listener("SIGNED_IN", session);
     listener("INITIAL_SESSION", session);
@@ -278,6 +285,79 @@ describe("onSessionChange", () => {
     expect(callback).toHaveBeenNthCalledWith(1, user, "restored");
     expect(callback).toHaveBeenNthCalledWith(2, user, "restored");
     expect(callback).toHaveBeenNthCalledWith(3, user, "changed");
+  });
+});
+
+describe("onSessionChange with other tabs", () => {
+  const session = { user: { id: "user-1", email: "admin@example.org" } };
+
+  function listen() {
+    let listener: (event: string, session: unknown) => void = () => undefined;
+    auth.onAuthStateChange.mockImplementation((callback) => {
+      listener = callback as typeof listener;
+      return { data: { subscription: { unsubscribe: vi.fn() } } };
+    });
+    const callback = vi.fn();
+    onSessionChange(callback);
+    return {
+      callback,
+      emit: (event: string, value: unknown) => {
+        listener(event, value);
+      },
+    };
+  }
+
+  it.each([
+    "SIGNED_IN",
+    "PASSWORD_RECOVERY",
+    "TOKEN_REFRESHED",
+    "USER_UPDATED",
+  ])("ignores %s for a session only another tab holds", (event) => {
+    vi.mocked(hasStoredSession).mockReturnValue(false);
+    const { callback, emit } = listen();
+
+    emit(event, session);
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("ignores another tab signing out while this tab still has its session", () => {
+    vi.mocked(hasStoredSession).mockReturnValue(true);
+    const { callback, emit } = listen();
+
+    emit("SIGNED_OUT", null);
+
+    expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("reports a remembered session signed out in another tab", () => {
+    vi.mocked(hasStoredSession).mockReturnValue(false);
+    const { callback, emit } = listen();
+
+    emit("SIGNED_OUT", null);
+
+    expect(callback).toHaveBeenCalledWith(null, "restored");
+  });
+
+  it("doesn't count an ignored event as the first one", () => {
+    vi.mocked(hasStoredSession).mockReturnValue(false);
+    const { callback, emit } = listen();
+
+    emit("SIGNED_IN", session);
+    emit("INITIAL_SESSION", null);
+
+    expect(callback).toHaveBeenCalledOnce();
+    expect(callback).toHaveBeenCalledWith(null, "restored");
+  });
+
+  it("always reports the startup event, so the site can't wait forever", () => {
+    // A stored session that couldn't be restored, e.g. while offline.
+    vi.mocked(hasStoredSession).mockReturnValue(true);
+    const { callback, emit } = listen();
+
+    emit("INITIAL_SESSION", null);
+
+    expect(callback).toHaveBeenCalledWith(null, "restored");
   });
 });
 

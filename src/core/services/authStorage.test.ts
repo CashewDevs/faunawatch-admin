@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import {
   authStorage,
   clearSessionPersistence,
+  hasStoredSession,
   setSessionPersistence,
 } from "./authStorage";
 
@@ -97,5 +98,36 @@ describe("clearSessionPersistence", () => {
 
     expect(window.localStorage.getItem(key)).toBe("refreshed");
     expect(window.sessionStorage.getItem(key)).toBeNull();
+  });
+});
+
+describe("hasStoredSession", () => {
+  it("is false with nothing stored", () => {
+    expect(hasStoredSession()).toBe(false);
+  });
+
+  it.each([
+    ["remembered for every tab", true],
+    ["kept for this tab", false],
+  ])("finds a session %s", async (_name, remember) => {
+    setSessionPersistence(remember);
+    await authStorage.setItem(key, "session");
+
+    expect(hasStoredSession()).toBe(true);
+  });
+
+  it("doesn't count a reset link's saved secret as a session", async () => {
+    setSessionPersistence(true);
+    await authStorage.setItem(verifierKey, "secret");
+
+    expect(hasStoredSession()).toBe(false);
+  });
+
+  it("doesn't count a session that has been removed", async () => {
+    setSessionPersistence(false);
+    await authStorage.setItem(key, "session");
+    await authStorage.removeItem(key);
+
+    expect(hasStoredSession()).toBe(false);
   });
 });

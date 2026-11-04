@@ -226,6 +226,9 @@ directory. Do not create large generic folders with unrelated code.
   That route sits outside the route guards. The Redirect URLs allow list
   must include it with a wildcard, e.g.
   `http://localhost:5173/reset-password**`.
+- A session without "Remember me" lives in one tab, but supabase-js tells every
+  tab about it. `onSessionChange` ignores events about a session this tab doesn't
+  hold, so another tab can't fail the admin check and sign the real one out.
 - The login-form cooldown (`loginCooldown.ts`, kept in localStorage) is
   usability only. Brute-force protection is server-side: Supabase Auth rate
   limits (Authentication → Rate Limits).

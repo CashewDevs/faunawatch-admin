@@ -52,6 +52,16 @@ function currentTarget(key: string): StorageTarget {
   return window.sessionStorage.getItem(key) !== null ? "session" : "local";
 }
 
+/**
+ * Whether this tab can reach a session: one kept for this tab alone, or one
+ * remembered for every tab.
+ */
+export function hasStoredSession(): boolean {
+  return [window.sessionStorage, window.localStorage].some((storage) =>
+    Object.keys(storage).some((key) => key.endsWith("-auth-token")),
+  );
+}
+
 export const authStorage: SupportedStorage = {
   getItem(key) {
     return (
