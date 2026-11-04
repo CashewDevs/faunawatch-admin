@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from "vitest";
-import { authStorage, setSessionPersistence } from "./authStorage";
+import {
+  authStorage,
+  clearSessionPersistence,
+  setSessionPersistence,
+} from "./authStorage";
 
 const key = "sb-test-auth-token";
 const verifierKey = "sb-test-auth-token-code-verifier";
@@ -77,6 +81,21 @@ describe("authStorage", () => {
     await authStorage.removeItem(key);
 
     expect(window.localStorage.getItem(key)).toBeNull();
+    expect(window.sessionStorage.getItem(key)).toBeNull();
+  });
+});
+
+describe("clearSessionPersistence", () => {
+  it("leaves a remembered session in localStorage on its next refresh", async () => {
+    setSessionPersistence(true);
+    await authStorage.setItem(key, "session");
+
+    // A reset link was tried in this tab and turned out to be expired.
+    setSessionPersistence(false);
+    clearSessionPersistence();
+    await authStorage.setItem(key, "refreshed");
+
+    expect(window.localStorage.getItem(key)).toBe("refreshed");
     expect(window.sessionStorage.getItem(key)).toBeNull();
   });
 });

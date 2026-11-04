@@ -212,6 +212,13 @@ directory. Do not create large generic folders with unrelated code.
 - Supabase's Redirect URLs allow list must include each site's login URL
   with a wildcard, e.g. `http://localhost:5173/login**`, because supabase-js
   appends `?sb_flow_id=…` to `redirectTo`.
+- Password reset: the email template lives in the `faunawatch` repo
+  (`supabase/templates/recovery.html`, with a hosted copy in the dashboard).
+  Its link puts the token after the `#`, so it never reaches a server, and
+  `/reset-password` only uses it (`verifyOtp`) when the admin presses Save.
+  That route sits outside the route guards. The Redirect URLs allow list
+  must include it with a wildcard, e.g.
+  `http://localhost:5173/reset-password**`.
 - The login-form cooldown (`loginCooldown.ts`, kept in localStorage) is
   usability only. Brute-force protection is server-side: Supabase Auth rate
   limits (Authentication → Rate Limits).

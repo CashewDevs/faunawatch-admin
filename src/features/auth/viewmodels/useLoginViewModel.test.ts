@@ -4,6 +4,7 @@ import { AppStrings } from "../../../core/constants/appStrings";
 import { AppRoutes } from "../../../core/constants/appRoutes";
 import { createRouterQueryWrapper } from "../../../test/routerWrapper";
 import { AuthFailure, type AuthErrorKind } from "../models/authSession";
+import { passwordUpdatedState } from "../models/passwordReset";
 import {
   fetchAdminProfile,
   signIn,
@@ -494,5 +495,29 @@ describe("useLoginViewModel cooldown", () => {
     });
 
     expect(result.current.isSubmitDisabled).toBe(true);
+  });
+});
+
+describe("useLoginViewModel after a password reset", () => {
+  it("confirms the password was updated", () => {
+    const { result } = renderLogin(passwordUpdatedState);
+
+    expect(result.current.notice).toBe(AppStrings.login.passwordUpdated);
+  });
+
+  it("shows no confirmation otherwise", () => {
+    const { result } = renderLogin();
+
+    expect(result.current.notice).toBeUndefined();
+  });
+
+  it("removes the confirmation once the admin starts typing", () => {
+    const { result } = renderLogin(passwordUpdatedState);
+
+    act(() => {
+      result.current.changeEmail("a");
+    });
+
+    expect(result.current.notice).toBeUndefined();
   });
 });

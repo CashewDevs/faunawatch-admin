@@ -10,6 +10,7 @@ import {
   type LoginValidationErrors,
   type PasswordError,
 } from "../models/loginCredentials";
+import { readPasswordUpdated } from "../models/passwordReset";
 import { isSafeReturnPath, readReturnTo } from "../models/returnPath";
 import { signIn, signInWithGoogle, signOut } from "../services/authService";
 import { clearReturnPath, saveReturnPath } from "../services/returnPathStorage";
@@ -60,6 +61,7 @@ export function useLoginViewModel() {
   const [signInError, setSignInError] = useState<AuthErrorKind | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
+  const [isNoticeDismissed, setIsNoticeDismissed] = useState(false);
   const isBusy = isSubmitting || isRedirecting;
 
   // Back from Google can restore this page from the browser's cache with
@@ -76,6 +78,7 @@ export function useLoginViewModel() {
 
   const clearSignInError = () => {
     setSignInError(null);
+    setIsNoticeDismissed(true);
     clearRejection();
   };
 
@@ -170,6 +173,11 @@ export function useLoginViewModel() {
       ? AppStrings.login.errors.cooldown
       : shownError
         ? signInErrorMessages[shownError]
+        : undefined,
+    /** Confirms a password reset that just finished. */
+    notice:
+      !isNoticeDismissed && readPasswordUpdated(location.state)
+        ? AppStrings.login.passwordUpdated
         : undefined,
     changeEmail,
     changePassword,

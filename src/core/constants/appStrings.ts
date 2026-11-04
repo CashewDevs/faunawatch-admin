@@ -490,5 +490,37 @@ export const AppStrings = {
         "Google sign-in was cancelled or didn't complete. Please try again.",
       unknown: "Something went wrong. Please try again.",
     },
+    passwordUpdated:
+      "Your password was updated. Log in with your new password.",
+  },
+  resetPassword: {
+    heading: "Set a new password",
+    subheading:
+      "This also changes the password for this account in the FaunaWatch mobile app.",
+    passwordLabel: "New password",
+    passwordPlaceholder: "At least 8 characters",
+    confirmationLabel: "Confirm new password",
+    confirmationPlaceholder: "Re-enter your password",
+    submit: "Save password",
+    submitting: "Saving…",
+    blockedHeading: "This link can't be used",
+    backToLogin: "Back to log in",
+    blocked: {
+      linkInvalid:
+        "Reset links last 1 hour and work once, and only the newest one works. Request a new link from the login page.",
+      notAdmin:
+        "This account doesn't have admin access, so its password can't be reset here. The password hasn't changed.",
+      checkFailed:
+        "We couldn't confirm this account, so its password hasn't changed. Request a new link from the login page and try again.",
+    },
+    errors: {
+      passwordRequired: "New password is required.",
+      passwordTooShort: "Password must be at least 8 characters.",
+      passwordTooLong: "Password is too long. Use 72 characters or fewer.",
+      passwordWeak: "This password is too weak. Try a longer one.",
+      passwordSame: "Use a different password from your current one.",
+      confirmationRequired: "Confirm your new password.",
+      confirmationMismatch: "Passwords don't match.",
+    },
   },
 } as const;
