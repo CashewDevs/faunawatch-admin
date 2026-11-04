@@ -33,6 +33,14 @@ export function setSessionPersistence(remember: boolean): void {
   window.sessionStorage.setItem(preferenceKey, remember ? "local" : "session");
 }
 
+/**
+ * Forgets the choice, so an existing session stays where it already is.
+ * Call when a sign-in that chose a place for its session didn't happen.
+ */
+export function clearSessionPersistence(): void {
+  window.sessionStorage.removeItem(preferenceKey);
+}
+
 /** The choice made at sign-in in this tab, or null if none was made. */
 function preferredTarget(): StorageTarget | null {
   const value = window.sessionStorage.getItem(preferenceKey);

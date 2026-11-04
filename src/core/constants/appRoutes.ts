@@ -3,6 +3,7 @@
  */
 export const AppRoutes = {
   login: "/login",
+  resetPassword: "/reset-password",
   users: "/users",
   posts: "/posts",
   postDetail: "/posts/:postId",

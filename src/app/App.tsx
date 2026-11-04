@@ -9,6 +9,7 @@ import { AppStrings } from "../core/constants/appStrings";
 import { useAssetPreloader } from "../core/hooks/useAssetPreloader";
 import { AuthSessionProvider } from "../features/auth/viewmodels/AuthSessionProvider";
 import { LoginScreen } from "../features/auth/views/screens/LoginScreen";
+import { ResetPasswordScreen } from "../features/auth/views/screens/ResetPasswordScreen";
 import { PostApprovalsScreen } from "../features/post-review/views/screens/PostApprovalsScreen";
 import { PostDetailScreen } from "../features/post-review/views/screens/PostDetailScreen";
 import { UserManagementScreen } from "../features/users/views/screens/UserManagementScreen";
@@ -43,6 +44,12 @@ function App() {
             <Route element={<RedirectIfSignedIn />}>
               <Route path={AppRoutes.login} element={<LoginScreen />} />
             </Route>
+            {/* Outside the guards: using the link signs the visitor in, and
+                the form must stay up until the new password is saved. */}
+            <Route
+              path={AppRoutes.resetPassword}
+              element={<ResetPasswordScreen />}
+            />
             <Route element={<RequireAdmin />}>
               <Route element={<AdminLayout />}>
                 <Route
