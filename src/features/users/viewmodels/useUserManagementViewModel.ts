@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useDebouncedValue } from "../../../core/hooks/useDebouncedValue";
 import {
   getPageCount,
@@ -8,12 +8,10 @@ import {
 } from "../../../core/utils/pagination";
 import {
   defaultUserListQuery,
-  queryUsers,
-  type UserListQuery,
   type UserSortOption,
   type UserStatusFilter,
 } from "../models/adminUser";
-import { allUsersQuery, useUserStats } from "./userQueries";
+import { userPageQuery, useUserStats } from "./userQueries";
 
 export const searchDebounceMs = 300;
 
@@ -31,14 +29,22 @@ export function useUserManagementViewModel() {
   const [pageSize, setPageSize] = useState(defaultUserListQuery.pageSize);
   const search = useDebouncedValue(searchInput, searchDebounceMs);
 
-  const usersQuery = useQuery(allUsersQuery);
+  const usersQuery = useQuery(
+    userPageQuery({ search: search.trim(), status, sort, page, pageSize }),
+  );
   const { stats, activeRate } = useUserStats();
 
-  const allUsers = usersQuery.data;
-  const userPage = useMemo(() => {
-    const query: UserListQuery = { search, status, sort, page, pageSize };
-    return allUsers ? queryUsers(allUsers, query) : undefined;
-  }, [allUsers, search, status, sort, page, pageSize]);
+  const userPage = usersQuery.data;
+
+  // Users can be removed while a later page is open. A page past the end
+  // has no rows and no total, so start again from the first page.
+  if (
+    page > 1 &&
+    userPage?.users.length === 0 &&
+    !usersQuery.isPlaceholderData
+  ) {
+    setPage(1);
+  }
 
   const totalCount = userPage?.totalCount ?? 0;
   const pageCount = getPageCount(totalCount, pageSize);

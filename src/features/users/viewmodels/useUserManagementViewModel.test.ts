@@ -1,16 +1,26 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { testUsers } from "../../../test/fixtures/users";
+import {
+  testUserCounts,
+  testUserPage,
+  testUsers,
+} from "../../../test/fixtures/users";
 import { createQueryWrapper } from "../../../test/queryWrapper";
-import { fetchSanctionsSince, fetchUsers } from "../services/usersService";
+import {
+  fetchSanctionsSince,
+  fetchUserCounts,
+  fetchUserPage,
+} from "../services/usersService";
 import { useUserManagementViewModel } from "./useUserManagementViewModel";
 
 vi.mock("../services/usersService", () => ({
-  fetchUsers: vi.fn(),
+  fetchUserPage: vi.fn(),
+  fetchUserCounts: vi.fn(),
   fetchSanctionsSince: vi.fn(),
 }));
 
-const fetchUsersMock = vi.mocked(fetchUsers);
+const fetchUserPageMock = vi.mocked(fetchUserPage);
+const fetchUserCountsMock = vi.mocked(fetchUserCounts);
 const fetchSanctionsMock = vi.mocked(fetchSanctionsSince);
 
 function renderViewModel() {
@@ -19,11 +29,23 @@ function renderViewModel() {
   });
 }
 
+async function renderLoaded() {
+  const rendered = renderViewModel();
+  await waitFor(() => {
+    expect(rendered.result.current.isLoading).toBe(false);
+  });
+  return rendered;
+}
+
 describe("useUserManagementViewModel", () => {
   beforeEach(() => {
-    fetchUsersMock.mockReset();
+    fetchUserPageMock.mockReset();
+    fetchUserCountsMock.mockReset();
     fetchSanctionsMock.mockReset();
-    fetchUsersMock.mockResolvedValue([...testUsers]);
+    fetchUserPageMock.mockImplementation((query) =>
+      Promise.resolve(testUserPage(query)),
+    );
+    fetchUserCountsMock.mockResolvedValue(testUserCounts);
     fetchSanctionsMock.mockResolvedValue([
       { userId: "test-user-4", createdAt: new Date().toISOString() },
     ]);
@@ -35,6 +57,13 @@ describe("useUserManagementViewModel", () => {
 
     await waitFor(() => {
       expect(result.current.isLoading).toBe(false);
+    });
+    expect(fetchUserPageMock).toHaveBeenCalledWith({
+      search: "",
+      status: "all",
+      sort: "newest",
+      page: 1,
+      pageSize: 10,
     });
     expect(result.current.users).toHaveLength(10);
     expect(result.current.totalCount).toBe(testUsers.length);
@@ -51,14 +80,46 @@ describe("useUserManagementViewModel", () => {
       suspendedThisMonth: 1,
     });
     expect(result.current.activeRate).toBe(91.7);
-    expect(fetchUsersMock).toHaveBeenCalledTimes(1);
   });
 
-  it("filters by status and resets to page 1", async () => {
-    const { result } = renderViewModel();
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
+  it("loads each page from the server", async () => {
+    const { result } = await renderLoaded();
+
+    act(() => {
+      result.current.goToPage(3);
     });
+
+    expect(result.current.page).toBe(3);
+    await waitFor(() => {
+      expect(result.current.users).toHaveLength(4);
+    });
+    expect(fetchUserPageMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ page: 3, pageSize: 10 }),
+    );
+    expect(result.current.pageRange).toEqual({ from: 21, to: 24 });
+  });
+
+  it("keeps the current page visible while the next one loads", async () => {
+    const { result } = await renderLoaded();
+    const firstPage = result.current.users;
+    fetchUserPageMock.mockReturnValue(new Promise(() => undefined));
+
+    act(() => {
+      result.current.goToPage(2);
+    });
+
+    await waitFor(() => {
+      expect(fetchUserPageMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ page: 2 }),
+      );
+    });
+    expect(result.current.isLoading).toBe(false);
+    expect(result.current.users).toEqual(firstPage);
+    expect(result.current.totalCount).toBe(testUsers.length);
+  });
+
+  it("filters by status on the server and resets to page 1", async () => {
+    const { result } = await renderLoaded();
 
     act(() => {
       result.current.goToPage(2);
@@ -69,37 +130,58 @@ describe("useUserManagementViewModel", () => {
 
     expect(result.current.page).toBe(1);
     await waitFor(() => {
-      expect(result.current.users.every((u) => u.status === "suspended")).toBe(
-        true,
-      );
+      expect(result.current.totalCount).toBe(2);
     });
-    expect(result.current.totalCount).toBe(2);
+    expect(result.current.users.every((u) => u.status === "suspended")).toBe(
+      true,
+    );
+    expect(fetchUserPageMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({ status: "suspended", page: 1 }),
+    );
   });
 
-  it("debounces search before querying", async () => {
-    const { result } = renderViewModel();
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+  it("sorts on the server and resets to page 1", async () => {
+    const { result } = await renderLoaded();
 
     act(() => {
-      result.current.changeSearch("klip");
+      result.current.goToPage(2);
     });
-    expect(result.current.searchInput).toBe("klip");
+    act(() => {
+      result.current.changeSort("name");
+    });
+
+    expect(result.current.page).toBe(1);
+    await waitFor(() => {
+      expect(fetchUserPageMock).toHaveBeenLastCalledWith(
+        expect.objectContaining({ sort: "name", page: 1 }),
+      );
+    });
+  });
+
+  it("debounces search and sends the trimmed term once", async () => {
+    const { result } = await renderLoaded();
+    fetchUserPageMock.mockClear();
+
+    act(() => {
+      result.current.changeSearch("k");
+    });
+    act(() => {
+      result.current.changeSearch(" klip ");
+    });
+    expect(result.current.searchInput).toBe(" klip ");
 
     await waitFor(() => {
       expect(result.current.totalCount).toBe(1);
     });
     expect(result.current.users[0]?.username).toBe("klip123");
-    // Filtering happens on the loaded list; nothing is refetched.
-    expect(fetchUsersMock).toHaveBeenCalledTimes(1);
+    expect(fetchUserPageMock).toHaveBeenCalledTimes(1);
+    expect(fetchUserPageMock).toHaveBeenCalledWith(
+      expect.objectContaining({ search: "klip", page: 1 }),
+    );
   });
 
   it("keeps page navigation within bounds", async () => {
-    const { result } = renderViewModel();
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    const { result } = await renderLoaded();
 
     act(() => {
       result.current.goToPage(99);
@@ -112,10 +194,7 @@ describe("useUserManagementViewModel", () => {
   });
 
   it("changing page size returns to page 1", async () => {
-    const { result } = renderViewModel();
-    await waitFor(() => {
-      expect(result.current.isLoading).toBe(false);
-    });
+    const { result } = await renderLoaded();
 
     act(() => {
       result.current.goToPage(2);
@@ -130,8 +209,28 @@ describe("useUserManagementViewModel", () => {
     expect(result.current.pageCount).toBe(1);
   });
 
+  it("returns to page 1 when the open page no longer exists", async () => {
+    const { result } = await renderLoaded();
+    // Users were removed elsewhere: the last page is now past the end.
+    fetchUserPageMock.mockImplementation((query) =>
+      Promise.resolve(testUserPage(query, testUsers.slice(0, 15))),
+    );
+
+    act(() => {
+      result.current.goToPage(3);
+    });
+
+    await waitFor(() => {
+      expect(result.current.page).toBe(1);
+    });
+    await waitFor(() => {
+      expect(result.current.totalCount).toBe(15);
+    });
+    expect(result.current.users).toHaveLength(10);
+  });
+
   it("exposes the error state and retries", async () => {
-    fetchUsersMock.mockRejectedValueOnce(new Error("network"));
+    fetchUserPageMock.mockRejectedValueOnce(new Error("network"));
     const { result } = renderViewModel();
 
     await waitFor(() => {
@@ -143,6 +242,8 @@ describe("useUserManagementViewModel", () => {
     await waitFor(() => {
       expect(result.current.isError).toBe(false);
     });
-    expect(result.current.users).toHaveLength(10);
+    await waitFor(() => {
+      expect(result.current.users).toHaveLength(10);
+    });
   });
 });

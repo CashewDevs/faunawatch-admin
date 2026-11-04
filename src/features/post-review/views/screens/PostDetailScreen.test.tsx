@@ -4,10 +4,9 @@ import { Route, Routes } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
-import { fetchUsers } from "../../../users/services/usersService";
+import { fetchIsUserVerified } from "../../../users/services/usersService";
 import { fetchAllPosts, fetchPost } from "../../services/postsService";
 import { testPosts, testTarsier } from "../../../../test/fixtures/posts";
-import { testUsers } from "../../../../test/fixtures/users";
 import { createRouterQueryWrapper } from "../../../../test/routerWrapper";
 import { PostDetailScreen } from "./PostDetailScreen";
 
@@ -17,7 +16,8 @@ vi.mock("../../services/postsService", () => ({
 }));
 
 vi.mock("../../../users/services/usersService", () => ({
-  fetchUsers: vi.fn(),
+  fetchIsUserVerified: vi.fn(),
+  fetchUserCounts: vi.fn(),
 }));
 
 const posts = AppStrings.posts;
@@ -44,7 +44,7 @@ describe("PostDetailScreen", () => {
       Promise.resolve(id === testTarsier.id ? testTarsier : null),
     );
     vi.mocked(fetchAllPosts).mockResolvedValue([...testPosts]);
-    vi.mocked(fetchUsers).mockResolvedValue([...testUsers]);
+    vi.mocked(fetchIsUserVerified).mockResolvedValue(false);
   });
 
   it("renders the post, reporter, and AI analysis", async () => {

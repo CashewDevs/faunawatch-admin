@@ -1,14 +1,14 @@
 /**
  * User Management domain model: the user shape the admin site displays,
- * list query options, and pure list and statistics helpers.
+ * list query options, and pure statistics helpers.
  *
- * The users Service maps `admin_list_users()` rows to this shape. Admin
+ * The users Service maps `admin_list_users()` rows to this shape; the RPC
+ * does the searching, filtering, sorting and paging. Admin
  * rights are not shown or edited here: they live in `admin_users`, which
  * only the Supabase dashboard changes.
  */
 
 import type { AvatarImage } from "../../../core/utils/avatars";
-import { paginate } from "../../../core/utils/pagination";
 
 export type UserStatus = "active" | "suspended";
 
@@ -53,6 +53,17 @@ export interface UserPage {
   totalCount: number;
 }
 
+/** Totals and sign-ups, from `admin_user_stats()`. */
+export interface UserCounts {
+  totalUsers: number;
+  activeUsers: number;
+  suspendedUsers: number;
+  newThisMonth: number;
+  newLastMonth: number;
+  /** Sign-ups in the last 7 days. */
+  newThisWeek: number;
+}
+
 export interface UserStats {
   totalUsers: number;
   activeUsers: number;
@@ -77,61 +88,11 @@ export const defaultUserListQuery: UserListQuery = {
   pageSize: userPageSizeOptions[0],
 };
 
-/** Case-insensitive match on name, username, or email. */
-export function matchesUserSearch(user: AdminUser, search: string): boolean {
-  const term = search.trim().toLowerCase();
-  if (!term) return true;
-  return [user.fullName, user.username, user.email].some((field) =>
-    field?.toLowerCase().includes(term),
-  );
-}
-
-function byJoinDate(a: AdminUser, b: AdminUser): number {
-  return Date.parse(a.joinedAt) - Date.parse(b.joinedAt);
-}
-
-export function sortUsers(
-  users: readonly AdminUser[],
-  sort: UserSortOption,
-): AdminUser[] {
-  const sorted = [...users];
-  switch (sort) {
-    case "newest":
-      return sorted.sort((a, b) => byJoinDate(b, a));
-    case "oldest":
-      return sorted.sort(byJoinDate);
-    case "name":
-      return sorted.sort((a, b) => a.fullName.localeCompare(b.fullName));
-  }
-}
-
-/** Applies search, status filter, sort, and pagination to a user list. */
-export function queryUsers(
-  users: readonly AdminUser[],
-  query: UserListQuery,
-): UserPage {
-  const matching = users.filter(
-    (user) =>
-      (query.status === "all" || user.status === query.status) &&
-      matchesUserSearch(user, query.search),
-  );
-  return {
-    users: paginate(
-      sortUsers(matching, query.sort),
-      query.page,
-      query.pageSize,
-    ),
-    totalCount: matching.length,
-  };
-}
-
 /** Active users as a percentage of all users, to one decimal place. */
 export function getActiveRate(stats: UserStats): number {
   if (stats.totalUsers === 0) return 0;
   return Math.round((stats.activeUsers / stats.totalUsers) * 1000) / 10;
 }
-
-const dayMs = 86_400_000;
 
 /** Start of the UTC calendar month `offset` months from `now`'s month. */
 function monthStart(now: Date, offset = 0): number {
@@ -145,24 +106,15 @@ export function getStatsMonthStart(now: Date): Date {
 
 /**
  * Summary figures for the stat cards. Months are UTC calendar months (as
- * the table's dates are); "this week" is the last 7 days.
+ * the table's dates are).
  */
 export function getUserStats(
-  users: readonly AdminUser[],
+  counts: UserCounts,
   sanctions: readonly SanctionRecord[],
   now: Date,
 ): UserStats {
+  const { newLastMonth, ...totals } = counts;
   const thisMonth = monthStart(now);
-  const lastMonth = monthStart(now, -1);
-  const weekAgo = now.getTime() - 7 * dayMs;
-  const joined = users.map((user) => Date.parse(user.joinedAt));
-  const newThisMonth = joined.filter((time) => time >= thisMonth).length;
-  const newLastMonth = joined.filter(
-    (time) => time >= lastMonth && time < thisMonth,
-  ).length;
-  const suspendedUsers = users.filter(
-    (user) => user.status === "suspended",
-  ).length;
   const suspendedThisMonth = new Set(
     sanctions
       .filter((sanction) => Date.parse(sanction.createdAt) >= thisMonth)
@@ -170,15 +122,13 @@ export function getUserStats(
   ).size;
 
   return {
-    totalUsers: users.length,
-    activeUsers: users.length - suspendedUsers,
-    suspendedUsers,
-    newThisMonth,
-    newThisWeek: joined.filter((time) => time >= weekAgo).length,
+    ...totals,
     suspendedThisMonth,
     newUsersChangePercent:
       newLastMonth === 0
         ? null
-        : Math.round(((newThisMonth - newLastMonth) / newLastMonth) * 100),
+        : Math.round(
+            ((counts.newThisMonth - newLastMonth) / newLastMonth) * 100,
+          ),
   };
 }

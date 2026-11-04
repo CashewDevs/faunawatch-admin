@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { AppStrings } from "../../../core/constants/appStrings";
 import { formatCoordinates } from "../../../core/utils/formatters";
-import { allUsersQuery } from "../../users/viewmodels/userQueries";
+import { userVerifiedQuery } from "../../users/viewmodels/userQueries";
 import {
   getApprovalRate,
   getObserverDevices,
@@ -45,11 +45,6 @@ export function usePostDetailViewModel(postId: string) {
   // The same list the Post Approvals screen loads, usually already cached.
   const allPosts = useQuery(allPostsQuery).data;
 
-  // TODO(schema): Email confirmation lives in auth.users, which only
-  // admin_list_users() exposes, so this loads every user for one flag. A
-  // single-user admin RPC would be cheaper.
-  const users = useQuery(allUsersQuery).data;
-
   useEffect(() => {
     if (!isCopied) return;
     const timer = setTimeout(() => {
@@ -61,6 +56,9 @@ export function usePostDetailViewModel(postId: string) {
   }, [isCopied]);
 
   const post = postQuery.data ?? undefined;
+  const isReporterVerified = useQuery(
+    userVerifiedQuery(post?.reporter.id),
+  ).data;
   const photoCount = post?.photos.length ?? 0;
   const currentPhoto = post?.photos[photoIndex];
   const sortedComments = post ? sortComments(post.comments, commentSort) : [];
@@ -135,8 +133,7 @@ export function usePostDetailViewModel(postId: string) {
     coordinatesLabel,
     copyCoordinates: () => void copyCoordinates(),
     isCopied,
-    isReporterVerified:
-      users?.find((user) => user.id === post?.reporter.id)?.isVerified ?? false,
+    isReporterVerified: isReporterVerified ?? false,
     approvalRate: post ? getApprovalRate(post.reporterStats) : 0,
     adminNote,
     changeAdminNote: setAdminNote,

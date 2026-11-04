@@ -7,10 +7,10 @@ import {
   testAnalyticsData,
   testSectorCells,
 } from "../../../../test/fixtures/analytics";
-import { testUsers } from "../../../../test/fixtures/users";
+import { testUserCounts } from "../../../../test/fixtures/users";
 import {
   fetchSanctionsSince,
-  fetchUsers,
+  fetchUserCounts,
 } from "../../../users/services/usersService";
 import {
   fetchAnalyticsData,
@@ -26,7 +26,7 @@ vi.mock("../../services/analyticsService", () => ({
 }));
 
 vi.mock("../../../users/services/usersService", () => ({
-  fetchUsers: vi.fn(),
+  fetchUserCounts: vi.fn(),
   fetchSanctionsSince: vi.fn(),
 }));
 
@@ -40,7 +40,7 @@ function renderScreen(initialEntry = "/analytics") {
 
 describe("AnalyticsScreen", () => {
   beforeEach(() => {
-    vi.mocked(fetchUsers).mockResolvedValue([...testUsers]);
+    vi.mocked(fetchUserCounts).mockResolvedValue(testUserCounts);
     vi.mocked(fetchSanctionsSince).mockResolvedValue([]);
     vi.mocked(fetchAnalyticsData).mockImplementation((range) =>
       Promise.resolve(testAnalyticsData(range)),
