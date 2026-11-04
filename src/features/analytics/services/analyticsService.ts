@@ -22,9 +22,9 @@ import {
 
 /**
  * Analytics Service: loads one date range's reports and moderation
- * decisions (every card is derived from these in the Model), the
- * reviewers' names, the per-cell counts behind the hotspot panel, and
- * signed photos for invasive alerts.
+ * decisions with their reviewers' names (every card is derived from these
+ * in the Model), the per-cell counts behind the hotspot panel, and signed
+ * photos for invasive alerts.
  *
  * TODO(schema): Rows are aggregated in the browser (prototype scale; a
  * range of more than 1,000 reports would hit PostgREST's default row
@@ -34,17 +34,19 @@ import {
  * faunawatch repo's migrations.
  */
 
+interface ProfileNameRow {
+  full_name: string | null;
+  username: string | null;
+  display_name: string | null;
+}
+
 interface ReportRow {
   id: string;
   category: string;
   status: string;
   created_at: string;
   user_id: string;
-  reporter: {
-    full_name: string | null;
-    username: string | null;
-    display_name: string | null;
-  };
+  reporter: ProfileNameRow;
   report_images: { storage_path: string; created_at: string }[];
   ai_analyses: {
     status: string;
@@ -63,13 +65,7 @@ interface ReviewRow {
   /** Null once the deciding admin's account is deleted (on delete set null). */
   decided_by: string | null;
   decided_at: string;
-}
-
-interface ProfileNameRow {
-  id: string;
-  full_name: string | null;
-  username: string | null;
-  display_name: string | null;
+  reviewer: ProfileNameRow | null;
 }
 
 /** A row from `admin_sector_stats()`. */
@@ -98,7 +94,12 @@ const reportColumns = [
   "report_reviews(decided_at)",
 ].join(", ");
 
-function displayName(row: Omit<ProfileNameRow, "id">): string {
+const reviewColumns = [
+  "report_id, decision, decline_reason, decided_by, decided_at",
+  "reviewer:profiles!decided_by(full_name, username, display_name)",
+].join(", ");
+
+function displayName(row: ProfileNameRow): string {
   return (
     getProfileDisplayName(
       {
@@ -172,48 +173,27 @@ async function fetchReports(start: Date): Promise<AnalyticsReport[]> {
   return data.map(toAnalyticsReport);
 }
 
-async function fetchReviews(start: Date): Promise<AnalyticsReview[]> {
+async function fetchReviews(
+  start: Date,
+): Promise<Pick<AnalyticsData, "reviews" | "reviewerNames">> {
   const { data, error } = await supabase
     .from("report_reviews")
-    .select("report_id, decision, decline_reason, decided_by, decided_at")
+    .select(reviewColumns)
     .gte("decided_at", start.toISOString())
     .overrideTypes<ReviewRow[], { merge: false }>();
   if (error) throw new Error("Couldn't load reviews.", { cause: error });
-  return data.flatMap((row) => {
-    const review = toAnalyticsReview(row);
-    return review ? [review] : [];
-  });
-}
 
-/**
- * Reviewer names. `decided_by` references auth.users, so profiles (which
- * share its ids) are looked up separately rather than embedded. Deleted
- * reviewers have no id to look up.
- */
-async function fetchReviewerNames(
-  reviews: readonly AnalyticsReview[],
-): Promise<Map<string, string>> {
-  const ids = [
-    ...new Set(
-      reviews.flatMap((review) =>
-        review.reviewerId === null ? [] : [review.reviewerId],
-      ),
-    ),
-  ];
-  const names = new Map<string, string>();
-  if (ids.length === 0) return names;
-
-  const { data, error } = await supabase
-    .from("profiles")
-    .select("id, full_name, username, display_name")
-    .in("id", ids)
-    .overrideTypes<ProfileNameRow[], { merge: false }>();
-  if (error) throw new Error("Couldn't load reviewers.", { cause: error });
+  const reviews: AnalyticsReview[] = [];
+  const reviewerNames = new Map<string, string>();
   data.forEach((row) => {
-    const name = displayName(row);
-    if (name) names.set(row.id, name);
+    const review = toAnalyticsReview(row);
+    if (!review) return;
+    reviews.push(review);
+    // Deleted reviewers have no id or profile.
+    const name = row.reviewer ? displayName(row.reviewer) : "";
+    if (row.decided_by && name) reviewerNames.set(row.decided_by, name);
   });
-  return names;
+  return { reviews, reviewerNames };
 }
 
 /** Reports submitted and decisions made in the range, ending now. */
@@ -222,16 +202,11 @@ export async function fetchAnalyticsData(
 ): Promise<AnalyticsData> {
   const now = new Date();
   const start = getRangeStart(range, now);
-  const [reports, reviews] = await Promise.all([
+  const [reports, reviewData] = await Promise.all([
     fetchReports(start),
     fetchReviews(start),
   ]);
-  return {
-    now,
-    reports,
-    reviews,
-    reviewerNames: await fetchReviewerNames(reviews),
-  };
+  return { now, reports, ...reviewData };
 }
 
 function toCategoryCounts(

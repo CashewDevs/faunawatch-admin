@@ -26,14 +26,12 @@ function mockQuery(result: Result) {
     select: vi.fn(),
     eq: vi.fn(),
     gte: vi.fn(),
-    in: vi.fn(),
     order: vi.fn(),
     overrideTypes: vi.fn().mockResolvedValue(result),
   };
   query.select.mockReturnValue(query);
   query.eq.mockReturnValue(query);
   query.gte.mockReturnValue(query);
-  query.in.mockReturnValue(query);
   query.order.mockReturnValue(query);
   return query;
 }
@@ -96,7 +94,10 @@ const reviewRow = {
   decline_reason: "low_quality_photo",
   decided_by: "admin-1",
   decided_at: "2026-10-29T10:00:00+00:00",
+  reviewer: { full_name: "Ana Admin", username: null, display_name: null },
 };
+
+const deletedReviewerRow = { ...reviewRow, decided_by: null, reviewer: null };
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -116,17 +117,11 @@ describe("fetchAnalyticsData", () => {
       report_reviews: {
         data: [
           reviewRow,
-          { ...reviewRow, decision: "pending", decided_by: "admin-2" },
-        ],
-        error: null,
-      },
-      profiles: {
-        data: [
           {
-            id: "admin-1",
-            full_name: "Ana Admin",
-            username: null,
-            display_name: null,
+            ...reviewRow,
+            decision: "pending",
+            decided_by: "admin-2",
+            reviewer: { full_name: "Ben", username: null, display_name: null },
           },
         ],
         error: null,
@@ -148,7 +143,10 @@ describe("fetchAnalyticsData", () => {
       "decided_at",
       "2026-10-24T00:00:00.000Z",
     );
-    expect(queries.profiles?.in).toHaveBeenCalledWith("id", ["admin-1"]);
+    expect(queries.report_reviews?.select).toHaveBeenCalledWith(
+      expect.stringContaining("reviewer:profiles!decided_by("),
+    );
+    expect(from).not.toHaveBeenCalledWith("profiles");
 
     expect(data.reports).toEqual([
       {
@@ -181,41 +179,45 @@ describe("fetchAnalyticsData", () => {
     expect(data.reviewerNames).toEqual(new Map([["admin-1", "Ana Admin"]]));
   });
 
-  it("keeps decisions by deleted admins without looking them up", async () => {
-    const queries = mockTables({
+  it("keeps decisions by deleted admins, with no name", async () => {
+    mockTables({
       reports: { data: [reportRow], error: null },
       report_reviews: {
-        data: [reviewRow, { ...reviewRow, decided_by: null }],
+        data: [reviewRow, deletedReviewerRow],
         error: null,
       },
-      profiles: { data: [], error: null },
     });
 
     const data = await fetchAnalyticsData("7d");
 
-    expect(queries.profiles?.in).toHaveBeenCalledWith("id", ["admin-1"]);
     expect(data.reviews.map((review) => review.reviewerId)).toEqual([
       "admin-1",
       null,
     ]);
+    expect(data.reviewerNames).toEqual(new Map([["admin-1", "Ana Admin"]]));
   });
 
-  it("skips the profile lookup when every reviewer was deleted", async () => {
+  it("leaves out a reviewer whose profile has no name", async () => {
     mockTables({
       reports: { data: [reportRow], error: null },
       report_reviews: {
-        data: [{ ...reviewRow, decided_by: null }],
+        data: [
+          {
+            ...reviewRow,
+            reviewer: { full_name: " ", username: null, display_name: null },
+          },
+        ],
         error: null,
       },
     });
 
     const data = await fetchAnalyticsData("7d");
 
-    expect(from).not.toHaveBeenCalledWith("profiles");
     expect(data.reviews).toHaveLength(1);
+    expect(data.reviewerNames).toEqual(new Map());
   });
 
-  it("skips the profile lookup without reviews", async () => {
+  it("handles a range without reviews", async () => {
     mockTables({
       reports: {
         data: [{ ...reportRow, ai_analyses: [], report_reviews: [] }],
@@ -226,7 +228,7 @@ describe("fetchAnalyticsData", () => {
 
     const data = await fetchAnalyticsData("30d");
 
-    expect(from).not.toHaveBeenCalledWith("profiles");
+    expect(data.reviewerNames).toEqual(new Map());
     expect(data.reports[0]).toMatchObject({
       severity: "unrated",
       isInvasive: false,
@@ -246,11 +248,10 @@ describe("fetchAnalyticsData", () => {
 
     mockTables({
       reports: { data: [], error: null },
-      report_reviews: { data: [reviewRow], error: null },
-      profiles: { data: null, error: { message: "denied" } },
+      report_reviews: { data: null, error: { message: "denied" } },
     });
     await expect(fetchAnalyticsData("7d")).rejects.toThrow(
-      "Couldn't load reviewers.",
+      "Couldn't load reviews.",
     );
   });
 });
