@@ -34,7 +34,7 @@ export function AuthCard({ heading, subheading, children }: AuthCardProps) {
         <h1 className="text-2xl leading-8 font-bold tracking-[-0.6px] text-navy">
           {heading}
         </h1>
-        <p className="text-sm text-muted">{subheading}</p>
+        <p className="text-sm wrap-anywhere text-muted">{subheading}</p>
       </div>
 
       {children}

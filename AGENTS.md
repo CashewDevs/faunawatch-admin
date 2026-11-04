@@ -216,6 +216,9 @@ directory. Do not create large generic folders with unrelated code.
   (`supabase/templates/recovery.html`, with a hosted copy in the dashboard).
   Its link puts the token after the `#`, so it never reaches a server, and
   `/reset-password` only uses it (`verifyOtp`) when the admin presses Save.
+  `/forgot-password` requests the email and reads the same either way, so it
+  doesn't reveal which emails have accounts. Hosted email is the built-in
+  service for now: project team members only, 2 emails an hour.
   That route sits outside the route guards. The Redirect URLs allow list
   must include it with a wildcard, e.g.
   `http://localhost:5173/reset-password**`.

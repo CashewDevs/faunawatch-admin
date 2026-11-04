@@ -120,6 +120,9 @@ describe("ResetPasswordScreen", () => {
     expect(screen.getByText(strings.blocked.linkInvalid)).toBeInTheDocument();
     expect(screen.queryByLabelText(strings.passwordLabel)).toBeNull();
     expect(
+      screen.getByRole("link", { name: strings.requestNewLink }),
+    ).toHaveAttribute("href", AppRoutes.forgotPassword);
+    expect(
       screen.getByRole("link", { name: strings.backToLogin }),
     ).toHaveAttribute("href", AppRoutes.login);
   });
@@ -147,6 +150,9 @@ describe("ResetPasswordScreen", () => {
     expect(
       await screen.findByText(strings.blocked.notAdmin),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: strings.requestNewLink }),
+    ).toBeNull();
     expect(updatePassword).not.toHaveBeenCalled();
   });
 

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   hasValidationErrors,
+  validateEmail,
   validateLoginCredentials,
 } from "./loginCredentials";
 
@@ -34,5 +35,18 @@ describe("validateLoginCredentials", () => {
       password: "secret",
     });
     expect(errors).toEqual({});
+  });
+});
+
+describe("validateEmail", () => {
+  it.each([
+    ["admin@faunawatch.com", undefined],
+    ["  admin@faunawatch.com ", undefined],
+    ["", "required"],
+    ["   ", "required"],
+    ["not-an-email", "invalid"],
+    ["admin@faunawatch", "invalid"],
+  ])("%j gives %s", (email, error) => {
+    expect(validateEmail(email)).toBe(error);
   });
 });

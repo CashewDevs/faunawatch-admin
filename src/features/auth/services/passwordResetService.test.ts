@@ -12,12 +12,14 @@ import { PasswordResetFailure } from "../models/passwordReset";
 import {
   clearRecoveryToken,
   readRecoveryToken,
+  requestPasswordReset,
   toPasswordResetFailure,
   updatePassword,
   verifyRecoveryToken,
 } from "./passwordResetService";
 
 const auth = vi.hoisted(() => ({
+  resetPasswordForEmail: vi.fn(),
   verifyOtp: vi.fn(),
   updateUser: vi.fn(),
 }));
@@ -182,5 +184,29 @@ describe("updatePassword", () => {
       "kind",
       "samePassword",
     );
+  });
+});
+
+describe("requestPasswordReset", () => {
+  it("asks for a link that comes back to this site's reset page", async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({ data: {}, error: null });
+
+    await requestPasswordReset("admin@example.org");
+
+    expect(auth.resetPasswordForEmail).toHaveBeenCalledWith(
+      "admin@example.org",
+      { redirectTo: `${window.location.origin}/reset-password` },
+    );
+  });
+
+  it("reports too many requests", async () => {
+    auth.resetPasswordForEmail.mockResolvedValue({
+      data: null,
+      error: new AuthApiError("Slow down", 429, "over_email_send_rate_limit"),
+    });
+
+    await expect(
+      requestPasswordReset("admin@example.org"),
+    ).rejects.toHaveProperty("kind", "rateLimited");
   });
 });

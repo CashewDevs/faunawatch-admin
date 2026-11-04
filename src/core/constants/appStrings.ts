@@ -493,6 +493,18 @@ export const AppStrings = {
     passwordUpdated:
       "Your password was updated. Log in with your new password.",
   },
+  forgotPassword: {
+    heading: "Forgot your password?",
+    subheading: "Enter your email and we'll send you a link to set a new one.",
+    submit: "Send reset link",
+    submitting: "Sending…",
+    sentHeading: "Check your email",
+    sentLead: "If an account exists for",
+    sentTail:
+      ", we've sent a reset link to that address. The link lasts 1 hour. If you don't see it, check your spam folder.",
+    sendAgain: "Send again",
+    sendAgainIn: "in",
+  },
   resetPassword: {
     heading: "Set a new password",
     subheading:
@@ -504,14 +516,15 @@ export const AppStrings = {
     submit: "Save password",
     submitting: "Saving…",
     blockedHeading: "This link can't be used",
+    requestNewLink: "Request a new link",
     backToLogin: "Back to log in",
     blocked: {
       linkInvalid:
-        "Reset links last 1 hour and work once, and only the newest one works. Request a new link from the login page.",
+        "Reset links last 1 hour and work once, and only the newest one works.",
       notAdmin:
         "This account doesn't have admin access, so its password can't be reset here. The password hasn't changed.",
       checkFailed:
-        "We couldn't confirm this account, so its password hasn't changed. Request a new link from the login page and try again.",
+        "We couldn't confirm this account, so its password hasn't changed. Please try again with a new link.",
     },
     errors: {
       passwordRequired: "New password is required.",

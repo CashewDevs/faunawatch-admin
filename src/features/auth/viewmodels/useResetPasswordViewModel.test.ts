@@ -310,3 +310,39 @@ describe("password visibility", () => {
     expect(result.current.isPasswordVisible).toBe(false);
   });
 });
+
+describe("offering a new link", () => {
+  it("isn't needed while the form is up", () => {
+    const { result } = renderViewModel();
+
+    expect(result.current.canRequestNewLink).toBe(false);
+  });
+
+  it("is offered for a bad link", () => {
+    vi.mocked(readRecoveryToken).mockReturnValue(null);
+
+    const { result } = renderViewModel();
+
+    expect(result.current.canRequestNewLink).toBe(true);
+  });
+
+  it("is offered when the admin check failed", async () => {
+    vi.mocked(fetchAdminProfile).mockRejectedValue(new AuthFailure("network"));
+    const { result } = renderViewModel();
+    fillIn(result);
+
+    await save(result);
+
+    expect(result.current.canRequestNewLink).toBe(true);
+  });
+
+  it("isn't offered to a non-admin, whom it can't help", async () => {
+    vi.mocked(fetchAdminProfile).mockResolvedValue(null);
+    const { result } = renderViewModel();
+    fillIn(result);
+
+    await save(result);
+
+    expect(result.current.canRequestNewLink).toBe(false);
+  });
+});

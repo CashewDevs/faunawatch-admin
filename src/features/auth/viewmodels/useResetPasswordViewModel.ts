@@ -150,6 +150,8 @@ export function useResetPasswordViewModel() {
     formError: formError ? formErrorMessages[formError] : undefined,
     /** Set when the form can't be offered; explains why. */
     blockedMessage: blockReason ? blockedStrings[blockReason] : undefined,
+    /** A new link can't help a non-admin. */
+    canRequestNewLink: blockReason !== null && blockReason !== "notAdmin",
     changePassword,
     changeConfirmation,
     togglePasswordVisibility,

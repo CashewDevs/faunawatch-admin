@@ -10,6 +10,9 @@ export const PasswordPolicy = {
   maxBytes: 72,
 } as const;
 
+/** Wait between reset emails, matching Supabase's per-account limit. */
+export const resetEmailCooldownSeconds = 60;
+
 export interface NewPasswordInput {
   password: string;
   confirmation: string;

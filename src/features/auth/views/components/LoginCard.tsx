@@ -1,4 +1,6 @@
+import { Link } from "react-router";
 import { AppAssets } from "../../../../core/constants/appAssets";
+import { AppRoutes } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import type { LoginViewModel } from "../../viewmodels/useLoginViewModel";
 import { AuthCard } from "./AuthCard";
@@ -79,13 +81,12 @@ export function LoginCard({ viewModel }: LoginCardProps) {
             />
             {strings.rememberMe}
           </label>
-          <button
-            type="button"
-            onClick={viewModel.forgotPassword}
+          <Link
+            to={AppRoutes.forgotPassword}
             className="rounded-sm text-xs font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
           >
             {strings.forgotPassword}
-          </button>
+          </Link>
         </div>
 
         {/* No Figma design for sign-in errors; styled like the field errors. */}

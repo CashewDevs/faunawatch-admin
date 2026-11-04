@@ -1,4 +1,5 @@
 import { isAuthError, isAuthRetryableFetchError } from "@supabase/supabase-js";
+import { AppRoutes } from "../../../core/constants/appRoutes";
 import {
   clearSessionPersistence,
   setSessionPersistence,
@@ -33,6 +34,17 @@ export function toPasswordResetFailure(error: unknown): PasswordResetFailure {
     );
   }
   return new PasswordResetFailure("unknown");
+}
+
+/**
+ * Emails a reset link that comes back to this site. Supabase responds the
+ * same way when the email has no account, and sends nothing.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${window.location.origin}${AppRoutes.resetPassword}`,
+  });
+  if (error) throw toPasswordResetFailure(error);
 }
 
 /**

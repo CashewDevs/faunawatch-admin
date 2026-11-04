@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AppRoutes } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { createQueryWrapper } from "../../../../test/queryWrapper";
 import {
@@ -227,5 +228,15 @@ describe("LoginScreen", () => {
     expect(
       screen.getByRole("button", { name: googleButtonName }),
     ).toBeEnabled();
+  });
+});
+
+describe("LoginScreen forgot password link", () => {
+  it("goes to the forgot password screen", () => {
+    renderLogin();
+
+    expect(
+      screen.getByRole("link", { name: strings.forgotPassword }),
+    ).toHaveAttribute("href", AppRoutes.forgotPassword);
   });
 });
