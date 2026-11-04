@@ -62,6 +62,8 @@ interface ReportListRow {
   created_at: string;
   latitude: number;
   longitude: number;
+  /** Null when the app's lookup failed, and on older reports. */
+  place_name: string | null;
   user_species: string | null;
   user_id: string;
   reporter: ProfileRow;
@@ -121,7 +123,7 @@ interface ReportDetailRow extends Omit<
 const profileColumns = "full_name, username, display_name, avatar_path";
 
 const reportColumns =
-  "id, category, description, status, created_at, latitude, longitude, user_species, user_id";
+  "id, category, description, status, created_at, latitude, longitude, place_name, user_species, user_id";
 
 const analysisColumns =
   "status, possible_species, severity, possible_invasive, created_at";
@@ -196,6 +198,7 @@ function toSummary(
     submittedAt: row.created_at,
     latitude: row.latitude,
     longitude: row.longitude,
+    placeName: textOrNull(row.place_name),
     photoPaths: [...row.report_images]
       .sort(byOldest)
       .map((image) => image.storage_path),
@@ -334,6 +337,7 @@ export async function fetchPost(postId: string): Promise<PostDetail | null> {
     location: {
       latitude: row.latitude,
       longitude: row.longitude,
+      placeName: textOrNull(row.place_name),
       elevationMeters: row.elevation_m,
       exifCheck: getExifLocationCheck(row, photos),
     },

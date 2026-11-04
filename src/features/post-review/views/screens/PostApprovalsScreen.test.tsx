@@ -99,6 +99,23 @@ describe("PostApprovalsScreen", () => {
     );
   });
 
+  it("shows a card's place name instead of its coordinates", async () => {
+    const [first, ...others] = testPosts;
+    if (!first) throw new Error("fixture missing");
+    vi.mocked(fetchAllPosts).mockResolvedValue([
+      { ...first, placeName: "Lusod, Kabayan, Benguet" },
+      ...others,
+    ]);
+    renderScreen();
+
+    const [firstCard] = await findCards();
+    if (!firstCard) throw new Error("No cards rendered");
+    expect(firstCard).toHaveTextContent("Lusod, Kabayan, Benguet");
+    expect(firstCard).not.toHaveTextContent(
+      formatCoordinates(first.latitude, first.longitude),
+    );
+  });
+
   it("opens a post's review page when its card is clicked", async () => {
     const user = userEvent.setup();
     renderScreen("/posts?sort=oldest");

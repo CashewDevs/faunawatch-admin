@@ -84,6 +84,7 @@ export const testPosts: readonly PostSummary[] = Array.from(
       submittedAt: new Date(startMs - index * 3 * 3_600_000).toISOString(),
       latitude: 9.85 + index / 100,
       longitude: 124.2,
+      placeName: null,
       photoPaths: Array.from(
         { length: index === 0 ? 4 : (index % 3) + 1 },
         (_unused, photo) =>
@@ -158,6 +159,7 @@ export const testTarsier: PostDetail = {
   location: {
     latitude: 9.85,
     longitude: 124.2,
+    placeName: null,
     elevationMeters: 120,
     exifCheck: "verified",
   },

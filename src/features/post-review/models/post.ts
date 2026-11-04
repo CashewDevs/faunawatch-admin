@@ -69,6 +69,8 @@ export interface PostSummary {
   submittedAt: string;
   latitude: number;
   longitude: number;
+  /** The area, e.g. "Lusod, Kabayan, Benguet"; null when it isn't known. */
+  placeName: string | null;
   /** Paths in the private `report-images` bucket, oldest first. */
   photoPaths: readonly string[];
   /** The AI's top candidate; null without a completed AI analysis. */
@@ -111,6 +113,8 @@ export type ExifLocationCheck = "verified" | "mismatch" | "noGps";
 export interface PostLocation {
   latitude: number;
   longitude: number;
+  /** The area, e.g. "Lusod, Kabayan, Benguet"; null when it isn't known. */
+  placeName: string | null;
   elevationMeters: number | null;
   exifCheck: ExifLocationCheck;
 }
