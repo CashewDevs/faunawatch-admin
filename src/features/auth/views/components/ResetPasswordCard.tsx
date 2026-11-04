@@ -1,10 +1,10 @@
-import { Link } from "react-router";
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppRoutes } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import type { ResetPasswordViewModel } from "../../viewmodels/useResetPasswordViewModel";
 import { AuthCard } from "./AuthCard";
 import { AuthSubmitButton } from "./AuthSubmitButton";
+import { AuthTextLink } from "./AuthTextLink";
 import { LoginInputField } from "./LoginInputField";
 import { PasswordVisibilityToggle } from "./PasswordVisibilityToggle";
 
@@ -25,12 +25,16 @@ export function ResetPasswordCard({ viewModel }: ResetPasswordCardProps) {
         heading={strings.blockedHeading}
         subheading={viewModel.blockedMessage}
       >
-        <Link
-          to={AppRoutes.login}
-          className="self-center rounded-sm text-sm font-semibold text-primary hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          {strings.backToLogin}
-        </Link>
+        <div className="flex flex-col gap-3">
+          {viewModel.canRequestNewLink && (
+            <AuthTextLink to={AppRoutes.forgotPassword}>
+              {strings.requestNewLink}
+            </AuthTextLink>
+          )}
+          <AuthTextLink to={AppRoutes.login}>
+            {strings.backToLogin}
+          </AuthTextLink>
+        </div>
       </AuthCard>
     );
   }

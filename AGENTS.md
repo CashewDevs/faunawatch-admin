@@ -212,13 +212,23 @@ directory. Do not create large generic folders with unrelated code.
 - Supabase's Redirect URLs allow list must include each site's login URL
   with a wildcard, e.g. `http://localhost:5173/login**`, because supabase-js
   appends `?sb_flow_id=…` to `redirectTo`.
-- Password reset: the email template lives in the `faunawatch` repo
-  (`supabase/templates/recovery.html`, with a hosted copy in the dashboard).
-  Its link puts the token after the `#`, so it never reaches a server, and
-  `/reset-password` only uses it (`verifyOtp`) when the admin presses Save.
+- Password reset: `/forgot-password` requests the email and reads the same
+  either way, so it doesn't reveal which emails have accounts. Hosted email is
+  the built-in service for now: project team members only, 2 emails an hour,
+  and free-plan projects like this one can't edit its templates (since
+  2026-06-03). So hosted sends Supabase's default email, whose link goes through
+  Supabase and returns with a one-time code. It only works in the browser that
+  asked, and a mail scanner can use it up. `/reset-password` exchanges that code
+  itself (`detectSessionInUrl` is off on that page) so the session stays in the
+  tab. With custom SMTP, the template in the `faunawatch` repo
+  (`supabase/templates/recovery.html`) can be used instead: it works in any
+  browser and is only used when the admin presses Save. The page handles both.
   That route sits outside the route guards. The Redirect URLs allow list
   must include it with a wildcard, e.g.
   `http://localhost:5173/reset-password**`.
+- A session without "Remember me" lives in one tab, but supabase-js tells every
+  tab about it. `onSessionChange` ignores events about a session this tab doesn't
+  hold, so another tab can't fail the admin check and sign the real one out.
 - The login-form cooldown (`loginCooldown.ts`, kept in localStorage) is
   usability only. Brute-force protection is server-side: Supabase Auth rate
   limits (Authentication → Rate Limits).

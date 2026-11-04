@@ -8,7 +8,8 @@ import { createRouterQueryWrapper } from "../../../../test/routerWrapper";
 import { PasswordResetFailure } from "../../models/passwordReset";
 import { fetchAdminProfile, signOut } from "../../services/authService";
 import {
-  readRecoveryToken,
+  exchangeRecoveryCode,
+  readRecoveryArrival,
   updatePassword,
   verifyRecoveryToken,
 } from "../../services/passwordResetService";
@@ -20,8 +21,11 @@ vi.mock("../../services/authService", () => ({
 }));
 
 vi.mock("../../services/passwordResetService", () => ({
-  readRecoveryToken: vi.fn(),
-  clearRecoveryToken: vi.fn(),
+  readRecoveryArrival: vi.fn(),
+  clearRecoveryUrl: vi.fn(),
+  endRecovery: vi.fn(),
+  exchangeRecoveryCode: vi.fn(),
+  resumeRecoverySession: vi.fn(),
   verifyRecoveryToken: vi.fn(),
   updatePassword: vi.fn(),
 }));
@@ -48,7 +52,10 @@ async function submitForm(password = "NewPassword2") {
 
 beforeEach(() => {
   vi.clearAllMocks();
-  vi.mocked(readRecoveryToken).mockReturnValue("token-1");
+  vi.mocked(readRecoveryArrival).mockReturnValue({
+    kind: "token",
+    tokenHash: "token-1",
+  });
   vi.mocked(verifyRecoveryToken).mockResolvedValue({
     id: "user-1",
     email: "admin@example.org",
@@ -111,7 +118,7 @@ describe("ResetPasswordScreen", () => {
   });
 
   it("links back to login when there is no token", () => {
-    vi.mocked(readRecoveryToken).mockReturnValue(null);
+    vi.mocked(readRecoveryArrival).mockReturnValue({ kind: "none" });
     renderScreen();
 
     expect(
@@ -119,6 +126,9 @@ describe("ResetPasswordScreen", () => {
     ).toBeInTheDocument();
     expect(screen.getByText(strings.blocked.linkInvalid)).toBeInTheDocument();
     expect(screen.queryByLabelText(strings.passwordLabel)).toBeNull();
+    expect(
+      screen.getByRole("link", { name: strings.requestNewLink }),
+    ).toHaveAttribute("href", AppRoutes.forgotPassword);
     expect(
       screen.getByRole("link", { name: strings.backToLogin }),
     ).toHaveAttribute("href", AppRoutes.login);
@@ -147,6 +157,9 @@ describe("ResetPasswordScreen", () => {
     expect(
       await screen.findByText(strings.blocked.notAdmin),
     ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: strings.requestNewLink }),
+    ).toBeNull();
     expect(updatePassword).not.toHaveBeenCalled();
   });
 
@@ -180,5 +193,43 @@ describe("ResetPasswordScreen", () => {
         AppStrings.login.errors.network,
       );
     });
+  });
+});
+
+describe("ResetPasswordScreen with a default link", () => {
+  beforeEach(() => {
+    vi.mocked(readRecoveryArrival).mockReturnValue({
+      kind: "code",
+      code: "code-1",
+    });
+  });
+
+  it("shows loading, then the form", async () => {
+    vi.mocked(exchangeRecoveryCode).mockResolvedValue({
+      id: "user-1",
+      email: "admin@example.org",
+    });
+    renderScreen();
+
+    expect(screen.getByRole("status")).toBeInTheDocument();
+    expect(screen.queryByLabelText(strings.passwordLabel)).toBeNull();
+
+    expect(
+      await screen.findByRole("heading", { name: strings.heading }),
+    ).toBeInTheDocument();
+  });
+
+  it("says to use the browser that asked, and offers a new link", async () => {
+    vi.mocked(exchangeRecoveryCode).mockRejectedValue(
+      new PasswordResetFailure("otherBrowser"),
+    );
+    renderScreen();
+
+    expect(
+      await screen.findByText(strings.blocked.otherBrowser),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: strings.requestNewLink }),
+    ).toHaveAttribute("href", AppRoutes.forgotPassword);
   });
 });

@@ -10,6 +10,9 @@ export const PasswordPolicy = {
   maxBytes: 72,
 } as const;
 
+/** Wait between reset emails, matching Supabase's per-account limit. */
+export const resetEmailCooldownSeconds = 60;
+
 export interface NewPasswordInput {
   password: string;
   confirmation: string;
@@ -53,6 +56,7 @@ export function hasNewPasswordErrors(errors: NewPasswordErrors): boolean {
 
 export type PasswordResetErrorKind =
   | "linkInvalid"
+  | "otherBrowser"
   | "weakPassword"
   | "samePassword"
   | "rateLimited"
@@ -77,7 +81,23 @@ export function getPasswordResetErrorKind(
 }
 
 /** Why the reset screen can't offer the form. */
-export type ResetBlockReason = "linkInvalid" | "notAdmin" | "checkFailed";
+export type ResetBlockReason =
+  "linkInvalid" | "otherBrowser" | "notAdmin" | "checkFailed";
+
+/**
+ * How the reset screen was reached:
+ * - token: a custom template's link, not used yet.
+ * - code: Supabase's default link, already used, with a one-time code.
+ * - failed: Supabase's default link, refused and reported in the URL.
+ * - resume: this tab was mid-reset, e.g. it was reloaded.
+ * - none: no link at all.
+ */
+export type RecoveryArrival =
+  | { kind: "token"; tokenHash: string }
+  | { kind: "code"; code: string }
+  | { kind: "failed" }
+  | { kind: "resume" }
+  | { kind: "none" };
 
 /** Router state the login screen reads to confirm a finished reset. */
 export interface PasswordUpdatedState {

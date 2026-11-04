@@ -3,7 +3,10 @@ import {
   isAuthRetryableFetchError,
 } from "@supabase/supabase-js";
 import { AppRoutes } from "../../../core/constants/appRoutes";
-import { setSessionPersistence } from "../../../core/services/authStorage";
+import {
+  hasStoredSession,
+  setSessionPersistence,
+} from "../../../core/services/authStorage";
 import { supabase } from "../../../core/services/supabaseClient";
 import { getProfileDisplayName } from "../../../core/utils/names";
 import type { LoginCredentials } from "../models/loginCredentials";
@@ -94,6 +97,9 @@ function clearOAuthParams(): void {
 }
 
 async function readOAuthRedirectFailure(): Promise<AuthFailure | null> {
+  // The reset page's link has the same parameters and handles its own.
+  if (window.location.pathname === AppRoutes.resetPassword) return null;
+
   const { search, hash } = oauthUrlParams();
   const hasError = oauthErrorParams.some(
     (key) => search.has(key) || hash.has(key),
@@ -152,6 +158,11 @@ export async function signOut(): Promise<void> {
  * redirect, supabase-js sends INITIAL_SESSION and SIGNED_IN for the same
  * new session in either order.
  *
+ * supabase-js tells every tab about sign-ins and sign-outs, but a session
+ * without "Remember me" lives in one tab only. Other tabs ignore it: they can't
+ * use it, and would otherwise fail the admin check, sign out and take the real
+ * session's tab down with them.
+ *
  * The callback must not call Supabase itself (supabase-js can deadlock);
  * callers react to the user change and fetch data afterwards.
  */
@@ -160,6 +171,11 @@ export function onSessionChange(
 ): () => void {
   let isFirstEvent = true;
   const { data } = supabase.auth.onAuthStateChange((event, session) => {
+    const isAboutAnotherTab = session
+      ? !hasStoredSession()
+      : event === "SIGNED_OUT" && hasStoredSession();
+    if (isAboutAnotherTab) return;
+
     const source =
       isFirstEvent || event === "INITIAL_SESSION" ? "restored" : "changed";
     isFirstEvent = false;

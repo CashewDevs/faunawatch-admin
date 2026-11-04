@@ -147,10 +147,6 @@ export function useLoginViewModel() {
     }
   };
 
-  const forgotPassword = () => {
-    // TODO(auth): The forgot-password flow is not designed or specified yet.
-  };
-
   const shownError = signInError ?? rejection;
   const { submitCooldownPrefix, secondsSuffix } = AppStrings.login;
 
@@ -185,7 +181,6 @@ export function useLoginViewModel() {
     togglePasswordVisibility,
     submit,
     continueWithGoogle,
-    forgotPassword,
   };
 }
 
