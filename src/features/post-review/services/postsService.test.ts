@@ -71,6 +71,7 @@ const listRow = {
   created_at: "2026-10-20T10:00:00+00:00",
   latitude: 7.05,
   longitude: 125.25,
+  place_name: "Lusod, Kabayan, Benguet",
   user_species: "  ",
   user_id: "user-1",
   reporter,
@@ -139,6 +140,7 @@ describe("fetchAllPosts", () => {
         submittedAt: "2026-10-20T10:00:00+00:00",
         latitude: 7.05,
         longitude: 125.25,
+        placeName: "Lusod, Kabayan, Benguet",
         photoPaths: ["user-1/r/1.jpg", "user-1/r/2.jpg"],
         aiMatch: {
           commonName: "Philippine Eagle",
@@ -206,6 +208,7 @@ describe("fetchPostCardMedia", () => {
     submittedAt: "2026-10-20T10:00:00Z",
     latitude: 0,
     longitude: 0,
+    placeName: null,
     photoPaths: [],
     aiMatch: null,
     reporterSpecies: null,
@@ -390,6 +393,7 @@ describe("fetchPost", () => {
       location: {
         latitude: 7.05,
         longitude: 125.25,
+        placeName: "Lusod, Kabayan, Benguet",
         elevationMeters: 1200,
         // The one photo with full GPS is about 110 m away.
         exifCheck: "verified",

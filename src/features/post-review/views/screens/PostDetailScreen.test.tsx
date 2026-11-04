@@ -106,6 +106,20 @@ describe("PostDetailScreen", () => {
     expect(screen.getByText(strings.location.exifNoGps)).toBeInTheDocument();
   });
 
+  it("shows the place name above the coordinates when known", async () => {
+    vi.mocked(fetchPost).mockResolvedValue({
+      ...testTarsier,
+      location: { ...testTarsier.location, placeName: "Lusod, Kabayan" },
+    });
+    renderScreen();
+    await screen.findByRole("heading", { level: 2, name: title });
+
+    expect(screen.getByText("Lusod, Kabayan")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: strings.location.copyLabel }),
+    ).toBeInTheDocument();
+  });
+
   it("links back to the list it came from", async () => {
     renderScreen();
     await screen.findByRole("heading", { level: 2, name: title });

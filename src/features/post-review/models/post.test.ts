@@ -44,6 +44,7 @@ function makePost(overrides: Partial<PostSummary>): PostSummary {
     submittedAt: "2026-10-18T10:00:00Z",
     latitude: 7.05,
     longitude: 125.25,
+    placeName: null,
     photoPaths: ["u1/r1/a.jpg"],
     aiMatch: {
       commonName: "Philippine Tarsier",

@@ -112,10 +112,8 @@ export function PostCard({
             alt=""
             className="shrink-0"
           />
-          {/* TODO(schema): Reports store coordinates only. Show a place name
-              here once the app saves one with the report. */}
           <span className="truncate">
-            {formatCoordinates(post.latitude, post.longitude)}
+            {post.placeName ?? formatCoordinates(post.latitude, post.longitude)}
           </span>
         </p>
         <h3 className="line-clamp-2 text-lg leading-[22.5px] font-semibold tracking-[-0.09px] text-deep-blue">

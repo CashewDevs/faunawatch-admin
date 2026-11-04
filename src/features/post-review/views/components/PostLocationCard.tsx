@@ -15,8 +15,8 @@ const exifBadgeClass: Record<ExifLocationCheck, string> = {
 };
 
 /**
- * Whether the photos' EXIF GPS matches the report, copyable coordinates,
- * and a map placeholder.
+ * Whether the photos' EXIF GPS matches the report, the area name when known,
+ * copyable coordinates, and a map placeholder.
  */
 export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
   const strings = AppStrings.posts.detail.location;
@@ -53,6 +53,10 @@ export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
           {exifLabel[location.exifCheck]}
         </span>
       </div>
+
+      {location.placeName && (
+        <p className="text-base leading-6 text-teal">{location.placeName}</p>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-surface-tint px-3.5 py-2.5">
         <p className="flex items-center gap-2 font-mono text-[13px] leading-[18px] text-deep-blue">
