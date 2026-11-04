@@ -501,7 +501,7 @@ export const AppStrings = {
     sentHeading: "Check your email",
     sentLead: "If an account exists for",
     sentTail:
-      ", we've sent a reset link to that address. The link lasts 1 hour. If you don't see it, check your spam folder.",
+      ", we've sent a reset link to that address. Open it in this browser. The link lasts 1 hour. If you don't see it, check your spam folder.",
     sendAgain: "Send again",
     sendAgainIn: "in",
   },
@@ -521,6 +521,8 @@ export const AppStrings = {
     blocked: {
       linkInvalid:
         "Reset links last 1 hour and work once, and only the newest one works.",
+      otherBrowser:
+        "This link only works in the browser you used to request it. Request a new link from this browser to try again.",
       notAdmin:
         "This account doesn't have admin access, so its password can't be reset here. The password hasn't changed.",
       checkFailed:

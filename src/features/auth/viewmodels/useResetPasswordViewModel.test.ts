@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useNavigate } from "react-router";
 import { AppRoutes } from "../../../core/constants/appRoutes";
@@ -11,8 +11,11 @@ import {
 } from "../models/passwordReset";
 import { fetchAdminProfile, signOut } from "../services/authService";
 import {
-  clearRecoveryToken,
-  readRecoveryToken,
+  clearRecoveryUrl,
+  endRecovery,
+  exchangeRecoveryCode,
+  readRecoveryArrival,
+  resumeRecoverySession,
   updatePassword,
   verifyRecoveryToken,
 } from "../services/passwordResetService";
@@ -24,8 +27,11 @@ vi.mock("../services/authService", () => ({
 }));
 
 vi.mock("../services/passwordResetService", () => ({
-  readRecoveryToken: vi.fn(),
-  clearRecoveryToken: vi.fn(),
+  readRecoveryArrival: vi.fn(),
+  clearRecoveryUrl: vi.fn(),
+  endRecovery: vi.fn(),
+  exchangeRecoveryCode: vi.fn(),
+  resumeRecoverySession: vi.fn(),
   verifyRecoveryToken: vi.fn(),
   updatePassword: vi.fn(),
 }));
@@ -68,7 +74,10 @@ async function save(result: Result) {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(useNavigate).mockReturnValue(navigate);
-  vi.mocked(readRecoveryToken).mockReturnValue("token-1");
+  vi.mocked(readRecoveryArrival).mockReturnValue({
+    kind: "token",
+    tokenHash: "token-1",
+  });
   vi.mocked(verifyRecoveryToken).mockResolvedValue(user);
   vi.mocked(updatePassword).mockResolvedValue();
   vi.mocked(signOut).mockResolvedValue();
@@ -87,7 +96,7 @@ describe("opening the page", () => {
   });
 
   it("explains the problem when the link has no token", () => {
-    vi.mocked(readRecoveryToken).mockReturnValue(null);
+    vi.mocked(readRecoveryArrival).mockReturnValue({ kind: "none" });
 
     const { result } = renderViewModel();
 
@@ -103,7 +112,7 @@ describe("saving", () => {
     await save(result);
 
     expect(verifyRecoveryToken).toHaveBeenCalledWith("token-1");
-    expect(clearRecoveryToken).toHaveBeenCalledOnce();
+    expect(clearRecoveryUrl).toHaveBeenCalledOnce();
     expect(updatePassword).toHaveBeenCalledWith(goodPassword);
     expect(signOut).toHaveBeenCalledOnce();
     expect(navigate).toHaveBeenCalledWith(AppRoutes.login, {
@@ -204,7 +213,7 @@ describe("a link that can't be used", () => {
 
     expect(result.current.formError).toBe(AppStrings.login.errors.network);
     expect(result.current.blockedMessage).toBeUndefined();
-    expect(clearRecoveryToken).not.toHaveBeenCalled();
+    expect(clearRecoveryUrl).not.toHaveBeenCalled();
 
     await save(result);
 
@@ -319,7 +328,7 @@ describe("offering a new link", () => {
   });
 
   it("is offered for a bad link", () => {
-    vi.mocked(readRecoveryToken).mockReturnValue(null);
+    vi.mocked(readRecoveryArrival).mockReturnValue({ kind: "none" });
 
     const { result } = renderViewModel();
 
@@ -344,5 +353,153 @@ describe("offering a new link", () => {
     await save(result);
 
     expect(result.current.canRequestNewLink).toBe(false);
+  });
+});
+
+describe("a default link", () => {
+  beforeEach(() => {
+    vi.mocked(readRecoveryArrival).mockReturnValue({
+      kind: "code",
+      code: "code-1",
+    });
+    vi.mocked(exchangeRecoveryCode).mockResolvedValue(user);
+  });
+
+  it("opens the form as the page loads, showing loading until then", async () => {
+    const { result } = renderViewModel();
+
+    expect(result.current.isOpening).toBe(true);
+    expect(result.current.blockedMessage).toBeUndefined();
+
+    await waitFor(() => {
+      expect(result.current.isOpening).toBe(false);
+    });
+
+    expect(exchangeRecoveryCode).toHaveBeenCalledWith("code-1");
+    expect(result.current.blockedMessage).toBeUndefined();
+  });
+
+  it("saves without using a token, then ends the reset", async () => {
+    const { result } = renderViewModel();
+    await waitFor(() => {
+      expect(result.current.isOpening).toBe(false);
+    });
+    fillIn(result);
+
+    await save(result);
+
+    expect(verifyRecoveryToken).not.toHaveBeenCalled();
+    expect(updatePassword).toHaveBeenCalledWith(goodPassword);
+    expect(endRecovery).toHaveBeenCalledOnce();
+    expect(signOut).toHaveBeenCalledOnce();
+    expect(navigate).toHaveBeenCalledWith(AppRoutes.login, {
+      replace: true,
+      state: passwordUpdatedState,
+    });
+  });
+
+  it("does nothing if Save is pressed while still opening", async () => {
+    const { result } = renderViewModel();
+    fillIn(result);
+
+    await save(result);
+
+    expect(updatePassword).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(result.current.isOpening).toBe(false);
+    });
+  });
+
+  it.each([
+    ["linkInvalid", strings.blocked.linkInvalid, true],
+    ["otherBrowser", strings.blocked.otherBrowser, true],
+    ["network", strings.blocked.checkFailed, true],
+    ["rateLimited", strings.blocked.checkFailed, true],
+    ["unknown", strings.blocked.checkFailed, true],
+  ] as const)(
+    "explains a %s failure and offers a new link",
+    async (kind, message, canRequest) => {
+      vi.mocked(exchangeRecoveryCode).mockRejectedValue(
+        new PasswordResetFailure(kind),
+      );
+
+      const { result } = renderViewModel();
+
+      await waitFor(() => {
+        expect(result.current.isOpening).toBe(false);
+      });
+      expect(result.current.blockedMessage).toBe(message);
+      expect(result.current.canRequestNewLink).toBe(canRequest);
+      expect(signOut).not.toHaveBeenCalled();
+    },
+  );
+
+  it("signs a non-admin out straight away", async () => {
+    vi.mocked(fetchAdminProfile).mockResolvedValue(null);
+
+    const { result } = renderViewModel();
+
+    await waitFor(() => {
+      expect(result.current.blockedMessage).toBe(strings.blocked.notAdmin);
+    });
+    expect(endRecovery).toHaveBeenCalled();
+    expect(signOut).toHaveBeenCalled();
+    expect(result.current.canRequestNewLink).toBe(false);
+  });
+
+  it("fails closed when the admin check fails", async () => {
+    vi.mocked(fetchAdminProfile).mockRejectedValue(new AuthFailure("network"));
+
+    const { result } = renderViewModel();
+
+    await waitFor(() => {
+      expect(result.current.blockedMessage).toBe(strings.blocked.checkFailed);
+    });
+    expect(signOut).toHaveBeenCalled();
+  });
+});
+
+describe("a link Supabase already refused", () => {
+  it("explains it and cleans the address", () => {
+    vi.mocked(readRecoveryArrival).mockReturnValue({ kind: "failed" });
+
+    const { result } = renderViewModel();
+
+    expect(result.current.isOpening).toBe(false);
+    expect(result.current.blockedMessage).toBe(strings.blocked.linkInvalid);
+    expect(clearRecoveryUrl).toHaveBeenCalled();
+    expect(exchangeRecoveryCode).not.toHaveBeenCalled();
+  });
+});
+
+describe("reloading during a reset", () => {
+  beforeEach(() => {
+    vi.mocked(readRecoveryArrival).mockReturnValue({ kind: "resume" });
+  });
+
+  it("keeps the form while the session lasts", async () => {
+    vi.mocked(resumeRecoverySession).mockResolvedValue(user);
+    const { result } = renderViewModel();
+
+    await waitFor(() => {
+      expect(result.current.isOpening).toBe(false);
+    });
+    expect(result.current.blockedMessage).toBeUndefined();
+
+    fillIn(result);
+    await save(result);
+
+    expect(verifyRecoveryToken).not.toHaveBeenCalled();
+    expect(updatePassword).toHaveBeenCalledWith(goodPassword);
+  });
+
+  it("explains when the session has ended", async () => {
+    vi.mocked(resumeRecoverySession).mockResolvedValue(null);
+
+    const { result } = renderViewModel();
+
+    await waitFor(() => {
+      expect(result.current.blockedMessage).toBe(strings.blocked.linkInvalid);
+    });
   });
 });

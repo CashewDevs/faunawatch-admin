@@ -1,3 +1,5 @@
+import { LoadingScreen } from "../../../../core/components/LoadingScreen";
+import { AppStrings } from "../../../../core/constants/appStrings";
 import { useResetPasswordViewModel } from "../../viewmodels/useResetPasswordViewModel";
 import { AuthScreenLayout } from "../components/AuthScreenLayout";
 import { ResetPasswordCard } from "../components/ResetPasswordCard";
@@ -7,6 +9,10 @@ import { ResetPasswordCard } from "../components/ResetPasswordCard";
  */
 export function ResetPasswordScreen() {
   const viewModel = useResetPasswordViewModel();
+
+  if (viewModel.isOpening) {
+    return <LoadingScreen label={AppStrings.common.loading} />;
+  }
 
   return (
     <AuthScreenLayout>

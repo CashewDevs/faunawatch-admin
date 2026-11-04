@@ -94,6 +94,9 @@ function clearOAuthParams(): void {
 }
 
 async function readOAuthRedirectFailure(): Promise<AuthFailure | null> {
+  // The reset page's link has the same parameters and handles its own.
+  if (window.location.pathname === AppRoutes.resetPassword) return null;
+
   const { search, hash } = oauthUrlParams();
   const hasError = oauthErrorParams.some(
     (key) => search.has(key) || hash.has(key),

@@ -1,8 +1,9 @@
-import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router";
 import { AppRoutes } from "../../../core/constants/appRoutes";
 import { AppStrings } from "../../../core/constants/appStrings";
+import type { SessionUser } from "../models/authSession";
 import {
   getPasswordResetErrorKind,
   hasNewPasswordErrors,
@@ -11,12 +12,16 @@ import {
   type ConfirmationError,
   type NewPasswordError,
   type PasswordResetErrorKind,
+  type RecoveryArrival,
   type ResetBlockReason,
 } from "../models/passwordReset";
 import { signOut } from "../services/authService";
 import {
-  clearRecoveryToken,
-  readRecoveryToken,
+  clearRecoveryUrl,
+  endRecovery,
+  exchangeRecoveryCode,
+  readRecoveryArrival,
+  resumeRecoverySession,
   updatePassword,
   verifyRecoveryToken,
 } from "../services/passwordResetService";
@@ -48,20 +53,67 @@ const formErrorMessages: Record<FormError, string> = {
   unknown: AppStrings.login.errors.unknown,
 };
 
+async function endRecoverySession(): Promise<void> {
+  endRecovery();
+  await signOut();
+}
+
+/**
+ * Checks the signed-in account may reset here, signing out one that may not.
+ * Returns why it may not, or null if it may.
+ */
+async function refuseNonAdmin(
+  queryClient: QueryClient,
+  user: SessionUser,
+): Promise<ResetBlockReason | null> {
+  let reason: ResetBlockReason = "notAdmin";
+  try {
+    if (await queryClient.query(adminProfileQuery(user))) return null;
+  } catch {
+    // Never keep a session whose admin access could not be confirmed.
+    reason = "checkFailed";
+  }
+  await endRecoverySession();
+  return reason;
+}
+
+/** Opens a default link or an interrupted reset. Returns why it can't go on. */
+async function openLink(
+  queryClient: QueryClient,
+  arrival: RecoveryArrival,
+): Promise<ResetBlockReason | null> {
+  let user: SessionUser | null;
+  try {
+    user =
+      arrival.kind === "code"
+        ? await exchangeRecoveryCode(arrival.code)
+        : await resumeRecoverySession();
+  } catch (error) {
+    const kind = getPasswordResetErrorKind(error);
+    return kind === "linkInvalid" || kind === "otherBrowser"
+      ? kind
+      : "checkFailed";
+  }
+  return user ? refuseNonAdmin(queryClient, user) : "linkInvalid";
+}
+
 /**
  * Presentation state and actions for the reset-password screen.
  *
- * The email link is only used when the admin presses Save, so email scanners
- * can't use it up and an abandoned form leaves nobody signed in. Using it
- * signs the account in, so a non-admin is signed out again before anything
- * changes. Once it is used, a refused password can be retried without a new
- * link. After saving, the admin logs in again with the new password.
+ * A custom template link is only used when the admin presses Save, so email
+ * scanners can't use it up and an abandoned form leaves nobody signed in. A
+ * default link has already been used by the time it gets here, so its session
+ * opens as the page loads, in this tab only. Either way a non-admin is signed
+ * out before anything changes, a refused password can be retried without a new
+ * link, and after saving the admin logs in again with the new password.
  */
 export function useResetPasswordViewModel() {
   const queryClient = useQueryClient();
   const navigate = useNavigate();
-  const [token] = useState(readRecoveryToken);
-  const [isLinkUsed, setIsLinkUsed] = useState(false);
+  const [arrival] = useState(readRecoveryArrival);
+  const opensOnLoad = arrival.kind === "code" || arrival.kind === "resume";
+  const [isOpening, setIsOpening] = useState(opensOnLoad);
+  const [hasSession, setHasSession] = useState(opensOnLoad);
   const [password, setPassword] = useState("");
   const [confirmation, setConfirmation] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -70,9 +122,23 @@ export function useResetPasswordViewModel() {
     useState<ConfirmationError>();
   const [formError, setFormError] = useState<FormError | null>(null);
   const [blockReason, setBlockReason] = useState<ResetBlockReason | null>(
-    token === null ? "linkInvalid" : null,
+    arrival.kind === "none" || arrival.kind === "failed" ? "linkInvalid" : null,
   );
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (arrival.kind === "failed") clearRecoveryUrl();
+    if (arrival.kind !== "code" && arrival.kind !== "resume") return;
+    let isActive = true;
+    void openLink(queryClient, arrival).then((reason) => {
+      if (!isActive) return;
+      setBlockReason(reason);
+      setIsOpening(false);
+    });
+    return () => {
+      isActive = false;
+    };
+  }, [arrival, queryClient]);
 
   const changePassword = (value: string) => {
     setPassword(value);
@@ -90,33 +156,26 @@ export function useResetPasswordViewModel() {
     setIsPasswordVisible((previous) => !previous);
   };
 
-  /** Uses the link. False means the screen is now blocked. */
-  const startRecovery = async (tokenHash: string): Promise<boolean> => {
+  /** Uses a custom template link. False means the screen is now blocked. */
+  const openWithToken = async (tokenHash: string): Promise<boolean> => {
     const user = await verifyRecoveryToken(tokenHash);
-    setIsLinkUsed(true);
-    clearRecoveryToken();
-    try {
-      const admin = await queryClient.query(adminProfileQuery(user));
-      if (admin) return true;
-      await signOut();
-      setBlockReason("notAdmin");
-    } catch {
-      // Never keep a session whose admin access could not be confirmed.
-      await signOut();
-      setBlockReason("checkFailed");
-    }
-    return false;
+    setHasSession(true);
+    clearRecoveryUrl();
+    const reason = await refuseNonAdmin(queryClient, user);
+    setBlockReason(reason);
+    return reason === null;
   };
 
   const showFailure = (kind: PasswordResetErrorKind) => {
-    if (kind === "linkInvalid") setBlockReason("linkInvalid");
-    else if (kind === "weakPassword" || kind === "samePassword") {
+    if (kind === "linkInvalid" || kind === "otherBrowser") {
+      setBlockReason(kind);
+    } else if (kind === "weakPassword" || kind === "samePassword") {
       setPasswordError(kind);
     } else setFormError(kind);
   };
 
   const submit = async () => {
-    if (isSubmitting || token === null) return;
+    if (isSubmitting || isOpening) return;
     const validationErrors = validateNewPassword({ password, confirmation });
     setPasswordError(validationErrors.password);
     setConfirmationError(validationErrors.confirmation);
@@ -125,9 +184,12 @@ export function useResetPasswordViewModel() {
 
     setIsSubmitting(true);
     try {
-      if (!isLinkUsed && !(await startRecovery(token))) return;
+      if (!hasSession) {
+        if (arrival.kind !== "token") return;
+        if (!(await openWithToken(arrival.tokenHash))) return;
+      }
       await updatePassword(password);
-      await signOut();
+      await endRecoverySession();
       void navigate(AppRoutes.login, {
         replace: true,
         state: passwordUpdatedState,
@@ -140,6 +202,8 @@ export function useResetPasswordViewModel() {
   };
 
   return {
+    /** A default link or interrupted reset is still being opened. */
+    isOpening,
     password,
     confirmation,
     isPasswordVisible,

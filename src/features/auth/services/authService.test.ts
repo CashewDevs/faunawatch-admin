@@ -129,6 +129,21 @@ describe("signInWithGoogle", () => {
 });
 
 describe("getOAuthRedirectFailure", () => {
+  it.each([
+    "/reset-password?code=xyz",
+    "/reset-password?error=access_denied&error_code=otp_expired",
+    "/reset-password#error=access_denied&error_code=otp_expired",
+  ])("leaves the reset page's link alone: %s", async (path) => {
+    window.history.replaceState(null, "", path);
+
+    await expect(getOAuthRedirectFailure()).resolves.toBeNull();
+
+    expect(auth.initialize).not.toHaveBeenCalled();
+    expect(
+      `${window.location.pathname}${window.location.search}${window.location.hash}`,
+    ).toBe(path);
+  });
+
   it("returns null without waiting for supabase-js on a normal page load", async () => {
     window.history.replaceState(null, "", "/login?tab=x");
 
