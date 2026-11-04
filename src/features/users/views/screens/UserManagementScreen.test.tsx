@@ -2,13 +2,22 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppStrings } from "../../../../core/constants/appStrings";
-import { testUsers } from "../../../../test/fixtures/users";
+import {
+  testUserCounts,
+  testUserPage,
+  testUsers,
+} from "../../../../test/fixtures/users";
 import { createQueryWrapper } from "../../../../test/queryWrapper";
-import { fetchSanctionsSince, fetchUsers } from "../../services/usersService";
+import {
+  fetchSanctionsSince,
+  fetchUserCounts,
+  fetchUserPage,
+} from "../../services/usersService";
 import { UserManagementScreen } from "./UserManagementScreen";
 
 vi.mock("../../services/usersService", () => ({
-  fetchUsers: vi.fn(),
+  fetchUserPage: vi.fn(),
+  fetchUserCounts: vi.fn(),
   fetchSanctionsSince: vi.fn(),
 }));
 
@@ -20,7 +29,10 @@ function renderScreen() {
 
 describe("UserManagementScreen", () => {
   beforeEach(() => {
-    vi.mocked(fetchUsers).mockResolvedValue([...testUsers]);
+    vi.mocked(fetchUserPage).mockImplementation((query) =>
+      Promise.resolve(testUserPage(query)),
+    );
+    vi.mocked(fetchUserCounts).mockResolvedValue(testUserCounts);
     vi.mocked(fetchSanctionsSince).mockResolvedValue([]);
   });
 
@@ -63,7 +75,7 @@ describe("UserManagementScreen", () => {
   });
 
   it("shows the error state with a retry button", async () => {
-    vi.mocked(fetchUsers).mockRejectedValueOnce(new Error("network"));
+    vi.mocked(fetchUserPage).mockRejectedValueOnce(new Error("network"));
     renderScreen();
 
     expect(await screen.findByRole("alert")).toHaveTextContent(strings.error);
@@ -94,15 +106,18 @@ describe("UserManagementScreen", () => {
   it("shows a preset avatar and fills in missing details", async () => {
     const [first] = testUsers;
     if (!first) throw new Error("fixture missing");
-    vi.mocked(fetchUsers).mockResolvedValue([
-      {
-        ...first,
-        fullName: "",
-        username: null,
-        email: null,
-        avatar: { kind: "preset", name: "panda" },
-      },
-    ]);
+    vi.mocked(fetchUserPage).mockResolvedValue({
+      users: [
+        {
+          ...first,
+          fullName: "",
+          username: null,
+          email: null,
+          avatar: { kind: "preset", name: "panda" },
+        },
+      ],
+      totalCount: 1,
+    });
     const { container } = renderScreen();
 
     expect(await screen.findByText(strings.table.unnamed)).toBeInTheDocument();

@@ -1,16 +1,43 @@
-import { queryOptions, useQuery } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  queryOptions,
+  skipToken,
+  useQuery,
+} from "@tanstack/react-query";
 import { useMemo } from "react";
 import {
   getActiveRate,
   getStatsMonthStart,
   getUserStats,
+  type UserListQuery,
 } from "../models/adminUser";
-import { fetchSanctionsSince, fetchUsers } from "../services/usersService";
+import {
+  fetchIsUserVerified,
+  fetchSanctionsSince,
+  fetchUserCounts,
+  fetchUserPage,
+} from "../services/usersService";
 
-/** Every user. Shared by User Management and the Analytics overview. */
-export const allUsersQuery = queryOptions({
-  queryKey: ["users", "all"],
-  queryFn: fetchUsers,
+/** One page of users; the current page stays visible while the next loads. */
+export function userPageQuery(query: UserListQuery) {
+  return queryOptions({
+    queryKey: ["users", "page", query],
+    queryFn: () => fetchUserPage(query),
+    placeholderData: keepPreviousData,
+  });
+}
+
+/** Whether a user has confirmed their email; waits until the id is known. */
+export function userVerifiedQuery(userId: string | undefined) {
+  return queryOptions({
+    queryKey: ["users", "verified", userId],
+    queryFn: userId ? () => fetchIsUserVerified(userId) : skipToken,
+  });
+}
+
+const userCountsQuery = queryOptions({
+  queryKey: ["users", "counts"],
+  queryFn: fetchUserCounts,
 });
 
 // The stats are measured from the moment the sanctions were loaded.
@@ -24,18 +51,19 @@ const recentSanctionsQuery = queryOptions({
 });
 
 /**
- * The user stat cards' figures, worked out from the user list and this
- * month's suspensions. Undefined until both have loaded.
+ * The user stat cards' figures, worked out from the user counts and this
+ * month's suspensions. Undefined until both have loaded. Shared by User
+ * Management and the Analytics overview.
  */
 export function useUserStats() {
-  const users = useQuery(allUsersQuery).data;
+  const counts = useQuery(userCountsQuery).data;
   const sanctions = useQuery(recentSanctionsQuery).data;
   const stats = useMemo(
     () =>
-      users && sanctions
-        ? getUserStats(users, sanctions.sanctions, sanctions.now)
+      counts && sanctions
+        ? getUserStats(counts, sanctions.sanctions, sanctions.now)
         : undefined,
-    [users, sanctions],
+    [counts, sanctions],
   );
   return { stats, activeRate: stats ? getActiveRate(stats) : 0 };
 }

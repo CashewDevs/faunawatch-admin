@@ -1,6 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveAvatars } from "../../../core/services/storageService";
-import { fetchSanctionsSince, fetchUsers } from "./usersService";
+import { defaultUserListQuery } from "../models/adminUser";
+import {
+  fetchIsUserVerified,
+  fetchSanctionsSince,
+  fetchUserCounts,
+  fetchUserPage,
+} from "./usersService";
 
 const rpc = vi.hoisted(() => vi.fn());
 const from = vi.hoisted(() => vi.fn());
@@ -31,6 +37,7 @@ const row = {
   report_count: 84,
   is_suspended: false,
   suspension_reason: null,
+  total_count: 37,
 };
 
 beforeEach(() => {
@@ -46,8 +53,28 @@ beforeEach(() => {
   );
 });
 
-describe("fetchUsers", () => {
-  it("maps admin_list_users rows to users", async () => {
+describe("fetchUserPage", () => {
+  it("passes the query to admin_list_users as a page offset", async () => {
+    mockRpc({ data: [row], error: null });
+
+    await fetchUserPage({
+      search: "maria",
+      status: "suspended",
+      sort: "name",
+      page: 3,
+      pageSize: 25,
+    });
+
+    expect(rpc).toHaveBeenCalledWith("admin_list_users", {
+      p_search: "maria",
+      p_status: "suspended",
+      p_sort: "name",
+      p_limit: 25,
+      p_offset: 50,
+    });
+  });
+
+  it("maps rows to users and reads the total from them", async () => {
     mockRpc({
       data: [
         row,
@@ -67,10 +94,10 @@ describe("fetchUsers", () => {
       error: null,
     });
 
-    const users = await fetchUsers();
+    const page = await fetchUserPage(defaultUserListQuery);
 
-    expect(rpc).toHaveBeenCalledWith("admin_list_users");
-    expect(users).toEqual([
+    expect(page.totalCount).toBe(37);
+    expect(page.users).toEqual([
       {
         id: "user-1",
         fullName: "Maria Santos",
@@ -102,13 +129,89 @@ describe("fetchUsers", () => {
       data: [{ ...row, email: null, username: null, full_name: null }],
       error: null,
     });
-    const [user] = await fetchUsers();
-    expect(user?.fullName).toBe("");
+    const { users } = await fetchUserPage(defaultUserListQuery);
+    expect(users[0]?.fullName).toBe("");
+  });
+
+  it("has a total of 0 without rows", async () => {
+    mockRpc({ data: [], error: null });
+    await expect(fetchUserPage(defaultUserListQuery)).resolves.toEqual({
+      users: [],
+      totalCount: 0,
+    });
   });
 
   it("throws when the RPC fails", async () => {
     mockRpc({ data: null, error: { message: "permission denied" } });
-    await expect(fetchUsers()).rejects.toThrow("Couldn't load users.");
+    await expect(fetchUserPage(defaultUserListQuery)).rejects.toThrow(
+      "Couldn't load users.",
+    );
+  });
+});
+
+describe("fetchIsUserVerified", () => {
+  it("reads the user's email confirmation from admin_get_user", async () => {
+    mockRpc({ data: [row], error: null });
+
+    await expect(fetchIsUserVerified("user-1")).resolves.toBe(true);
+    expect(rpc).toHaveBeenCalledWith("admin_get_user", {
+      p_user_id: "user-1",
+    });
+  });
+
+  it("is false for an unconfirmed email or a missing user", async () => {
+    mockRpc({ data: [{ ...row, email_confirmed_at: null }], error: null });
+    await expect(fetchIsUserVerified("user-1")).resolves.toBe(false);
+
+    mockRpc({ data: [], error: null });
+    await expect(fetchIsUserVerified("missing")).resolves.toBe(false);
+  });
+
+  it("throws when the RPC fails", async () => {
+    mockRpc({ data: null, error: { message: "permission denied" } });
+    await expect(fetchIsUserVerified("user-1")).rejects.toThrow(
+      "Couldn't load user.",
+    );
+  });
+});
+
+describe("fetchUserCounts", () => {
+  it("maps the admin_user_stats row", async () => {
+    mockRpc({
+      data: [
+        {
+          total_users: 10,
+          active_users: 8,
+          suspended_users: 2,
+          new_this_month: 3,
+          new_last_month: 4,
+          new_last_7_days: 1,
+        },
+      ],
+      error: null,
+    });
+
+    await expect(fetchUserCounts()).resolves.toEqual({
+      totalUsers: 10,
+      activeUsers: 8,
+      suspendedUsers: 2,
+      newThisMonth: 3,
+      newLastMonth: 4,
+      newThisWeek: 1,
+    });
+    expect(rpc).toHaveBeenCalledWith("admin_user_stats");
+  });
+
+  it("throws when the RPC fails or returns nothing", async () => {
+    mockRpc({ data: null, error: { message: "permission denied" } });
+    await expect(fetchUserCounts()).rejects.toThrow(
+      "Couldn't load user stats.",
+    );
+
+    mockRpc({ data: [], error: null });
+    await expect(fetchUserCounts()).rejects.toThrow(
+      "Couldn't load user stats.",
+    );
   });
 });
 

@@ -1,6 +1,6 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { fetchUsers } from "../../users/services/usersService";
+import { fetchIsUserVerified } from "../../users/services/usersService";
 import { getQueuePosition } from "../models/post";
 import { fetchAllPosts, fetchPost } from "../services/postsService";
 import { testPosts, testTarsier } from "../../../test/fixtures/posts";
@@ -14,7 +14,8 @@ vi.mock("../services/postsService", () => ({
 }));
 
 vi.mock("../../users/services/usersService", () => ({
-  fetchUsers: vi.fn(),
+  fetchIsUserVerified: vi.fn(),
+  fetchUserCounts: vi.fn(),
 }));
 
 function renderViewModel(
@@ -40,7 +41,11 @@ describe("usePostDetailViewModel", () => {
       Promise.resolve(id === testTarsier.id ? testTarsier : null),
     );
     vi.mocked(fetchAllPosts).mockResolvedValue([...testPosts]);
-    vi.mocked(fetchUsers).mockResolvedValue([...testUsers]);
+    vi.mocked(fetchIsUserVerified).mockImplementation((id) =>
+      Promise.resolve(
+        testUsers.find((user) => user.id === id)?.isVerified ?? false,
+      ),
+    );
   });
 
   it("loads the post, its queue position, and the return path", async () => {
@@ -57,7 +62,7 @@ describe("usePostDetailViewModel", () => {
     });
   });
 
-  it("reads the reporter's verified flag from the user list", async () => {
+  it("loads the verified flag of the reporter", async () => {
     const verified = testUsers.find((user) => user.isVerified);
     if (!verified) throw new Error("No verified test user");
     vi.mocked(fetchPost).mockResolvedValue({
@@ -70,12 +75,13 @@ describe("usePostDetailViewModel", () => {
     await waitFor(() => {
       expect(result.current.isReporterVerified).toBe(true);
     });
+    expect(vi.mocked(fetchIsUserVerified)).toHaveBeenCalledWith(verified.id);
   });
 
   it("treats an unverified or unknown reporter as unverified", async () => {
     const { result } = await renderLoaded();
     await waitFor(() => {
-      expect(vi.mocked(fetchUsers)).toHaveBeenCalled();
+      expect(vi.mocked(fetchIsUserVerified)).toHaveBeenCalled();
     });
     expect(result.current.isReporterVerified).toBe(false);
   });

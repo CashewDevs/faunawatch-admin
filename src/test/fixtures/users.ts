@@ -1,4 +1,9 @@
-import type { AdminUser } from "../../features/users/models/adminUser";
+import type {
+  AdminUser,
+  UserCounts,
+  UserListQuery,
+  UserPage,
+} from "../../features/users/models/adminUser";
 
 /**
  * Fictional users for tests. Every name and address is made up
@@ -50,3 +55,43 @@ export const testUsers: readonly AdminUser[] = people.map(
     avatar: null,
   }),
 );
+
+const suspendedCount = testUsers.filter(
+  (user) => user.status === "suspended",
+).length;
+
+/** What `admin_user_stats()` reports for the test users. */
+export const testUserCounts: UserCounts = {
+  totalUsers: testUsers.length,
+  activeUsers: testUsers.length - suspendedCount,
+  suspendedUsers: suspendedCount,
+  newThisMonth: 0,
+  newLastMonth: 0,
+  newThisWeek: 0,
+};
+
+/** Stands in for `admin_list_users()`: search, filter, sort, then one page. */
+export function testUserPage(
+  query: UserListQuery,
+  users: readonly AdminUser[] = testUsers,
+): UserPage {
+  const term = query.search.toLowerCase();
+  const matching = users
+    .filter(
+      (user) =>
+        (query.status === "all" || user.status === query.status) &&
+        [user.fullName, user.username, user.email].some((field) =>
+          field?.toLowerCase().includes(term),
+        ),
+    )
+    .sort((a, b) => {
+      if (query.sort === "name") return a.fullName.localeCompare(b.fullName);
+      const order = a.joinedAt.localeCompare(b.joinedAt);
+      return query.sort === "oldest" ? order : -order;
+    });
+  const start = (query.page - 1) * query.pageSize;
+  return {
+    users: matching.slice(start, start + query.pageSize),
+    totalCount: matching.length,
+  };
+}

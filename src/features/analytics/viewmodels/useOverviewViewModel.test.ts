@@ -2,10 +2,10 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createQueryWrapper } from "../../../test/queryWrapper";
 import { testAnalyticsData } from "../../../test/fixtures/analytics";
-import { testUsers } from "../../../test/fixtures/users";
+import { testUserCounts } from "../../../test/fixtures/users";
 import {
   fetchSanctionsSince,
-  fetchUsers,
+  fetchUserCounts,
 } from "../../users/services/usersService";
 import type { AnalyticsRange } from "../models/analytics";
 import { fetchAnalyticsData } from "../services/analyticsService";
@@ -16,7 +16,7 @@ vi.mock("../services/analyticsService", () => ({
 }));
 
 vi.mock("../../users/services/usersService", () => ({
-  fetchUsers: vi.fn(),
+  fetchUserCounts: vi.fn(),
   fetchSanctionsSince: vi.fn(),
 }));
 
@@ -35,7 +35,7 @@ describe("useOverviewViewModel", () => {
     fetchAnalyticsDataMock.mockImplementation((range) =>
       Promise.resolve(testAnalyticsData(range)),
     );
-    vi.mocked(fetchUsers).mockResolvedValue([...testUsers]);
+    vi.mocked(fetchUserCounts).mockResolvedValue(testUserCounts);
     vi.mocked(fetchSanctionsSince).mockResolvedValue([]);
   });
 
