@@ -14,14 +14,12 @@ const buttonClass =
 
 /**
  * Sticky bar at the bottom of the page: which post this is, and the
- * Decline / Request changes / Approve decision.
+ * Decline / Request changes / Approve decision while it's pending. Once
+ * decided it shows the outcome, plus Take down on an approved post.
  */
 export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
   const strings = AppStrings.posts;
   const decision = strings.detail.decision;
-  const disabledTitle = viewModel.isModerationAvailable
-    ? undefined
-    : strings.moderationUnavailable;
 
   return (
     <div
@@ -50,40 +48,50 @@ export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
         </div>
       </div>
 
-      {post.status === "pending" ? (
+      {viewModel.canDecide ? (
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
-            disabled={!viewModel.isModerationAvailable}
-            title={disabledTitle}
             onClick={viewModel.decline}
-            className={`${buttonClass} text-danger hover:bg-danger-tint disabled:hover:bg-transparent`}
+            className={`${buttonClass} text-danger hover:bg-danger-tint`}
           >
             <img src={AppAssets.shared.iconDecline} alt="" />
             {decision.decline}
           </button>
           <button
             type="button"
-            disabled={!viewModel.isModerationAvailable}
-            title={disabledTitle}
-            onClick={viewModel.requestChanges}
+            disabled={!viewModel.isRequestChangesAvailable}
+            title={
+              viewModel.isRequestChangesAvailable
+                ? undefined
+                : decision.requestChangesUnavailable
+            }
             className={`${buttonClass} bg-surface-tint text-deep-blue hover:bg-chip disabled:hover:bg-surface-tint`}
           >
             {decision.requestChanges}
           </button>
           <button
             type="button"
-            disabled={!viewModel.isModerationAvailable}
-            title={disabledTitle}
             onClick={viewModel.approve}
-            className={`${buttonClass} bg-amber px-5 text-white shadow-xs hover:bg-amber/90 disabled:hover:bg-amber`}
+            className={`${buttonClass} bg-amber px-5 text-white shadow-xs hover:bg-amber/90`}
           >
             <img src={AppAssets.shared.iconApprove} alt="" />
             {decision.approve}
           </button>
         </div>
       ) : (
-        <PostStatusPill status={post.status} />
+        <div className="flex flex-wrap items-center gap-3">
+          <PostStatusPill status={post.status} />
+          {viewModel.canTakeDown && (
+            <button
+              type="button"
+              onClick={viewModel.takeDown}
+              className={`${buttonClass} text-danger hover:bg-danger-tint`}
+            >
+              {decision.takeDown}
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

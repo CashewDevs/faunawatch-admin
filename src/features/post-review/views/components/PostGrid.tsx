@@ -50,7 +50,6 @@ export function PostGrid({ viewModel }: PostGridProps) {
             onToggleSelect={viewModel.toggleSelection}
             onApprove={viewModel.approvePost}
             onDecline={viewModel.declinePost}
-            isModerationAvailable={viewModel.isModerationAvailable}
           />
         </li>
       ))}

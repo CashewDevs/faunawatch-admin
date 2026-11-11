@@ -22,8 +22,10 @@ import {
   type PostTab,
   type ReportCategory,
 } from "../models/post";
+import { isDecidable } from "../models/moderation";
 import { fetchPostCardMedia } from "../services/postsService";
 import { allPostsQuery, signedUrlStaleTimeMs } from "./postQueries";
+import { useModerationFlow } from "./useModerationFlow";
 
 export const searchDebounceMs = 300;
 
@@ -38,9 +40,14 @@ export function usePostApprovalsViewModel() {
   const search = useDebouncedValue(urlQuery.search, searchDebounceMs);
   const query: PostListQuery = { ...urlQuery, search };
 
-  const [selectedIds, setSelectedIds] = useState<ReadonlySet<string>>(
+  const [checkedIds, setCheckedIds] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
+  const moderation = useModerationFlow({
+    onDecided: () => {
+      setCheckedIds(new Set());
+    },
+  });
 
   const postsQuery = useQuery(allPostsQuery);
   const allPosts = postsQuery.data;
@@ -66,6 +73,18 @@ export function usePostApprovalsViewModel() {
         reporterAvatar: null,
       },
   );
+  // Only pending posts can be selected. A post decided since it was
+  // checked (here or by another admin) drops out once the list reloads.
+  const decidableIds = new Set(
+    (allPosts ?? [])
+      .filter((post) => isDecidable(post.status))
+      .map((post) => post.id),
+  );
+  const selectedIds: ReadonlySet<string> = new Set(
+    [...checkedIds].filter((id) => decidableIds.has(id)),
+  );
+  const decidableOnPage = posts.filter((post) => isDecidable(post.status));
+
   const totalCount = result?.totalCount ?? 0;
   const pageCount = getPageCount(totalCount, urlQuery.pageSize);
 
@@ -79,7 +98,7 @@ export function usePostApprovalsViewModel() {
   };
 
   const changeTab = (tab: PostTab) => {
-    setSelectedIds(new Set());
+    setCheckedIds(new Set());
     update({ tab });
   };
 
@@ -88,33 +107,42 @@ export function usePostApprovalsViewModel() {
   };
 
   const toggleSelection = (postId: string) => {
-    setSelectedIds((current) => {
-      const next = new Set(current);
+    if (!decidableIds.has(postId)) return;
+    setCheckedIds(() => {
+      const next = new Set(selectedIds);
       if (!next.delete(postId)) next.add(postId);
       return next;
     });
   };
 
   const allOnPageSelected =
-    posts.length > 0 && posts.every((post) => selectedIds.has(post.id));
+    decidableOnPage.length > 0 &&
+    decidableOnPage.every((post) => selectedIds.has(post.id));
 
-  /** Selects every post on this page, or clears the whole selection once they all are. */
+  /** Selects every pending post on this page, or clears the whole selection once they all are. */
   const toggleSelectAll = () => {
-    setSelectedIds((current) => {
+    setCheckedIds(() => {
       if (allOnPageSelected) return new Set();
-      const next = new Set(current);
-      posts.forEach((post) => next.add(post.id));
+      const next = new Set(selectedIds);
+      decidableOnPage.forEach((post) => next.add(post.id));
       return next;
     });
   };
 
-  // TODO(moderation): Approve/decline go through admin_decide_report (and
-  // need a decision on whether declining notifies the reporter). Visual
-  // only until the team switches moderation on.
-  const approvePost: (postId: string) => void = () => undefined;
-  const declinePost: (postId: string) => void = () => undefined;
-  const approveSelected = () => undefined;
-  const declineSelected = () => undefined;
+  // TODO(moderation): Whether declining should notify the reporter is
+  // still open; the app doesn't show decisions yet (Cliff's area).
+  const approvePost = (postId: string) => {
+    moderation.open("approve", [postId]);
+  };
+  const declinePost = (postId: string) => {
+    moderation.open("decline", [postId]);
+  };
+  const approveSelected = () => {
+    moderation.open("approve", [...selectedIds]);
+  };
+  const declineSelected = () => {
+    moderation.open("decline", [...selectedIds]);
+  };
 
   return {
     tab: urlQuery.tab,
@@ -137,7 +165,7 @@ export function usePostApprovalsViewModel() {
     selectedIds,
     selectedCount: selectedIds.size,
     allOnPageSelected,
-    isModerationAvailable: false,
+    moderation,
     changeTab,
     changeSearch: (value: string) => {
       update({ search: value }, { replace: true });

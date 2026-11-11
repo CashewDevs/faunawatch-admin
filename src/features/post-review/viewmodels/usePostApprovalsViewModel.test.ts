@@ -11,6 +11,10 @@ vi.mock("../services/postsService", () => ({
   fetchPostCardMedia: vi.fn(),
 }));
 
+vi.mock("../services/moderationService", () => ({
+  decidePosts: vi.fn(),
+}));
+
 const fetchAllPostsMock = vi.mocked(fetchAllPosts);
 const fetchPostCardMediaMock = vi.mocked(fetchPostCardMedia);
 const counts = countPostsByTab(testPosts);
@@ -206,6 +210,49 @@ describe("usePostApprovalsViewModel", () => {
     act(() => {
       result.current.toggleSelectAll();
     });
+    expect(result.current.selectedCount).toBe(0);
+  });
+
+  it("drops a selected post once it is no longer pending", async () => {
+    const { result } = await renderLoaded();
+    const [first, second] = result.current.posts;
+    if (!first || !second) throw new Error("Need two pending posts");
+
+    act(() => {
+      result.current.toggleSelection(first.id);
+    });
+    act(() => {
+      result.current.toggleSelection(second.id);
+    });
+    expect(result.current.selectedCount).toBe(2);
+
+    // Another admin approves the first post; the list reloads.
+    fetchAllPostsMock.mockResolvedValue(
+      testPosts.map((post) =>
+        post.id === first.id ? { ...post, status: "approved" } : post,
+      ),
+    );
+    act(() => {
+      result.current.retry();
+    });
+
+    await waitFor(() => {
+      expect(result.current.selectedCount).toBe(1);
+    });
+    expect([...result.current.selectedIds]).toEqual([second.id]);
+  });
+
+  it("ignores selecting a post that isn't pending", async () => {
+    const { result } = await renderLoaded("/posts?tab=approved");
+    const decided = result.current.posts.find(
+      (post) => post.status !== "pending",
+    );
+    if (!decided) throw new Error("Need a decided post on the first page");
+
+    act(() => {
+      result.current.toggleSelection(decided.id);
+    });
+
     expect(result.current.selectedCount).toBe(0);
   });
 

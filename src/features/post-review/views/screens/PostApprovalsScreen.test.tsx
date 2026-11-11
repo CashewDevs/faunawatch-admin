@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Route, Routes, useLocation, useParams } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -6,6 +6,8 @@ import { AppRoutes } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { formatCoordinates } from "../../../../core/utils/formatters";
 import { countPostsByTab, sortPosts } from "../../models/post";
+import { ModerationError } from "../../models/moderation";
+import { decidePosts } from "../../services/moderationService";
 import { fetchAllPosts, fetchPostCardMedia } from "../../services/postsService";
 import { testPosts, toTestCardData } from "../../../../test/fixtures/posts";
 import { createRouterQueryWrapper } from "../../../../test/routerWrapper";
@@ -17,8 +19,18 @@ vi.mock("../../services/postsService", () => ({
   fetchPostCardMedia: vi.fn(),
 }));
 
+vi.mock("../../services/moderationService", () => ({
+  decidePosts: vi.fn(),
+}));
+
 const strings = AppStrings.posts;
 const counts = countPostsByTab(testPosts);
+const decidePostsMock = vi.mocked(decidePosts);
+/** The pending tab, newest first, as the screen shows it. */
+const pendingPosts = sortPosts(
+  testPosts.filter((post) => post.status === "pending"),
+  "newest",
+);
 
 function DetailProbe() {
   const { postId } = useParams();
@@ -47,10 +59,13 @@ async function findCards() {
 
 describe("PostApprovalsScreen", () => {
   beforeEach(() => {
+    vi.mocked(fetchAllPosts).mockReset();
     vi.mocked(fetchAllPosts).mockResolvedValue([...testPosts]);
     vi.mocked(fetchPostCardMedia).mockImplementation((posts) =>
       Promise.resolve(posts.map(toTestCardData)),
     );
+    decidePostsMock.mockReset();
+    decidePostsMock.mockResolvedValue(undefined);
   });
 
   it("renders the tab counts and a page of pending posts", async () => {
@@ -190,10 +205,10 @@ describe("PostApprovalsScreen", () => {
     expect(within(bar).queryByRole("checkbox")).not.toBeInTheDocument();
     expect(
       within(bar).getByRole("button", { name: "Approve 1 selected post" }),
-    ).toBeDisabled();
+    ).toBeEnabled();
     expect(
       within(bar).getByRole("button", { name: "Decline 1 selected post" }),
-    ).toBeDisabled();
+    ).toBeEnabled();
 
     await user.click(
       within(bar).getByRole("button", { name: strings.bulk.selectAll }),
@@ -211,15 +226,170 @@ describe("PostApprovalsScreen", () => {
       .forEach((checkbox) => expect(checkbox).not.toBeChecked());
   });
 
-  it("renders moderation buttons as disabled for now", async () => {
-    renderScreen();
-    await findCards();
+  describe("moderation", () => {
+    const moderation = strings.moderation;
 
-    const approveButtons = screen.getAllByRole("button", {
-      name: strings.card.approve,
+    it("approves one post after confirming, then reloads the list", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      const [firstCard] = await findCards();
+      if (!firstCard) throw new Error("No cards rendered");
+      const postId = pendingPosts[0]?.id;
+
+      await user.click(
+        within(firstCard).getByRole("button", { name: strings.card.approve }),
+      );
+      const dialog = screen.getByRole("dialog", {
+        name: moderation.title.approve,
+      });
+      expect(dialog).toHaveAccessibleDescription(moderation.body.approve);
+      expect(decidePostsMock).not.toHaveBeenCalled();
+
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: moderation.confirm.approve,
+        }),
+      );
+
+      expect(decidePostsMock).toHaveBeenCalledWith([postId], "approve", null);
+      expect(
+        await screen.findByText(moderation.success.approve),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(vi.mocked(fetchAllPosts)).toHaveBeenCalledTimes(2);
+      });
     });
-    expect(approveButtons).toHaveLength(12);
-    approveButtons.forEach((button) => expect(button).toBeDisabled());
+
+    it("cancelling changes nothing", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      const [firstCard] = await findCards();
+      if (!firstCard) throw new Error("No cards rendered");
+
+      await user.click(
+        within(firstCard).getByRole("button", { name: strings.card.decline }),
+      );
+      await user.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: moderation.cancel,
+        }),
+      );
+
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(decidePostsMock).not.toHaveBeenCalled();
+    });
+
+    it("declines the selected posts with one reason and clears the selection", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      const cards = await findCards();
+      for (const card of cards.slice(0, 2)) {
+        await user.click(within(card).getByRole("checkbox"));
+      }
+
+      await user.click(
+        screen.getByRole("button", { name: "Decline 2 selected posts" }),
+      );
+      const dialog = screen.getByRole("dialog", {
+        name: `${moderation.titleManyPrefix.decline} 2 ${moderation.titleManySuffix}`,
+      });
+      expect(dialog).toHaveTextContent(moderation.reasonManyHint);
+      const confirm = within(dialog).getByRole("button", {
+        name: moderation.confirm.decline,
+      });
+      expect(confirm).toBeDisabled();
+
+      await user.click(
+        within(dialog).getByRole("radio", {
+          name: moderation.reasons.notWildlife,
+        }),
+      );
+      await user.click(confirm);
+
+      expect(decidePostsMock).toHaveBeenCalledWith(
+        pendingPosts.slice(0, 2).map((post) => post.id),
+        "decline",
+        "notWildlife",
+      );
+      expect(
+        await screen.findByText(`2 ${moderation.successMany.decline}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("region", { name: strings.bulk.label }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("only offers selection and decisions on pending posts", async () => {
+      renderScreen("/posts?tab=declined");
+      const cards = await findCards();
+      const decided = cards.filter(
+        (card) =>
+          !within(card).queryByRole("button", { name: strings.card.approve }),
+      );
+      expect(decided.length).toBeGreaterThan(0);
+      decided.forEach((card) => {
+        expect(within(card).queryByRole("checkbox")).not.toBeInTheDocument();
+        expect(
+          within(card).queryByRole("button", { name: strings.card.decline }),
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it("closes and explains when another admin decided first", async () => {
+      decidePostsMock.mockRejectedValueOnce(
+        new ModerationError("alreadyDecided"),
+      );
+      const user = userEvent.setup();
+      renderScreen();
+      const [firstCard] = await findCards();
+      if (!firstCard) throw new Error("No cards rendered");
+
+      await user.click(
+        within(firstCard).getByRole("button", { name: strings.card.approve }),
+      );
+      await user.click(
+        within(screen.getByRole("dialog")).getByRole("button", {
+          name: moderation.confirm.approve,
+        }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        moderation.errors.alreadyDecided,
+      );
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      await waitFor(() => {
+        expect(vi.mocked(fetchAllPosts)).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("keeps the dialog open to retry after a network error", async () => {
+      decidePostsMock.mockRejectedValueOnce(new Error("network"));
+      const user = userEvent.setup();
+      renderScreen();
+      const [firstCard] = await findCards();
+      if (!firstCard) throw new Error("No cards rendered");
+
+      await user.click(
+        within(firstCard).getByRole("button", { name: strings.card.approve }),
+      );
+      const dialog = screen.getByRole("dialog");
+      const confirm = within(dialog).getByRole("button", {
+        name: moderation.confirm.approve,
+      });
+      await user.click(confirm);
+
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+        moderation.failed,
+      );
+
+      await user.click(confirm);
+
+      expect(
+        await screen.findByText(moderation.success.approve),
+      ).toBeInTheDocument();
+      expect(decidePostsMock).toHaveBeenCalledTimes(2);
+    });
   });
 
   it("shows the empty state when the search matches nothing", async () => {

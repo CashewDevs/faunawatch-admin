@@ -9,6 +9,8 @@ import { PostContentCard } from "../components/PostContentCard";
 import { PostDecisionBar } from "../components/PostDecisionBar";
 import { PostDetailHeader } from "../components/PostDetailHeader";
 import { PostGallery } from "../components/PostGallery";
+import { ModerationDialog } from "../components/ModerationDialog";
+import { ModerationNotice } from "../components/ModerationNotice";
 import { PostLocationCard } from "../components/PostLocationCard";
 import { ReporterCard } from "../components/ReporterCard";
 
@@ -73,6 +75,8 @@ function PostDetailContent({ postId }: { postId: string }) {
         {body}
       </div>
       {post && <PostDecisionBar post={post} viewModel={viewModel} />}
+      <ModerationDialog moderation={viewModel.moderation} />
+      <ModerationNotice moderation={viewModel.moderation} />
     </div>
   );
 }

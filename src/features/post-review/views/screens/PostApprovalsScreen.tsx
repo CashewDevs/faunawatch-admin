@@ -3,6 +3,8 @@ import { AppStrings } from "../../../../core/constants/appStrings";
 import { postPageSizeOptions } from "../../models/post";
 import { usePostApprovalsViewModel } from "../../viewmodels/usePostApprovalsViewModel";
 import { BulkActionBar } from "../components/BulkActionBar";
+import { ModerationDialog } from "../components/ModerationDialog";
+import { ModerationNotice } from "../components/ModerationNotice";
 import { PostFilterToolbar } from "../components/PostFilterToolbar";
 import { PostGrid } from "../components/PostGrid";
 import { PostStatusTabs } from "../components/PostStatusTabs";
@@ -31,6 +33,8 @@ export function PostApprovalsScreen() {
       </div>
 
       <BulkActionBar viewModel={viewModel} />
+      <ModerationDialog moderation={viewModel.moderation} />
+      <ModerationNotice moderation={viewModel.moderation} />
 
       <div className="mt-auto">
         <Pagination
