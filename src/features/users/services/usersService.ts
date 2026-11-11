@@ -32,6 +32,9 @@ interface AdminListUsersRow {
   profile_created_at: string;
   report_count: number;
   is_suspended: boolean;
+  suspension_reason: string | null;
+  suspended_until: string | null;
+  is_admin: boolean;
   total_count: number;
 }
 
@@ -90,6 +93,9 @@ export async function fetchUserPage(query: UserListQuery): Promise<UserPage> {
       status: row.is_suspended ? "suspended" : "active",
       isVerified: row.email_confirmed_at !== null,
       avatar: avatars[index] ?? null,
+      isAdmin: row.is_admin,
+      suspensionReason: row.is_suspended ? row.suspension_reason : null,
+      suspendedUntil: row.is_suspended ? row.suspended_until : null,
     })),
     totalCount: rows[0]?.total_count ?? 0,
   };

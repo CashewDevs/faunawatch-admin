@@ -37,6 +37,8 @@ const row = {
   report_count: 84,
   is_suspended: false,
   suspension_reason: null,
+  suspended_until: null,
+  is_admin: true,
   total_count: 37,
 };
 
@@ -89,6 +91,8 @@ describe("fetchUserPage", () => {
           report_count: 0,
           is_suspended: true,
           suspension_reason: "Spam",
+          suspended_until: "2026-12-01T08:00:00+00:00",
+          is_admin: false,
         },
       ],
       error: null,
@@ -108,6 +112,9 @@ describe("fetchUserPage", () => {
         status: "active",
         isVerified: true,
         avatar: { kind: "preset", name: "bunny" },
+        isAdmin: true,
+        suspensionReason: null,
+        suspendedUntil: null,
       },
       {
         id: "user-2",
@@ -120,6 +127,9 @@ describe("fetchUserPage", () => {
         status: "suspended",
         isVerified: false,
         avatar: { kind: "photo", url: "https://signed/user-2/photo.jpg" },
+        isAdmin: false,
+        suspensionReason: "Spam",
+        suspendedUntil: "2026-12-01T08:00:00+00:00",
       },
     ]);
   });

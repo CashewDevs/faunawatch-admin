@@ -1,3 +1,4 @@
+import { ActionNotice } from "../../../../core/components/ActionNotice";
 import type { ReactNode } from "react";
 import { useParams } from "react-router";
 import { AppStrings } from "../../../../core/constants/appStrings";
@@ -10,7 +11,6 @@ import { PostDecisionBar } from "../components/PostDecisionBar";
 import { PostDetailHeader } from "../components/PostDetailHeader";
 import { PostGallery } from "../components/PostGallery";
 import { ModerationDialog } from "../components/ModerationDialog";
-import { ModerationNotice } from "../components/ModerationNotice";
 import { PostLocationCard } from "../components/PostLocationCard";
 import { ReporterCard } from "../components/ReporterCard";
 
@@ -76,7 +76,10 @@ function PostDetailContent({ postId }: { postId: string }) {
       </div>
       {post && <PostDecisionBar post={post} viewModel={viewModel} />}
       <ModerationDialog moderation={viewModel.moderation} />
-      <ModerationNotice moderation={viewModel.moderation} />
+      <ActionNotice
+        notice={viewModel.moderation.notice}
+        onDismiss={viewModel.moderation.dismissNotice}
+      />
     </div>
   );
 }

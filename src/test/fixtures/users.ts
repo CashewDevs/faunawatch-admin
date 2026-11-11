@@ -39,8 +39,13 @@ const people: ReadonlyArray<
   ["Enzo Morales", "enzo_m", "2025-04-06", 1],
 ];
 
-const suspendedUsernames = new Set(["klip123", "migs_t"]);
+/** Active suspensions: reason, and end (null = until reactivated). */
+const suspensions = new Map<string, [reason: string, until: string | null]>([
+  ["klip123", ["Spam: posted ads in comments", null]],
+  ["migs_t", ["Harassment or abuse", "2026-12-01T08:00:00+00:00"]],
+]);
 const verifiedUsernames = new Set(["thorne_botanist"]);
+const adminUsernames = new Set(["ramon_s"]);
 
 export const testUsers: readonly AdminUser[] = people.map(
   ([fullName, username, joinedAt, postCount], index) => ({
@@ -50,9 +55,12 @@ export const testUsers: readonly AdminUser[] = people.map(
     email: `${username.replace(/[^a-z0-9]/g, ".")}@example.org`,
     joinedAt: `${joinedAt}T08:00:00+00:00`,
     postCount,
-    status: suspendedUsernames.has(username) ? "suspended" : "active",
+    status: suspensions.has(username) ? "suspended" : "active",
     isVerified: verifiedUsernames.has(username),
     avatar: null,
+    isAdmin: adminUsernames.has(username),
+    suspensionReason: suspensions.get(username)?.[0] ?? null,
+    suspendedUntil: suspensions.get(username)?.[1] ?? null,
   }),
 );
 

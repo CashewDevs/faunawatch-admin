@@ -4,7 +4,7 @@
  *
  * The users Service maps `admin_list_users()` rows to this shape; the RPC
  * does the searching, filtering, sorting and paging. Admin
- * rights are not shown or edited here: they live in `admin_users`, which
+ * rights are read but never edited here: they live in `admin_users`, which
  * only the Supabase dashboard changes.
  */
 
@@ -29,6 +29,15 @@ export interface AdminUser {
   /** The user has confirmed their email address. */
   isVerified: boolean;
   avatar: AvatarImage | null;
+  /** Admins can't be suspended. */
+  isAdmin: boolean;
+  /** Why the active suspension was made; null when not suspended. */
+  suspensionReason: string | null;
+  /**
+   * ISO 8601 date-time the active suspension ends; null when not suspended
+   * or when it lasts until an admin reactivates the user.
+   */
+  suspendedUntil: string | null;
 }
 
 /** When an admin suspended a user. */

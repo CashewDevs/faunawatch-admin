@@ -1,14 +1,17 @@
+import { ActionNotice } from "../../../../core/components/ActionNotice";
 import { Pagination } from "../../../../core/components/Pagination";
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { userPageSizeOptions } from "../../models/adminUser";
 import { useUserManagementViewModel } from "../../viewmodels/useUserManagementViewModel";
+import { SuspensionDialog } from "../components/SuspensionDialog";
 import { UserStatsCards } from "../components/UserStatsCards";
 import { UserTable } from "../components/UserTable";
 import { UserToolbar } from "../components/UserToolbar";
 
 /**
- * User Management: summary stats, search/filter toolbar, and the users table.
+ * User Management: summary stats, search/filter toolbar, the users table,
+ * and the suspend / reactivate dialog.
  */
 export function UserManagementScreen() {
   const viewModel = useUserManagementViewModel();
@@ -48,6 +51,12 @@ export function UserManagementScreen() {
           onPageSizeChange={viewModel.changePageSize}
         />
       </div>
+
+      <SuspensionDialog suspension={viewModel.suspension} />
+      <ActionNotice
+        notice={viewModel.suspension.notice}
+        onDismiss={viewModel.suspension.dismissNotice}
+      />
     </div>
   );
 }

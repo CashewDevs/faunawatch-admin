@@ -12,12 +12,14 @@ import {
   type UserStatusFilter,
 } from "../models/adminUser";
 import { userPageQuery, useUserStats } from "./userQueries";
+import { useSuspensionFlow } from "./useSuspensionFlow";
 
 export const searchDebounceMs = 300;
 
 /**
  * Presentation state and actions for the User Management screen: search,
- * status filter, sort, pagination, and the summary statistics.
+ * status filter, sort, pagination, the summary statistics, and suspending
+ * or reactivating users.
  */
 export function useUserManagementViewModel() {
   const [searchInput, setSearchInput] = useState(defaultUserListQuery.search);
@@ -33,6 +35,7 @@ export function useUserManagementViewModel() {
     userPageQuery({ search: search.trim(), status, sort, page, pageSize }),
   );
   const { stats, activeRate } = useUserStats();
+  const suspension = useSuspensionFlow();
 
   const userPage = usersQuery.data;
 
@@ -101,6 +104,7 @@ export function useUserManagementViewModel() {
     changePageSize,
     goToPage,
     exportCsv,
+    suspension,
   };
 }
 

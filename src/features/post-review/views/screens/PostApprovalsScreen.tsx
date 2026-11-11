@@ -1,10 +1,10 @@
+import { ActionNotice } from "../../../../core/components/ActionNotice";
 import { Pagination } from "../../../../core/components/Pagination";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { postPageSizeOptions } from "../../models/post";
 import { usePostApprovalsViewModel } from "../../viewmodels/usePostApprovalsViewModel";
 import { BulkActionBar } from "../components/BulkActionBar";
 import { ModerationDialog } from "../components/ModerationDialog";
-import { ModerationNotice } from "../components/ModerationNotice";
 import { PostFilterToolbar } from "../components/PostFilterToolbar";
 import { PostGrid } from "../components/PostGrid";
 import { PostStatusTabs } from "../components/PostStatusTabs";
@@ -34,7 +34,10 @@ export function PostApprovalsScreen() {
 
       <BulkActionBar viewModel={viewModel} />
       <ModerationDialog moderation={viewModel.moderation} />
-      <ModerationNotice moderation={viewModel.moderation} />
+      <ActionNotice
+        notice={viewModel.moderation.notice}
+        onDismiss={viewModel.moderation.dismissNotice}
+      />
 
       <div className="mt-auto">
         <Pagination

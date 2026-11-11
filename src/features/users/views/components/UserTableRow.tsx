@@ -2,10 +2,13 @@ import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { formatDate, formatNumber } from "../../../../core/utils/formatters";
 import type { AdminUser } from "../../models/adminUser";
+import { canChangeSuspension } from "../../models/suspension";
 import { UserAvatar } from "./UserAvatar";
 
 interface UserTableRowProps {
   user: AdminUser;
+  /** Opens the suspend or reactivate dialog. */
+  onToggleStatus: (user: AdminUser) => void;
 }
 
 /** Grid cell: fills its row height so row tints have no gaps. */
@@ -13,12 +16,14 @@ const cellClass = "flex items-center";
 
 /**
  * One user row: identity, email, join date, post count, and account status.
+ * The status switch asks to suspend or reactivate; it is locked for admins.
  * Rendered inside UserTable's grid (the row itself is `display: contents`).
  */
-export function UserTableRow({ user }: UserTableRowProps) {
+export function UserTableRow({ user, onToggleStatus }: UserTableRowProps) {
   const strings = AppStrings.users.table;
   const isSuspended = user.status === "suspended";
   const name = user.fullName || strings.unnamed;
+  const isLocked = !canChangeSuspension(user);
 
   return (
     <tr
@@ -77,15 +82,20 @@ export function UserTableRow({ user }: UserTableRowProps) {
         >
           {strings.status[user.status]}
         </span>
-        {/* TODO(moderation): Suspend/reactivate needs the confirm modals from
-            Figma and a backend status column + admin RLS policy. Visual only. */}
+        {/* The switch shows the current status; the dialog changes it. */}
         <button
           type="button"
           role="switch"
           aria-checked={!isSuspended}
-          aria-label={`${strings.toggleStatus}: ${name}`}
-          disabled
-          className={`flex h-6 w-11 shrink-0 cursor-not-allowed items-center rounded-full p-0.5 ${
+          aria-label={`${strings.toggleStatus}: ${name}${
+            isLocked ? ` (${strings.adminLocked})` : ""
+          }`}
+          title={isLocked ? strings.adminLocked : undefined}
+          disabled={isLocked}
+          onClick={() => {
+            onToggleStatus(user);
+          }}
+          className={`flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full p-0.5 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50 ${
             isSuspended ? "justify-start bg-border pl-1" : "justify-end bg-teal"
           }`}
         >
