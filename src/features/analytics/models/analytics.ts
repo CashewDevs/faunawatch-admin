@@ -16,6 +16,19 @@ import {
   type PostStatus,
   type ReportCategory,
 } from "../../post-review/models/post";
+import {
+  declineReasons,
+  type DeclineReason,
+  type ReviewDecision,
+} from "../../post-review/models/moderation";
+
+// Decline reasons are defined with the decisions that use them.
+export {
+  declineReasons,
+  toDeclineReason,
+  type DeclineReason,
+  type ReviewDecision,
+} from "../../post-review/models/moderation";
 
 // ── Screen state ─────────────────────────────────────────────
 
@@ -181,8 +194,6 @@ export interface AnalyticsReport {
   /** When the report was first approved or declined; null while pending. */
   firstDecidedAt: string | null;
 }
-
-export type ReviewDecision = "approved" | "declined";
 
 /** A moderation decision made in the selected range. */
 export interface AnalyticsReview {
@@ -739,34 +750,6 @@ export interface ReviewerDecisions {
   reviewerId: string;
   reviewerName: string;
   decisions: number;
-}
-
-export type DeclineReason =
-  | "inaccurateSpecies"
-  | "lowQualityPhoto"
-  | "domesticSpecimen"
-  | "duplicateSighting"
-  | "inaccurateLocation";
-
-export const declineReasons: readonly DeclineReason[] = [
-  "inaccurateSpecies",
-  "lowQualityPhoto",
-  "domesticSpecimen",
-  "duplicateSighting",
-  "inaccurateLocation",
-];
-
-const declineReasonByValue: Record<string, DeclineReason | undefined> = {
-  inaccurate_species: "inaccurateSpecies",
-  low_quality_photo: "lowQualityPhoto",
-  domestic_specimen: "domesticSpecimen",
-  duplicate: "duplicateSighting",
-  inaccurate_gps: "inaccurateLocation",
-};
-
-/** `decline_reason` to its key; null when unset or unknown. */
-export function toDeclineReason(value: string | null): DeclineReason | null {
-  return value ? (declineReasonByValue[value] ?? null) : null;
 }
 
 export interface ModerationActivity {

@@ -12,9 +12,11 @@ import {
   sortComments,
   type CommentSort,
 } from "../models/post";
+import { canTakeDown, isDecidable } from "../models/moderation";
 import { fetchPost } from "../services/postsService";
 import { getReturnPath } from "./postNavigation";
 import { allPostsQuery, signedUrlStaleTimeMs } from "./postQueries";
+import { useModerationFlow } from "./useModerationFlow";
 
 /** Comments shown before "Show more comments". */
 export const initialCommentCount = 3;
@@ -84,12 +86,11 @@ export function usePostDetailViewModel(postId: string) {
     }
   };
 
-  // TODO(moderation): Approve, decline, and request changes go through
-  // admin_decide_report, with the admin note stored in admin_notes.
-  // Visual only until the team switches moderation on.
-  const approve = () => undefined;
-  const decline = () => undefined;
-  const requestChanges = () => undefined;
+  // The page stays on the post; the reload swaps the buttons for the result.
+  const moderation = useModerationFlow();
+  // TODO(moderation): The admin note is stored in admin_notes in the next
+  // phase. Request changes has no backend yet; it is designed after
+  // approve/decline, with the app side (Cliff's area).
 
   return {
     post,
@@ -137,10 +138,19 @@ export function usePostDetailViewModel(postId: string) {
     approvalRate: post ? getApprovalRate(post.reporterStats) : 0,
     adminNote,
     changeAdminNote: setAdminNote,
-    isModerationAvailable: false,
-    approve,
-    decline,
-    requestChanges,
+    moderation,
+    canDecide: post ? isDecidable(post.status) : false,
+    canTakeDown: post ? canTakeDown(post.status) : false,
+    isRequestChangesAvailable: false,
+    approve: () => {
+      moderation.open("approve", [postId]);
+    },
+    decline: () => {
+      moderation.open("decline", [postId]);
+    },
+    takeDown: () => {
+      moderation.open("takeDown", [postId]);
+    },
   };
 }
 

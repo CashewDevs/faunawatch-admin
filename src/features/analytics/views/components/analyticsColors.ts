@@ -84,4 +84,6 @@ export const declineReasonFill: Record<DeclineReason, string> = {
   domesticSpecimen: "fill-primary",
   duplicateSighting: "fill-amber-ink",
   inaccurateLocation: "fill-muted",
+  inappropriateContent: "fill-teal",
+  notWildlife: "fill-accent-gold",
 };

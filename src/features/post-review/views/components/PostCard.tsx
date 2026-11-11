@@ -17,14 +17,12 @@ import { ReporterAvatar } from "./ReporterAvatar";
 
 interface PostCardProps {
   post: PostCardData;
-  /** Shows the select checkbox when provided. */
+  /** Shows the select checkbox on pending posts when provided. */
   isSelected?: boolean;
   onToggleSelect?: (postId: string) => void;
   /** Shows Decline / Approve on pending posts when provided. */
   onApprove?: (postId: string) => void;
   onDecline?: (postId: string) => void;
-  /** False renders the moderation buttons disabled. */
-  isModerationAvailable?: boolean;
 }
 
 const severityBadgeClass: Record<PostSeverity, string> = {
@@ -48,7 +46,6 @@ export function PostCard({
   onToggleSelect,
   onApprove,
   onDecline,
-  isModerationAvailable = true,
 }: PostCardProps) {
   const strings = AppStrings.posts;
   const location = useLocation();
@@ -81,7 +78,7 @@ export function PostCard({
               </span>
             )}
           </div>
-          {onToggleSelect && (
+          {onToggleSelect && isPending && (
             <label className="relative z-10 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-white/90 shadow-xs">
               <input
                 type="checkbox"
@@ -186,16 +183,10 @@ export function PostCard({
               {onDecline && (
                 <button
                   type="button"
-                  disabled={!isModerationAvailable}
-                  title={
-                    isModerationAvailable
-                      ? undefined
-                      : strings.moderationUnavailable
-                  }
                   onClick={() => {
                     onDecline(post.id);
                   }}
-                  className={`${actionButtonClass} text-danger hover:bg-danger-tint disabled:hover:bg-transparent`}
+                  className={`${actionButtonClass} text-danger hover:bg-danger-tint`}
                 >
                   <img src={AppAssets.shared.iconDecline} alt="" />
                   {strings.card.decline}
@@ -204,16 +195,10 @@ export function PostCard({
               {onApprove && (
                 <button
                   type="button"
-                  disabled={!isModerationAvailable}
-                  title={
-                    isModerationAvailable
-                      ? undefined
-                      : strings.moderationUnavailable
-                  }
                   onClick={() => {
                     onApprove(post.id);
                   }}
-                  className={`${actionButtonClass} bg-teal text-white hover:bg-teal/90 disabled:hover:bg-teal`}
+                  className={`${actionButtonClass} bg-teal text-white hover:bg-teal/90`}
                 >
                   <img src={AppAssets.shared.iconApprove} alt="" />
                   {strings.card.approve}

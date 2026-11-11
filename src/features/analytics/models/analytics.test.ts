@@ -503,6 +503,8 @@ describe("getModerationActivity", () => {
       domesticSpecimen: 0,
       duplicateSighting: 1,
       inaccurateLocation: 0,
+      inappropriateContent: 0,
+      notWildlife: 0,
     });
   });
 });

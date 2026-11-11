@@ -4,6 +4,18 @@
  * Views must reference text via this constants object instead of
  * hardcoding strings.
  */
+
+/** Decline reason labels, shared by the decline dialog and Analytics. */
+const declineReasonLabels = {
+  inaccurateSpecies: "Inaccurate Species ID",
+  lowQualityPhoto: "Low-quality / Blurred Photo",
+  domesticSpecimen: "Domestic / Non-wild Specimen",
+  duplicateSighting: "Duplicate Sighting",
+  inaccurateLocation: "Inaccurate GPS Location",
+  inappropriateContent: "Inappropriate Content",
+  notWildlife: "Not Wildlife / Unrelated",
+} as const;
+
 export const AppStrings = {
   common: {
     loading: "Loading FaunaWatch Admin",
@@ -159,6 +171,75 @@ export const AppStrings = {
       approve: "Approve",
     },
     moderationUnavailable: "Moderation isn't connected yet",
+    /** The approve / decline / take-down dialog and its result messages. */
+    moderation: {
+      title: {
+        approve: "Approve this post?",
+        decline: "Decline this post?",
+        takeDown: "Take down this post?",
+      },
+      /** Titles for several posts, e.g. "Approve 3 posts?". */
+      titleManyPrefix: {
+        approve: "Approve",
+        decline: "Decline",
+        takeDown: "Take down",
+      },
+      titleManySuffix: "posts?",
+      body: {
+        approve:
+          "It becomes visible to the community straight away. If it turns out to be wrong, you can take it down later from its review page.",
+        decline:
+          "It stays hidden from the community. A declined post can't be approved later.",
+        takeDown:
+          "It's removed from the community map, and its photos and comments are hidden. A taken-down post can't be approved again.",
+      },
+      bodyMany: {
+        approve:
+          "They become visible to the community straight away. If one turns out to be wrong, you can take it down later from its review page.",
+        decline:
+          "They stay hidden from the community. Declined posts can't be approved later.",
+        takeDown:
+          "They're removed from the community map, and their photos and comments are hidden. Taken-down posts can't be approved again.",
+      },
+      reasonLabel: "Reason",
+      reasonManyHint: "The same reason is recorded for every selected post.",
+      reasons: declineReasonLabels,
+      cancel: "Cancel",
+      confirm: {
+        approve: "Approve",
+        decline: "Decline",
+        takeDown: "Take down",
+      },
+      saving: "Saving…",
+      /** Shown in the dialog; the admin can try again. */
+      failed:
+        "Couldn't save the decision. Check your connection and try again.",
+      /** Shown after the dialog closes; nothing was changed. */
+      errors: {
+        alreadyDecided:
+          "This post was already decided by another admin, so nothing was changed. It has been reloaded.",
+        alreadyDecidedMany:
+          "At least one of these posts was already decided by another admin, so nothing was changed. The list has been reloaded.",
+        notFound:
+          "This post no longer exists, so nothing was changed. It has been reloaded.",
+        notFoundMany:
+          "At least one of these posts no longer exists, so nothing was changed. The list has been reloaded.",
+        forbidden:
+          "Your account can't make moderation decisions. Sign out and back in, or ask another admin.",
+      },
+      /** Success messages; several posts get the count in front, e.g. "3 posts approved." */
+      success: {
+        approve: "Post approved.",
+        decline: "Post declined.",
+        takeDown: "Post taken down.",
+      },
+      successMany: {
+        approve: "posts approved.",
+        decline: "posts declined.",
+        takeDown: "posts taken down.",
+      },
+      dismiss: "Dismiss message",
+    },
     bulk: {
       label: "Bulk actions",
       selectedOne: "post selected",
@@ -290,7 +371,9 @@ export const AppStrings = {
         endemicSafeguard: "Endemic species safeguard active",
         decline: "Decline",
         requestChanges: "Request changes",
+        requestChangesUnavailable: "Request changes isn't available yet",
         approve: "Approve",
+        takeDown: "Take down",
       },
       loading: "Loading post…",
       error: "Couldn't load this post.",
@@ -442,13 +525,7 @@ export const AppStrings = {
       /** Decisions by admins whose accounts were deleted. */
       formerReviewer: "Former admin",
       declineReasons: "Most Common Decline Reasons",
-      reasons: {
-        inaccurateSpecies: "Inaccurate Species ID",
-        lowQualityPhoto: "Low-quality / Blurred Photo",
-        domesticSpecimen: "Domestic / Non-wild Specimen",
-        duplicateSighting: "Duplicate Sighting",
-        inaccurateLocation: "Inaccurate GPS Location",
-      },
+      reasons: declineReasonLabels,
     },
   },
   login: {

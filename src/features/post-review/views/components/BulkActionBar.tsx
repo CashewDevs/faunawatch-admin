@@ -17,16 +17,13 @@ const pillButtonClass =
 export function BulkActionBar({ viewModel }: BulkActionBarProps) {
   const strings = AppStrings.posts;
   const bulk = strings.bulk;
-  const { selectedCount, isModerationAvailable } = viewModel;
+  const { selectedCount } = viewModel;
 
   if (selectedCount === 0) return null;
 
   const count = formatNumber(selectedCount);
   const selectedNoun =
     selectedCount === 1 ? bulk.selectedPostSuffix : bulk.selectedPostsSuffix;
-  const disabledTitle = isModerationAvailable
-    ? undefined
-    : strings.moderationUnavailable;
 
   return (
     <div
@@ -55,22 +52,18 @@ export function BulkActionBar({ viewModel }: BulkActionBarProps) {
       <div className="flex items-center gap-2.5">
         <button
           type="button"
-          disabled={!isModerationAvailable}
-          title={disabledTitle}
           aria-label={`${bulk.approve} ${count} ${selectedNoun}`}
           onClick={viewModel.approveSelected}
-          className={`${pillButtonClass} bg-teal text-white drop-shadow-xs hover:bg-teal/90 disabled:hover:bg-teal`}
+          className={`${pillButtonClass} bg-teal text-white drop-shadow-xs hover:bg-teal/90`}
         >
           <img src={AppAssets.postApprovals.iconBulkApprove} alt="" />
           {bulk.approve}
         </button>
         <button
           type="button"
-          disabled={!isModerationAvailable}
-          title={disabledTitle}
           aria-label={`${bulk.decline} ${count} ${selectedNoun}`}
           onClick={viewModel.declineSelected}
-          className={`${pillButtonClass} bg-white/10 text-danger-soft hover:bg-white/20 disabled:hover:bg-white/10`}
+          className={`${pillButtonClass} bg-white/10 text-danger-soft hover:bg-white/20`}
         >
           <img src={AppAssets.postApprovals.iconBulkDecline} alt="" />
           {bulk.decline}
