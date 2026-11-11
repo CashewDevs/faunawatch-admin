@@ -5,6 +5,11 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AppRoutes } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { fetchIsUserVerified } from "../../../users/services/usersService";
+import type { AdminNote } from "../../models/adminNote";
+import {
+  addAdminNote,
+  fetchAdminNotes,
+} from "../../services/adminNotesService";
 import { decidePosts } from "../../services/moderationService";
 import { fetchAllPosts, fetchPost } from "../../services/postsService";
 import { testPosts, testTarsier } from "../../../../test/fixtures/posts";
@@ -23,6 +28,11 @@ vi.mock("../../../users/services/usersService", () => ({
 
 vi.mock("../../services/moderationService", () => ({
   decidePosts: vi.fn(),
+}));
+
+vi.mock("../../services/adminNotesService", () => ({
+  fetchAdminNotes: vi.fn(),
+  addAdminNote: vi.fn(),
 }));
 
 const decidePostsMock = vi.mocked(decidePosts);
@@ -54,6 +64,150 @@ describe("PostDetailScreen", () => {
     );
     vi.mocked(fetchAllPosts).mockResolvedValue([...testPosts]);
     vi.mocked(fetchIsUserVerified).mockResolvedValue(false);
+    vi.mocked(fetchAdminNotes).mockReset();
+    vi.mocked(fetchAdminNotes).mockResolvedValue([]);
+    vi.mocked(addAdminNote).mockReset();
+    vi.mocked(addAdminNote).mockResolvedValue(undefined);
+  });
+
+  describe("admin notes", () => {
+    const notes = strings.notes;
+    const earlier: AdminNote[] = [
+      {
+        id: "n2",
+        body: "Asked the ranger team to check the site.",
+        createdAt: new Date(Date.now() - 2 * 3_600_000).toISOString(),
+        authorId: "admin-1",
+        authorName: "Alex Admin",
+      },
+      {
+        id: "n1",
+        body: "First look: photo is blurry.",
+        createdAt: new Date(Date.now() - 26 * 3_600_000).toISOString(),
+        authorId: null,
+        authorName: null,
+      },
+    ];
+
+    it("lists earlier notes newest first, with Former admin for deleted authors", async () => {
+      vi.mocked(fetchAdminNotes).mockResolvedValue(earlier);
+      renderScreen();
+
+      const list = await screen.findByRole("list", { name: notes.listLabel });
+      const items = within(list).getAllByRole("listitem");
+      expect(items).toHaveLength(2);
+      expect(items[0]).toHaveTextContent("Alex Admin");
+      expect(items[0]).toHaveTextContent(earlier[0]?.body ?? "");
+      expect(items[1]).toHaveTextContent(notes.formerAdmin);
+      expect(fetchAdminNotes).toHaveBeenCalledWith(testTarsier.id);
+      expect(screen.getByText(notes.permanence)).toBeInTheDocument();
+    });
+
+    it("saves a note with the button and clears the box", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      const box = await screen.findByRole("textbox", { name: notes.label });
+      const save = screen.getByRole("button", { name: notes.save });
+      expect(save).toBeDisabled();
+
+      await user.type(box, "  Coordinates look wrong. ");
+      await user.click(save);
+
+      expect(addAdminNote).toHaveBeenCalledWith(
+        testTarsier.id,
+        "  Coordinates look wrong. ",
+      );
+      expect(await screen.findByText(notes.saved)).toBeInTheDocument();
+      expect(box).toHaveValue("");
+      await vi.waitFor(() => {
+        expect(fetchAdminNotes).toHaveBeenCalledTimes(2);
+      });
+    });
+
+    it("keeps the text when saving fails", async () => {
+      vi.mocked(addAdminNote).mockRejectedValueOnce(new Error("network"));
+      const user = userEvent.setup();
+      renderScreen();
+      const box = await screen.findByRole("textbox", { name: notes.label });
+
+      await user.type(box, "Keep me");
+      await user.click(screen.getByRole("button", { name: notes.save }));
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        notes.saveFailed,
+      );
+      expect(box).toHaveValue("Keep me");
+    });
+
+    it("saves unsaved text with the decision", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      const box = await screen.findByRole("textbox", { name: notes.label });
+      await user.type(box, "Approved after checking the map.");
+      const bar = screen.getByRole("region", { name: strings.decision.label });
+
+      await user.click(
+        within(bar).getByRole("button", { name: strings.decision.approve }),
+      );
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent(notes.savedWithDecision);
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: posts.moderation.confirm.approve,
+        }),
+      );
+
+      await vi.waitFor(() => {
+        expect(addAdminNote).toHaveBeenCalledWith(
+          testTarsier.id,
+          "Approved after checking the map.",
+        );
+      });
+      expect(decidePostsMock).toHaveBeenCalledTimes(1);
+      expect(decidePostsMock.mock.invocationCallOrder[0] ?? 0).toBeLessThan(
+        vi.mocked(addAdminNote).mock.invocationCallOrder[0] ?? 0,
+      );
+    });
+
+    it("doesn't save anything with a decision when the box is empty", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      const bar = await screen.findByRole("region", {
+        name: strings.decision.label,
+      });
+
+      await user.click(
+        within(bar).getByRole("button", { name: strings.decision.approve }),
+      );
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).not.toHaveTextContent(notes.savedWithDecision);
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: posts.moderation.confirm.approve,
+        }),
+      );
+
+      expect(
+        await screen.findByText(posts.moderation.success.approve),
+      ).toBeInTheDocument();
+      expect(addAdminNote).not.toHaveBeenCalled();
+    });
+
+    it("offers a retry when earlier notes fail to load", async () => {
+      vi.mocked(fetchAdminNotes).mockRejectedValueOnce(new Error("network"));
+      const user = userEvent.setup();
+      renderScreen();
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        notes.loadFailed,
+      );
+      vi.mocked(fetchAdminNotes).mockResolvedValue(earlier);
+      await user.click(screen.getByRole("button", { name: notes.retry }));
+
+      expect(
+        await screen.findByRole("list", { name: notes.listLabel }),
+      ).toBeInTheDocument();
+    });
   });
 
   it("renders the post, reporter, and AI analysis", async () => {

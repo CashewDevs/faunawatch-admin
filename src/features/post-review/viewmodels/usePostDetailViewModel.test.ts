@@ -2,6 +2,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fetchIsUserVerified } from "../../users/services/usersService";
 import { getQueuePosition } from "../models/post";
+import { addAdminNote, fetchAdminNotes } from "../services/adminNotesService";
 import { fetchAllPosts, fetchPost } from "../services/postsService";
 import { testPosts, testTarsier } from "../../../test/fixtures/posts";
 import { testUsers } from "../../../test/fixtures/users";
@@ -11,6 +12,15 @@ import { usePostDetailViewModel } from "./usePostDetailViewModel";
 vi.mock("../services/postsService", () => ({
   fetchPost: vi.fn(),
   fetchAllPosts: vi.fn(),
+}));
+
+vi.mock("../services/adminNotesService", () => ({
+  fetchAdminNotes: vi.fn(),
+  addAdminNote: vi.fn(),
+}));
+
+vi.mock("../services/moderationService", () => ({
+  decidePosts: vi.fn(),
 }));
 
 vi.mock("../../users/services/usersService", () => ({
@@ -41,6 +51,9 @@ describe("usePostDetailViewModel", () => {
       Promise.resolve(id === testTarsier.id ? testTarsier : null),
     );
     vi.mocked(fetchAllPosts).mockResolvedValue([...testPosts]);
+    vi.mocked(fetchAdminNotes).mockResolvedValue([]);
+    vi.mocked(addAdminNote).mockReset();
+    vi.mocked(addAdminNote).mockResolvedValue(undefined);
     vi.mocked(fetchIsUserVerified).mockImplementation((id) =>
       Promise.resolve(
         testUsers.find((user) => user.id === id)?.isVerified ?? false,
@@ -189,5 +202,53 @@ describe("usePostDetailViewModel", () => {
     expect(result.current.adminNote).toBe(
       "Blur coordinates before publishing.",
     );
+    expect(result.current.canSaveNote).toBe(true);
+  });
+
+  it("can't save a blank note and shows the length only near the limit", async () => {
+    const { result } = await renderLoaded();
+
+    act(() => {
+      result.current.changeAdminNote("   ");
+    });
+    expect(result.current.canSaveNote).toBe(false);
+    expect(result.current.adminNoteLengthLabel).toBeNull();
+
+    act(() => {
+      result.current.changeAdminNote("a".repeat(1900));
+    });
+    expect(result.current.adminNoteLengthLabel).toBe("1,900 / 2,000");
+  });
+
+  it("keeps text typed while a save was in flight", async () => {
+    let finish: () => void = () => undefined;
+    vi.mocked(addAdminNote).mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const { result } = await renderLoaded();
+
+    act(() => {
+      result.current.changeAdminNote("First");
+    });
+    act(() => {
+      result.current.saveNote();
+    });
+    await waitFor(() => {
+      expect(addAdminNote).toHaveBeenCalledWith(testTarsier.id, "First");
+    });
+    act(() => {
+      result.current.changeAdminNote("First and more");
+    });
+    act(() => {
+      finish();
+    });
+
+    await waitFor(() => {
+      expect(result.current.isSavingNote).toBe(false);
+    });
+    expect(result.current.adminNote).toBe("First and more");
   });
 });

@@ -42,6 +42,8 @@ const strings = AppStrings.posts.moderation;
 export function useModerationFlow(options?: {
   /** Called after a decision is saved, e.g. to clear a selection. */
   onDecided?: () => void;
+  /** An extra line in the dialog, e.g. that a note is saved too. */
+  dialogHint?: string | null;
 }) {
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<OpenDialog | null>(null);
@@ -146,6 +148,7 @@ export function useModerationFlow(options?: {
       dialog.postIds.length > 1
         ? strings.bodyMany[dialog.action]
         : strings.body[dialog.action],
+    hint: options?.dialogHint ?? null,
     needsReason: needsDeclineReason(dialog.action),
     reasonHint: dialog.postIds.length > 1 ? strings.reasonManyHint : null,
     confirmLabel: mutation.isPending
