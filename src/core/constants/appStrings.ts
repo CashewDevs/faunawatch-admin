@@ -363,6 +363,22 @@ export const AppStrings = {
         placeholder:
           "Add internal moderation note or feedback for ranger dispatch...",
         visibility: "Visible only to admins",
+        /** Replaces Figma's "Auto-saved to audit log": notes are saved with the button. */
+        permanence: "Saved notes can't be edited",
+        listLabel: "Earlier notes",
+        formerAdmin: "Former admin",
+        unknownAdmin: "Unknown admin",
+        save: "Save note",
+        saving: "Saving…",
+        saved: "Note saved.",
+        saveFailed:
+          "Couldn't save the note. Your text is still here; try again.",
+        loadFailed: "Couldn't load earlier notes.",
+        retry: "Try again",
+        /** Shown in the decision dialog when there is unsaved note text. */
+        savedWithDecision: "Your admin note will be saved with this decision.",
+        /** e.g. "1,980 / 2,000" near the limit. */
+        lengthSeparator: "/",
       },
       decision: {
         label: "Review decision",

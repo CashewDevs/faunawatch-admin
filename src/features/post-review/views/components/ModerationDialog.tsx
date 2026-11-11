@@ -46,6 +46,11 @@ export function ModerationDialog({ moderation }: ModerationDialogProps) {
             <p id={bodyId} className="text-sm leading-5 text-slate">
               {dialog.body}
             </p>
+            {dialog.hint && (
+              <p className="text-sm leading-5 font-semibold text-teal">
+                {dialog.hint}
+              </p>
+            )}
           </div>
 
           {dialog.needsReason && (

@@ -1,8 +1,13 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { AppStrings } from "../../../core/constants/appStrings";
-import { formatCoordinates } from "../../../core/utils/formatters";
+import {
+  formatCoordinates,
+  formatNumber,
+} from "../../../core/utils/formatters";
+import { adminNoteMaxLength, canSaveAdminNote } from "../models/adminNote";
+import { addAdminNote, fetchAdminNotes } from "../services/adminNotesService";
 import { userVerifiedQuery } from "../../users/viewmodels/userQueries";
 import {
   getApprovalRate,
@@ -23,6 +28,14 @@ export const initialCommentCount = 3;
 
 export const copiedResetMs = 2000;
 
+/** The note's length shows once it reaches this share of the limit. */
+export const noteCounterThreshold = 0.9;
+
+/** The last note save: none since typing, saved, or failed. */
+export type NoteStatus = "idle" | "saved" | "failed";
+
+const noteStrings = AppStrings.posts.detail.notes;
+
 /**
  * Presentation state and actions for one post's review page: the post,
  * its place in the queue, photo gallery, comments, coordinates, and the
@@ -35,7 +48,9 @@ export function usePostDetailViewModel(postId: string) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [commentSort, setCommentSort] = useState<CommentSort>("newest");
   const [showAllComments, setShowAllComments] = useState(false);
+  const queryClient = useQueryClient();
   const [adminNote, setAdminNote] = useState("");
+  const [noteStatus, setNoteStatus] = useState<NoteStatus>("idle");
   const [isCopied, setIsCopied] = useState(false);
 
   const postQuery = useQuery({
@@ -86,11 +101,40 @@ export function usePostDetailViewModel(postId: string) {
     }
   };
 
+  const notesQuery = useQuery({
+    queryKey: ["posts", "notes", postId],
+    queryFn: () => fetchAdminNotes(postId),
+  });
+  const noteMutation = useMutation({
+    mutationFn: (body: string) => addAdminNote(postId, body),
+  });
+  const hasNoteToSave = canSaveAdminNote(adminNote);
+
+  const saveNote = () => {
+    if (!hasNoteToSave || noteMutation.isPending) return;
+    noteMutation.mutate(adminNote, {
+      onSuccess: () => {
+        // Only clear what was saved; text typed meanwhile stays.
+        setAdminNote((current) => (current === adminNote ? "" : current));
+        setNoteStatus("saved");
+        void queryClient.invalidateQueries({
+          queryKey: ["posts", "notes", postId],
+        });
+      },
+      onError: () => {
+        setNoteStatus("failed");
+      },
+    });
+  };
+
   // The page stays on the post; the reload swaps the buttons for the result.
-  const moderation = useModerationFlow();
-  // TODO(moderation): The admin note is stored in admin_notes in the next
-  // phase. Request changes has no backend yet; it is designed after
-  // approve/decline, with the app side (Cliff's area).
+  // Unsaved note text is saved with the decision, so nothing typed is lost.
+  const moderation = useModerationFlow({
+    onDecided: saveNote,
+    dialogHint: hasNoteToSave ? noteStrings.savedWithDecision : null,
+  });
+  // TODO(moderation): Request changes has no backend yet; it is designed
+  // after approve/decline, with the app side (Cliff's area).
 
   return {
     post,
@@ -137,7 +181,24 @@ export function usePostDetailViewModel(postId: string) {
     isReporterVerified: isReporterVerified ?? false,
     approvalRate: post ? getApprovalRate(post.reporterStats) : 0,
     adminNote,
-    changeAdminNote: setAdminNote,
+    changeAdminNote: (value: string) => {
+      setAdminNote(value);
+      setNoteStatus("idle");
+    },
+    adminNoteMaxLength,
+    /** "1,980 / 2,000", shown only near the limit. */
+    adminNoteLengthLabel:
+      adminNote.length >= adminNoteMaxLength * noteCounterThreshold
+        ? `${formatNumber(adminNote.length)} ${noteStrings.lengthSeparator} ${formatNumber(adminNoteMaxLength)}`
+        : null,
+    canSaveNote: hasNoteToSave && !noteMutation.isPending,
+    isSavingNote: noteMutation.isPending,
+    saveNote,
+    noteStatus,
+    notes: notesQuery.data ?? [],
+    isNotesLoading: notesQuery.isPending,
+    isNotesError: notesQuery.isError,
+    retryNotes: () => void notesQuery.refetch(),
     moderation,
     canDecide: post ? isDecidable(post.status) : false,
     canTakeDown: post ? canTakeDown(post.status) : false,
