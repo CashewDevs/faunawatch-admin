@@ -6,10 +6,12 @@ import { AppRoutes } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { fetchIsUserVerified } from "../../../users/services/usersService";
 import type { AdminNote } from "../../models/adminNote";
+import { CommentModerationError } from "../../models/commentModeration";
 import {
   addAdminNote,
   fetchAdminNotes,
 } from "../../services/adminNotesService";
+import { moderateComment } from "../../services/commentModerationService";
 import { decidePosts } from "../../services/moderationService";
 import { fetchAllPosts, fetchPost } from "../../services/postsService";
 import { testPosts, testTarsier } from "../../../../test/fixtures/posts";
@@ -28,6 +30,10 @@ vi.mock("../../../users/services/usersService", () => ({
 
 vi.mock("../../services/moderationService", () => ({
   decidePosts: vi.fn(),
+}));
+
+vi.mock("../../services/commentModerationService", () => ({
+  moderateComment: vi.fn(),
 }));
 
 vi.mock("../../services/adminNotesService", () => ({
@@ -68,6 +74,8 @@ describe("PostDetailScreen", () => {
     vi.mocked(fetchAdminNotes).mockResolvedValue([]);
     vi.mocked(addAdminNote).mockReset();
     vi.mocked(addAdminNote).mockResolvedValue(undefined);
+    vi.mocked(moderateComment).mockReset();
+    vi.mocked(moderateComment).mockResolvedValue(undefined);
   });
 
   describe("admin notes", () => {
@@ -478,5 +486,175 @@ describe("PostDetailScreen", () => {
       "href",
       "/posts?tab=pending&page=2",
     );
+  });
+
+  describe("comment moderation", () => {
+    const comments = strings.comments;
+    const dialogStrings = comments.moderation;
+
+    async function commentsRegion() {
+      return screen.findByRole("region", { name: comments.heading });
+    }
+
+    it("removes a comment with a reason and reloads the post", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      const region = await commentsRegion();
+
+      await user.click(
+        within(region).getByRole("button", {
+          name: `${comments.removeCommentBy} Dr. Aris Thorne`,
+        }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      expect(dialog).toHaveAccessibleName(dialogStrings.title.remove);
+      expect(dialog).toHaveTextContent("Comment 1 about Carlito syrichta.");
+      const confirm = within(dialog).getByRole("button", {
+        name: dialogStrings.confirm.remove,
+      });
+      expect(confirm).toBeDisabled();
+
+      await user.type(
+        within(dialog).getByRole("textbox", {
+          name: dialogStrings.reasonLabel,
+        }),
+        "  Spam link ",
+      );
+      const loads = vi.mocked(fetchPost).mock.calls.length;
+      await user.click(confirm);
+
+      expect(moderateComment).toHaveBeenCalledWith(
+        "comment-1",
+        "remove",
+        "  Spam link ",
+      );
+      expect(
+        await screen.findByText(dialogStrings.success.remove),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      expect(vi.mocked(fetchPost).mock.calls.length).toBeGreaterThan(loads);
+    });
+
+    it("clears a flag after confirming", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      const region = await commentsRegion();
+
+      const flagged = within(region)
+        .getAllByRole("listitem")
+        .find((item) => item.textContent.includes(comments.flagged));
+      if (!flagged) throw new Error("No flagged comment");
+      expect(flagged).toHaveTextContent("Possible location leak");
+      await user.click(
+        within(flagged).getByRole("button", { name: comments.reviewFlag }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      expect(within(dialog).queryByRole("textbox")).not.toBeInTheDocument();
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: dialogStrings.confirm.clearFlag,
+        }),
+      );
+
+      expect(moderateComment).toHaveBeenCalledWith(
+        "comment-3",
+        "clearFlag",
+        null,
+      );
+      expect(
+        await screen.findByText(dialogStrings.success.clearFlag),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a removed comment with who removed it and restores it", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      const region = await commentsRegion();
+      await user.click(
+        within(region).getByRole("button", {
+          name: `${comments.showMore} (3)`,
+        }),
+      );
+
+      const removed = within(region)
+        .getAllByRole("listitem")
+        .find((item) => item.textContent.includes(comments.removed));
+      if (!removed) throw new Error("No removed comment");
+      expect(removed).toHaveTextContent(`${comments.removedBy} Alex Admin`);
+      expect(removed).toHaveTextContent("Shared a phone number");
+      expect(
+        within(removed).queryByRole("button", {
+          name: `${comments.removeCommentBy} Liza Navarro`,
+        }),
+      ).not.toBeInTheDocument();
+
+      await user.click(
+        within(removed).getByRole("button", {
+          name: `${comments.restoreCommentBy} Liza Navarro`,
+        }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: dialogStrings.confirm.restore,
+        }),
+      );
+
+      expect(moderateComment).toHaveBeenCalledWith(
+        "comment-5",
+        "restore",
+        null,
+      );
+    });
+
+    it("closes and explains when another admin changed the comment first", async () => {
+      vi.mocked(moderateComment).mockRejectedValue(
+        new CommentModerationError("alreadyChanged"),
+      );
+      const user = userEvent.setup();
+      renderScreen();
+      const region = await commentsRegion();
+      await user.click(
+        within(region).getByRole("button", {
+          name: `${comments.removeCommentBy} Dr. Aris Thorne`,
+        }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      await user.type(within(dialog).getByRole("textbox"), "Spam");
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: dialogStrings.confirm.remove,
+        }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        dialogStrings.errors.alreadyChanged,
+      );
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    });
+
+    it("keeps the dialog and reason to retry when saving fails", async () => {
+      vi.mocked(moderateComment).mockRejectedValue(new Error("network"));
+      const user = userEvent.setup();
+      renderScreen();
+      const region = await commentsRegion();
+      await user.click(
+        within(region).getByRole("button", {
+          name: `${comments.removeCommentBy} Dr. Aris Thorne`,
+        }),
+      );
+      const dialog = await screen.findByRole("dialog");
+      await user.type(within(dialog).getByRole("textbox"), "Spam");
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: dialogStrings.confirm.remove,
+        }),
+      );
+
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+        dialogStrings.failed,
+      );
+      expect(within(dialog).getByRole("textbox")).toHaveValue("Spam");
+    });
   });
 });

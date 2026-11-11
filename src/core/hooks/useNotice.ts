@@ -37,3 +37,6 @@ export function useNotice() {
     },
   };
 }
+
+/** One message area, shared when a screen has several kinds of action. */
+export type NoticeController = ReturnType<typeof useNotice>;

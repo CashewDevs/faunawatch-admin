@@ -116,6 +116,8 @@ interface ReportDetailRow extends Omit<
       is_flagged: boolean;
       note: string | null;
       removed_at: string | null;
+      moderated_by: string | null;
+      moderator: Omit<ProfileRow, "avatar_path"> | null;
     }>;
   }[];
 }
@@ -141,7 +143,7 @@ const detailColumns = [
   `reporter:profiles!user_id(${profileColumns}, created_at)`,
   "report_images(storage_path, created_at, report_image_exif(gps_latitude, gps_longitude, device_make, device_model, camera_settings, flash_fired))",
   `ai_analyses(${analysisColumns}, species_origin, validation, visual_condition_assessment, incident_summary, safety_recommendations)`,
-  `report_comments(id, body, created_at, author:profiles!user_id(${profileColumns}), comment_moderation(is_flagged, note, removed_at))`,
+  `report_comments(id, body, created_at, author:profiles!user_id(${profileColumns}), comment_moderation(is_flagged, note, removed_at, moderated_by, moderator:profiles!moderated_by(full_name, username, display_name)))`,
 ].join(", ");
 
 const uuidPattern =
@@ -305,22 +307,36 @@ export async function fetchPost(postId: string): Promise<PostDetail | null> {
     };
   });
 
-  // TODO(moderation): Removed comments are hidden. Decide whether admins
-  // should see them (struck through, with the removal note) instead.
-  const comments: PostComment[] = row.report_comments.flatMap((comment) => {
+  // Admins see removed comments too, marked with who removed them and why.
+  // The note is the flag's reason while flagged, the removal reason while
+  // removed, and history otherwise.
+  const comments: PostComment[] = row.report_comments.map((comment) => {
     const moderation = firstEmbedded(comment.comment_moderation);
-    if (moderation?.removed_at) return [];
-    return [
-      {
-        id: comment.id,
-        authorName: profileName(comment.author),
-        username: textOrNull(comment.author.username),
-        postedAt: comment.created_at,
-        body: comment.body,
-        isFlagged: moderation?.is_flagged ?? false,
-        moderationNote: textOrNull(moderation?.note ?? null),
-      },
-    ];
+    const note = textOrNull(moderation?.note ?? null);
+    const removedAt = moderation?.removed_at ?? null;
+    // Removing resolves a flag; older rows may still have both set.
+    const isFlagged = (moderation?.is_flagged ?? false) && !removedAt;
+    return {
+      id: comment.id,
+      authorName: profileName(comment.author),
+      username: textOrNull(comment.author.username),
+      postedAt: comment.created_at,
+      body: comment.body,
+      isFlagged,
+      moderationNote: isFlagged ? note : null,
+      removal: removedAt
+        ? {
+            removedAt,
+            reason: note,
+            removedByName: moderation?.moderator
+              ? textOrNull(
+                  profileName({ ...moderation.moderator, avatar_path: null }),
+                )
+              : null,
+            isRemovedByFormerAdmin: moderation?.moderated_by === null,
+          }
+        : null,
+    };
   });
 
   const analysis = newestCompleted(row.ai_analyses);

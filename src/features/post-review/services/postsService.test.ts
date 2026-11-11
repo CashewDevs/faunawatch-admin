@@ -323,6 +323,12 @@ describe("fetchPost", () => {
           is_flagged: true,
           note: "Removed for spam",
           removed_at: "2026-10-20T13:00:00Z",
+          moderated_by: "admin-1",
+          moderator: {
+            full_name: "Alex Admin",
+            username: "alex",
+            display_name: null,
+          },
         },
       },
       {
@@ -334,6 +340,21 @@ describe("fetchPost", () => {
           is_flagged: true,
           note: "Check tone",
           removed_at: null,
+          moderated_by: null,
+          moderator: null,
+        },
+      },
+      {
+        id: "c4",
+        body: "Call me",
+        created_at: "2026-10-20T15:00:00Z",
+        author: reporter,
+        comment_moderation: {
+          is_flagged: false,
+          note: "Phone number",
+          removed_at: "2026-10-20T16:00:00Z",
+          moderated_by: null,
+          moderator: null,
         },
       },
     ],
@@ -435,7 +456,7 @@ describe("fetchPost", () => {
       },
       { path: "user-1/r/unsignable.jpg", url: null, exif: null },
     ]);
-    // The removed comment is hidden.
+    // Removed comments stay listed for admins, with who removed them.
     expect(post?.comments).toEqual([
       {
         id: "c1",
@@ -445,6 +466,23 @@ describe("fetchPost", () => {
         body: "Great find!",
         isFlagged: false,
         moderationNote: null,
+        removal: null,
+      },
+      {
+        id: "c2",
+        authorName: "Maria Santos",
+        username: "msantos",
+        postedAt: "2026-10-20T12:00:00Z",
+        body: "Spam link",
+        // Removing resolved the flag.
+        isFlagged: false,
+        moderationNote: null,
+        removal: {
+          removedAt: "2026-10-20T13:00:00Z",
+          reason: "Removed for spam",
+          removedByName: "Alex Admin",
+          isRemovedByFormerAdmin: false,
+        },
       },
       {
         id: "c3",
@@ -454,6 +492,22 @@ describe("fetchPost", () => {
         body: "Is this location right?",
         isFlagged: true,
         moderationNote: "Check tone",
+        removal: null,
+      },
+      {
+        id: "c4",
+        authorName: "Maria Santos",
+        username: "msantos",
+        postedAt: "2026-10-20T15:00:00Z",
+        body: "Call me",
+        isFlagged: false,
+        moderationNote: null,
+        removal: {
+          removedAt: "2026-10-20T16:00:00Z",
+          reason: "Phone number",
+          removedByName: null,
+          isRemovedByFormerAdmin: true,
+        },
       },
     ]);
   });

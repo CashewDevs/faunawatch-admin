@@ -405,6 +405,7 @@ describe("sortComments", () => {
     body: "",
     isFlagged: false,
     moderationNote: null,
+    removal: null,
   });
   const comments = [
     comment("old", "2026-10-18T08:00:00Z"),

@@ -134,7 +134,21 @@ export interface PostComment {
   postedAt: string;
   body: string;
   isFlagged: boolean;
+  /** Why the comment was flagged; null unless it is flagged. */
   moderationNote: string | null;
+  /** Set when an admin removed the comment; only admins still see it. */
+  removal: CommentRemoval | null;
+}
+
+/** How a comment was removed. */
+export interface CommentRemoval {
+  /** ISO 8601 date-time. */
+  removedAt: string;
+  reason: string | null;
+  /** The admin's name; null when unknown. */
+  removedByName: string | null;
+  /** The admin's account was deleted. */
+  isRemovedByFormerAdmin: boolean;
 }
 
 /** The reporter's track record, counted from their reports. */

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { AppStrings } from "../../../core/constants/appStrings";
+import { useNotice } from "../../../core/hooks/useNotice";
 import {
   formatCoordinates,
   formatNumber,
@@ -21,6 +22,7 @@ import { canTakeDown, isDecidable } from "../models/moderation";
 import { fetchPost } from "../services/postsService";
 import { getReturnPath } from "./postNavigation";
 import { allPostsQuery, signedUrlStaleTimeMs } from "./postQueries";
+import { useCommentModerationFlow } from "./useCommentModerationFlow";
 import { useModerationFlow } from "./useModerationFlow";
 
 /** Comments shown before "Show more comments". */
@@ -38,8 +40,8 @@ const noteStrings = AppStrings.posts.detail.notes;
 
 /**
  * Presentation state and actions for one post's review page: the post,
- * its place in the queue, photo gallery, comments, coordinates, and the
- * admin's note and decision.
+ * its place in the queue, photo gallery, comments and their moderation,
+ * coordinates, and the admin's note and decision.
  *
  * Render the screen with `key={postId}` so this state resets per post.
  */
@@ -129,10 +131,14 @@ export function usePostDetailViewModel(postId: string) {
 
   // The page stays on the post; the reload swaps the buttons for the result.
   // Unsaved note text is saved with the decision, so nothing typed is lost.
+  // Decisions and comment changes share one message area.
+  const notice = useNotice();
   const moderation = useModerationFlow({
     onDecided: saveNote,
     dialogHint: hasNoteToSave ? noteStrings.savedWithDecision : null,
+    notice,
   });
+  const commentModeration = useCommentModerationFlow({ postId, notice });
   // TODO(moderation): Request changes has no backend yet; it is designed
   // after approve/decline, with the app side (Cliff's area).
 
@@ -200,6 +206,7 @@ export function usePostDetailViewModel(postId: string) {
     isNotesError: notesQuery.isError,
     retryNotes: () => void notesQuery.refetch(),
     moderation,
+    commentModeration,
     canDecide: post ? isDecidable(post.status) : false,
     canTakeDown: post ? canTakeDown(post.status) : false,
     isRequestChangesAvailable: false,
