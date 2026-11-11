@@ -55,6 +55,12 @@ describe("actions", () => {
     expect(canTakeDown("approved")).toBe(true);
     expect(canTakeDown("pending")).toBe(false);
     expect(canTakeDown("declined")).toBe(false);
+    // A post waiting for the reporter, or one with a status this site
+    // doesn't know, can't be decided or taken down.
+    expect(isDecidable("changes_requested")).toBe(false);
+    expect(isDecidable("unknown")).toBe(false);
+    expect(canTakeDown("changes_requested")).toBe(false);
+    expect(canTakeDown("unknown")).toBe(false);
   });
 });
 

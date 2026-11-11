@@ -11,6 +11,12 @@ import type { AnalyticsRange } from "../models/analytics";
 import { fetchAnalyticsData } from "../services/analyticsService";
 import { useOverviewViewModel } from "./useOverviewViewModel";
 
+const flag = vi.hoisted(() => ({ requestChanges: false }));
+
+vi.mock("../../../core/constants/featureFlags", () => ({
+  isRequestChangesEnabled: () => flag.requestChanges,
+}));
+
 vi.mock("../services/analyticsService", () => ({
   fetchAnalyticsData: vi.fn(),
 }));
@@ -31,6 +37,7 @@ function renderViewModel(range: AnalyticsRange = "30d") {
 
 describe("useOverviewViewModel", () => {
   beforeEach(() => {
+    flag.requestChanges = false;
     fetchAnalyticsDataMock.mockReset();
     fetchAnalyticsDataMock.mockImplementation((range) =>
       Promise.resolve(testAnalyticsData(range)),
@@ -59,6 +66,61 @@ describe("useOverviewViewModel", () => {
       expect(result.current.userStats?.totalUsers).toBe(24);
     });
     expect(result.current.activeRate).toBe(91.7);
+  });
+
+  it("hides an empty Changes requested bucket while the switch is off", async () => {
+    const { result } = renderViewModel();
+    await waitFor(() => {
+      expect(result.current.outcomes).toBeDefined();
+    });
+
+    expect(result.current.outcomes?.shares.map((s) => s.key)).toEqual([
+      "approved",
+      "declined",
+      "awaitingTriage",
+    ]);
+    expect(result.current.outcomes?.total).toBe(20);
+  });
+
+  it("shows posts waiting for changes with the switch off, and with it on", async () => {
+    fetchAnalyticsDataMock.mockImplementation((range) => {
+      const data = testAnalyticsData(range);
+      const [first, ...rest] = data.reports;
+      if (!first) throw new Error("Need a report");
+      return Promise.resolve({
+        ...data,
+        reports: [{ ...first, status: "changes_requested" }, ...rest],
+      });
+    });
+
+    const off = renderViewModel();
+    await waitFor(() => {
+      expect(off.result.current.outcomes).toBeDefined();
+    });
+    // Shown and in the total, though the switch is off; not under Awaiting Review.
+    expect(off.result.current.outcomes?.total).toBe(20);
+    expect(
+      off.result.current.outcomes?.shares.find(
+        (share) => share.key === "changesRequested",
+      )?.count,
+    ).toBe(1);
+    expect(
+      off.result.current.outcomes?.shares.find(
+        (share) => share.key === "awaitingTriage",
+      )?.count,
+    ).toBe(4);
+
+    flag.requestChanges = true;
+    const on = renderViewModel();
+    await waitFor(() => {
+      expect(on.result.current.outcomes).toBeDefined();
+    });
+    expect(on.result.current.outcomes?.total).toBe(20);
+    expect(
+      on.result.current.outcomes?.shares.find(
+        (share) => share.key === "changesRequested",
+      )?.count,
+    ).toBe(1);
   });
 
   it("changes granularity without reloading", async () => {

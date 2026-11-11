@@ -141,14 +141,77 @@ describe("posts over time", () => {
 
 describe("summarizeReviewOutcomes", () => {
   it("derives the total, approval rate, and shares from counts", () => {
-    const summary = summarizeReviewOutcomes({
-      approved: 3150,
-      declined: 384,
-      awaitingTriage: 308,
-    });
+    const summary = summarizeReviewOutcomes(
+      {
+        approved: 3150,
+        declined: 384,
+        awaitingTriage: 308,
+        changesRequested: 0,
+      },
+      false,
+    );
     expect(summary.total).toBe(3842);
     expect(summary.approvalPercent).toBe(89.1);
     expect(summary.shares.map((share) => share.percent)).toEqual([82, 10, 8]);
+  });
+
+  const withChanges = {
+    approved: 6,
+    declined: 2,
+    awaitingTriage: 1,
+    changesRequested: 1,
+  };
+
+  it("adds a Changes requested share when Request changes is on", () => {
+    const summary = summarizeReviewOutcomes(withChanges, true);
+    expect(summary.total).toBe(10);
+    expect(summary.shares.map((share) => share.key)).toEqual([
+      "approved",
+      "declined",
+      "awaitingTriage",
+      "changesRequested",
+    ]);
+    expect(summary.shares.map((share) => share.percent)).toEqual([
+      60, 20, 10, 10,
+    ]);
+    // Approval rate still compares approved with approved + declined.
+    expect(summary.approvalPercent).toBe(75);
+  });
+
+  it("still shows Changes requested when it has posts, with Request changes off", () => {
+    const summary = summarizeReviewOutcomes(withChanges, false);
+    // The total equals every post, and the posts aren't awaiting review.
+    expect(summary.total).toBe(10);
+    expect(summary.shares.map((share) => [share.key, share.count])).toEqual([
+      ["approved", 6],
+      ["declined", 2],
+      ["awaitingTriage", 1],
+      ["changesRequested", 1],
+    ]);
+  });
+
+  it("hides an empty Changes requested bucket while Request changes is off", () => {
+    const summary = summarizeReviewOutcomes(
+      { ...withChanges, changesRequested: 0 },
+      false,
+    );
+    expect(summary.total).toBe(9);
+    expect(summary.shares.map((share) => share.key)).toEqual([
+      "approved",
+      "declined",
+      "awaitingTriage",
+    ]);
+  });
+
+  it("shows an empty Changes requested bucket while Request changes is on", () => {
+    const summary = summarizeReviewOutcomes(
+      { ...withChanges, changesRequested: 0 },
+      true,
+    );
+    expect(summary.total).toBe(9);
+    expect(summary.shares.map((share) => share.key)).toContain(
+      "changesRequested",
+    );
   });
 });
 
@@ -314,8 +377,15 @@ describe("overview aggregates", () => {
         makeReport({ status: "approved" }),
         makeReport({ status: "declined" }),
         makeReport({ status: "pending" }),
+        makeReport({ status: "changes_requested" }),
+        makeReport({ status: "unknown" }),
       ]),
-    ).toEqual({ approved: 2, declined: 1, awaitingTriage: 1 });
+    ).toEqual({
+      approved: 2,
+      declined: 1,
+      awaitingTriage: 1,
+      changesRequested: 1,
+    });
   });
 });
 

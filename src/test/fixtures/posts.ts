@@ -1,3 +1,4 @@
+import type { ChangeRequest } from "../../features/post-review/models/changeRequest";
 import {
   reportCategories,
   toPostReference,
@@ -190,3 +191,49 @@ export const testTarsier: PostDetail = {
     recommendations: "Keep a quiet distance and avoid flash photography.",
   },
 };
+
+/**
+ * A post's change request history, newest round first: round 3 is open,
+ * round 2 was withdrawn by an admin, round 1 was resubmitted by the reporter.
+ */
+export const testChangeRequests: readonly ChangeRequest[] = [
+  {
+    id: "request-3",
+    round: 3,
+    message: "Please pin the exact spot.\nThe map shows the wrong trail.",
+    fields: ["location", "category"],
+    requestedAt: "2026-11-09T08:00:00Z",
+    requestedByName: "Alex Admin",
+    isRequestedByFormerAdmin: false,
+    resolution: null,
+    resolvedAt: null,
+    withdrawnByName: null,
+    isWithdrawnByFormerAdmin: false,
+  },
+  {
+    id: "request-2",
+    round: 2,
+    message: "Is this a tarsier?",
+    fields: ["speciesDescription"],
+    requestedAt: "2026-11-05T08:00:00Z",
+    requestedByName: "Bea Admin",
+    isRequestedByFormerAdmin: false,
+    resolution: "withdrawn",
+    resolvedAt: "2026-11-06T08:00:00Z",
+    withdrawnByName: null,
+    isWithdrawnByFormerAdmin: true,
+  },
+  {
+    id: "request-1",
+    round: 1,
+    message: "The photo is blurry.",
+    fields: ["photos"],
+    requestedAt: "2026-11-01T08:00:00Z",
+    requestedByName: null,
+    isRequestedByFormerAdmin: true,
+    resolution: "resubmitted",
+    resolvedAt: "2026-11-02T08:00:00Z",
+    withdrawnByName: null,
+    isWithdrawnByFormerAdmin: false,
+  },
+];

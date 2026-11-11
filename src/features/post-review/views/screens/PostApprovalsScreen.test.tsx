@@ -14,6 +14,12 @@ import { createRouterQueryWrapper } from "../../../../test/routerWrapper";
 import { getReturnPath } from "../../viewmodels/postNavigation";
 import { PostApprovalsScreen } from "./PostApprovalsScreen";
 
+const flag = vi.hoisted(() => ({ requestChanges: false }));
+
+vi.mock("../../../../core/constants/featureFlags", () => ({
+  isRequestChangesEnabled: () => flag.requestChanges,
+}));
+
 vi.mock("../../services/postsService", () => ({
   fetchAllPosts: vi.fn(),
   fetchPostCardMedia: vi.fn(),
@@ -59,6 +65,7 @@ async function findCards() {
 
 describe("PostApprovalsScreen", () => {
   beforeEach(() => {
+    flag.requestChanges = false;
     vi.mocked(fetchAllPosts).mockReset();
     vi.mocked(fetchAllPosts).mockResolvedValue([...testPosts]);
     vi.mocked(fetchPostCardMedia).mockImplementation((posts) =>
@@ -166,6 +173,79 @@ describe("PostApprovalsScreen", () => {
       expect(
         within(card).getByText(strings.status.declined),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe("Changes requested", () => {
+    const base = testPosts[0];
+    if (!base) throw new Error("Test posts are missing");
+    const sentBack = {
+      ...base,
+      id: "00000099-0d4e-4b1a-9c3e-1a2b3c4d5e6f",
+      status: "changes_requested" as const,
+    };
+    const unknown = {
+      ...base,
+      id: "00000098-0d4e-4b1a-9c3e-1a2b3c4d5e6f",
+      status: "unknown" as const,
+    };
+
+    beforeEach(() => {
+      vi.mocked(fetchAllPosts).mockResolvedValue([
+        sentBack,
+        unknown,
+        ...testPosts,
+      ]);
+    });
+
+    it("has no tab for it while the switch is off", async () => {
+      renderScreen();
+      await findCards();
+
+      expect(
+        screen.queryByRole("button", {
+          name: new RegExp(`^${strings.tabs.changes_requested}`),
+        }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("shows its tab with a count and the amber pill while on", async () => {
+      flag.requestChanges = true;
+      const user = userEvent.setup();
+      renderScreen();
+      await findCards();
+
+      await user.click(
+        await screen.findByRole("button", {
+          name: `${strings.tabs.changes_requested} 1`,
+        }),
+      );
+
+      const cards = await screen.findAllByRole("article");
+      expect(cards).toHaveLength(1);
+      const card = cards[0] as HTMLElement;
+      const pill = within(card).getByText(strings.status.changes_requested);
+      expect(pill).toHaveClass("bg-amber-soft", "text-amber-ink");
+      expect(
+        within(card).queryByRole("button", { name: strings.card.approve }),
+      ).not.toBeInTheDocument();
+      expect(within(card).queryByRole("checkbox")).not.toBeInTheDocument();
+    });
+
+    it("keeps sent-back and unknown-status posts under All Posts without actions", async () => {
+      renderScreen("/posts?tab=all&size=48");
+      await findCards();
+
+      const grid = screen.getByRole("list", { name: strings.gridLabel });
+      expect(
+        within(grid).getByText(strings.status.changes_requested),
+      ).toBeInTheDocument();
+      const unknownPill = within(grid).getByText(strings.status.unknown);
+      const unknownCard = unknownPill.closest("article");
+      expect(unknownCard).not.toBeNull();
+      expect(
+        within(unknownCard as HTMLElement).queryByRole("button"),
+      ).not.toBeInTheDocument();
     });
   });
 
@@ -361,6 +441,49 @@ describe("PostApprovalsScreen", () => {
       await waitFor(() => {
         expect(vi.mocked(fetchAllPosts)).toHaveBeenCalledTimes(2);
       });
+    });
+
+    it("says some were decided or are waiting when the selection is mixed", async () => {
+      decidePostsMock.mockRejectedValueOnce(
+        new ModerationError("alreadyDecided"),
+      );
+      const [first, second] = pendingPosts;
+      if (!first || !second) throw new Error("Need two pending posts");
+      const user = userEvent.setup();
+      renderScreen();
+      const cards = await findCards();
+      for (const card of cards.slice(0, 2)) {
+        await user.click(within(card).getByRole("checkbox"));
+      }
+      // After the failure, one of the two was sent back and one approved.
+      vi.mocked(fetchAllPosts).mockResolvedValue(
+        testPosts.map((post) =>
+          post.id === first.id
+            ? { ...post, status: "changes_requested" as const }
+            : post.id === second.id
+              ? { ...post, status: "approved" as const }
+              : post,
+        ),
+      );
+
+      await user.click(
+        screen.getByRole("button", { name: "Decline 2 selected posts" }),
+      );
+      const dialog = screen.getByRole("dialog");
+      await user.click(
+        within(dialog).getByRole("radio", {
+          name: moderation.reasons.notWildlife,
+        }),
+      );
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: moderation.confirm.decline,
+        }),
+      );
+
+      expect(await screen.findByRole("alert")).toHaveTextContent(
+        moderation.errors.decidedOrAwaitingChangesMany,
+      );
     });
 
     it("keeps the dialog open to retry after a network error", async () => {

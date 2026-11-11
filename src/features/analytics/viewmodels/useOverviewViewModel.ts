@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { isRequestChangesEnabled } from "../../../core/constants/featureFlags";
 import { useUserStats } from "../../users/viewmodels/userQueries";
 import {
   getAvailableGranularities,
@@ -46,7 +47,10 @@ export function useOverviewViewModel(range: AnalyticsRange) {
     trend,
     trendState: state,
     outcomes: data
-      ? summarizeReviewOutcomes(getReviewOutcomeCounts(data.reports))
+      ? summarizeReviewOutcomes(
+          getReviewOutcomeCounts(data.reports),
+          isRequestChangesEnabled(),
+        )
       : undefined,
     outcomesState: state,
   };

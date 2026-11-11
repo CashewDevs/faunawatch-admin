@@ -13,6 +13,7 @@ import {
 } from "../../services/adminNotesService";
 import { moderateComment } from "../../services/commentModerationService";
 import { decidePosts } from "../../services/moderationService";
+import { fetchChangeRequests } from "../../services/changeRequestService";
 import { fetchAllPosts, fetchPost } from "../../services/postsService";
 import { testPosts, testTarsier } from "../../../../test/fixtures/posts";
 import { createRouterQueryWrapper } from "../../../../test/routerWrapper";
@@ -34,6 +35,16 @@ vi.mock("../../services/moderationService", () => ({
 
 vi.mock("../../services/commentModerationService", () => ({
   moderateComment: vi.fn(),
+}));
+
+vi.mock("../../../../core/constants/featureFlags", () => ({
+  isRequestChangesEnabled: () => false,
+}));
+
+vi.mock("../../services/changeRequestService", () => ({
+  fetchChangeRequests: vi.fn(),
+  requestChanges: vi.fn(),
+  withdrawChangeRequest: vi.fn(),
 }));
 
 vi.mock("../../services/adminNotesService", () => ({
@@ -70,6 +81,8 @@ describe("PostDetailScreen", () => {
     );
     vi.mocked(fetchAllPosts).mockResolvedValue([...testPosts]);
     vi.mocked(fetchIsUserVerified).mockResolvedValue(false);
+    vi.mocked(fetchChangeRequests).mockReset();
+    vi.mocked(fetchChangeRequests).mockResolvedValue([]);
     vi.mocked(fetchAdminNotes).mockReset();
     vi.mocked(fetchAdminNotes).mockResolvedValue([]);
     vi.mocked(addAdminNote).mockReset();

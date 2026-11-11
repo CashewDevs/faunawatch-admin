@@ -9,6 +9,7 @@ import {
   getExifLocationCheck,
   getExtraPhotoCount,
   getObserverDevices,
+  getPostTabs,
   getQueuePosition,
   hasActiveFilters,
   humanizeKey,
@@ -120,11 +121,19 @@ describe("database value mappers", () => {
 
   it("reads statuses, categories, and origins", () => {
     expect(toPostStatus("approved")).toBe("approved");
-    expect(toPostStatus("submitted")).toBe("pending");
+    expect(toPostStatus("changes_requested")).toBe("changes_requested");
     expect(toReportCategory("animal_in_need")).toBe("animal_in_need");
     expect(toReportCategory("mammal")).toBeNull();
     expect(toSpeciesOrigin("endemic")).toBe("endemic");
     expect(toSpeciesOrigin(null)).toBeNull();
+  });
+
+  it("never reads a status it doesn't know as pending", () => {
+    // "submitted" was renamed to "pending" in the database; an old or future
+    // value must not become decidable or count in the pending queue.
+    expect(toPostStatus("submitted")).toBe("unknown");
+    expect(toPostStatus("")).toBe("unknown");
+    expect(toPostStatus("PENDING")).toBe("unknown");
   });
 
   it("shortens the report id to a reference", () => {
@@ -332,10 +341,91 @@ describe("countPostsByTab", () => {
   it("counts each status and the total", () => {
     expect(countPostsByTab(posts)).toEqual({
       pending: 2,
+      changes_requested: 0,
       approved: 1,
       declined: 1,
       all: 4,
     });
+  });
+
+  it("counts sent-back posts on their own tab, and unknown ones only in All", () => {
+    const counts = countPostsByTab([
+      ...posts,
+      makePost({ id: "5", status: "changes_requested" }),
+      makePost({ id: "6", status: "unknown" }),
+    ]);
+    expect(counts).toEqual({
+      pending: 2,
+      changes_requested: 1,
+      approved: 1,
+      declined: 1,
+      all: 6,
+    });
+  });
+});
+
+describe("tabs and status filtering", () => {
+  it("offers Changes requested only when Request changes is on", () => {
+    expect(getPostTabs(true)).toEqual([
+      "pending",
+      "changes_requested",
+      "approved",
+      "declined",
+      "all",
+    ]);
+    expect(getPostTabs(false)).toEqual([
+      "pending",
+      "approved",
+      "declined",
+      "all",
+    ]);
+  });
+
+  it("filters the Changes requested tab; unknown posts only show under All", () => {
+    const sentBack = makePost({ id: "5", status: "changes_requested" });
+    const odd = makePost({ id: "6", status: "unknown" });
+    const all = [...posts, sentBack, odd];
+    const query = {
+      ...defaultPostListQuery,
+      tab: "changes_requested" as const,
+    };
+    expect(queryPosts(all, query).posts).toEqual([sentBack]);
+    expect(
+      queryPosts(all, { ...query, tab: "pending" }).posts.some(
+        (post) => post.id === "6",
+      ),
+    ).toBe(false);
+    expect(queryPosts(all, { ...query, tab: "all" }).posts).toContain(odd);
+  });
+
+  it("gives a sent-back post a queue of its own", () => {
+    const first = makePost({
+      id: "5",
+      status: "changes_requested",
+      submittedAt: "2026-10-01T00:00:00Z",
+    });
+    const second = makePost({
+      id: "6",
+      status: "changes_requested",
+      submittedAt: "2026-10-02T00:00:00Z",
+    });
+    expect(getQueuePosition([...posts, first, second], "5")).toEqual({
+      position: 2,
+      total: 2,
+      previousId: "6",
+      nextId: null,
+    });
+  });
+
+  it("reads ?tab=changes_requested only when that tab is offered", () => {
+    const params = new URLSearchParams("tab=changes_requested");
+    expect(parsePostListParams(params).tab).toBe("changes_requested");
+    expect(parsePostListParams(params, getPostTabs(true)).tab).toBe(
+      "changes_requested",
+    );
+    expect(parsePostListParams(params, getPostTabs(false)).tab).toBe(
+      defaultPostListQuery.tab,
+    );
   });
 });
 
@@ -380,6 +470,23 @@ describe("small post helpers", () => {
     expect(
       countReporterPosts(["approved", "pending", "declined", "approved"]),
     ).toEqual({ totalPosts: 4, approvedPosts: 2, declinedPosts: 1 });
+  });
+
+  it("counts a post waiting for changes in the total only", () => {
+    const stats = countReporterPosts([
+      "approved",
+      "declined",
+      "changes_requested",
+      "unknown",
+    ]);
+    expect(stats).toEqual({
+      totalPosts: 4,
+      approvedPosts: 1,
+      declinedPosts: 1,
+    });
+    expect(
+      getApprovalRate({ ...stats, memberSince: "2023-11-03T00:00:00Z" }),
+    ).toBe(50);
   });
 
   it("computes the approval rate of decided posts", () => {

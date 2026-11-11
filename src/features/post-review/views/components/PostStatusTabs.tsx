@@ -1,6 +1,5 @@
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { formatNumber } from "../../../../core/utils/formatters";
-import { postTabs } from "../../models/post";
 import type { PostApprovalsViewModel } from "../../viewmodels/usePostApprovalsViewModel";
 
 interface PostStatusTabsProps {
@@ -8,7 +7,8 @@ interface PostStatusTabsProps {
 }
 
 /**
- * Pending / Approved / Declined / All Posts switch, each with its count.
+ * Pending / Approved / Declined / All Posts switch, each with its count
+ * (plus Changes requested while Request changes is on).
  */
 export function PostStatusTabs({ viewModel }: PostStatusTabsProps) {
   const strings = AppStrings.posts;
@@ -19,7 +19,7 @@ export function PostStatusTabs({ viewModel }: PostStatusTabsProps) {
       aria-label={strings.tabsLabel}
       className="flex flex-wrap items-center gap-2"
     >
-      {postTabs.map((tab) => {
+      {viewModel.tabs.map((tab) => {
         const isSelected = viewModel.tab === tab;
         const count = viewModel.counts?.[tab];
         return (

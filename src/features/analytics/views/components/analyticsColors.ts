@@ -32,12 +32,14 @@ export const reviewOutcomeFill: Record<ReviewOutcome, string> = {
   approved: "fill-amber-ink",
   declined: "fill-danger",
   awaitingTriage: "fill-cyan",
+  changesRequested: "fill-accent-gold",
 };
 
 export const reviewOutcomeColor: Record<ReviewOutcome, string> = {
   approved: "var(--color-amber-ink)",
   declined: "var(--color-danger)",
   awaitingTriage: "var(--color-cyan)",
+  changesRequested: "var(--color-accent-gold)",
 };
 
 export const categoryFill: Record<ReportCategory, string> = {

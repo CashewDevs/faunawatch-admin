@@ -233,6 +233,14 @@ directory. Do not create large generic folders with unrelated code.
   usability only. Brute-force protection is server-side: Supabase Auth rate
   limits (Authentication → Rate Limits).
 
+## Feature flags
+
+`src/core/constants/featureFlags.ts` holds switches for features that ship
+dark. `isRequestChangesEnabled()` is false in production until its constant
+is changed. In development only, `VITE_ENABLE_REQUEST_CHANGES=true` in a
+local env file (never committed) turns it on without editing code. Tests mock
+the module instead of reading the variable.
+
 ## UI and Design Guidelines
 
 - Follow the approved Google Stitch designs. Do not invent layouts.

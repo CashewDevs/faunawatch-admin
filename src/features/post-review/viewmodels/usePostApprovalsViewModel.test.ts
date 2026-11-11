@@ -1,10 +1,16 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { countPostsByTab } from "../models/post";
+import { countPostsByTab, type PostSummary } from "../models/post";
 import { fetchAllPosts, fetchPostCardMedia } from "../services/postsService";
 import { testPosts, toTestCardData } from "../../../test/fixtures/posts";
 import { createRouterQueryWrapper } from "../../../test/routerWrapper";
 import { usePostApprovalsViewModel } from "./usePostApprovalsViewModel";
+
+const flag = vi.hoisted(() => ({ requestChanges: false }));
+
+vi.mock("../../../core/constants/featureFlags", () => ({
+  isRequestChangesEnabled: () => flag.requestChanges,
+}));
 
 vi.mock("../services/postsService", () => ({
   fetchAllPosts: vi.fn(),
@@ -35,6 +41,7 @@ async function renderLoaded(initialEntry?: string) {
 
 describe("usePostApprovalsViewModel", () => {
   beforeEach(() => {
+    flag.requestChanges = false;
     fetchAllPostsMock.mockReset();
     fetchAllPostsMock.mockResolvedValue([...testPosts]);
     fetchPostCardMediaMock.mockReset();
@@ -254,6 +261,85 @@ describe("usePostApprovalsViewModel", () => {
     });
 
     expect(result.current.selectedCount).toBe(0);
+  });
+
+  describe("Changes requested", () => {
+    const base = testPosts[0] as PostSummary;
+    const sentBack: PostSummary = {
+      ...base,
+      id: "sent-back",
+      status: "changes_requested",
+    };
+    const unknownStatus: PostSummary = {
+      ...base,
+      id: "unknown-status",
+      status: "unknown",
+    };
+
+    beforeEach(() => {
+      fetchAllPostsMock.mockResolvedValue([
+        sentBack,
+        unknownStatus,
+        ...testPosts,
+      ]);
+    });
+
+    it("hides the tab but still counts the posts while off", async () => {
+      const { result } = await renderLoaded();
+
+      expect(result.current.tabs).toEqual([
+        "pending",
+        "approved",
+        "declined",
+        "all",
+      ]);
+      expect(result.current.counts?.changes_requested).toBe(1);
+      expect(result.current.counts?.all).toBe(testPosts.length + 2);
+    });
+
+    it("offers the tab with its count while on", async () => {
+      flag.requestChanges = true;
+      const { result } = await renderLoaded("/posts?tab=changes_requested");
+
+      expect(result.current.tabs).toContain("changes_requested");
+      expect(result.current.tab).toBe("changes_requested");
+      expect(result.current.posts.map((post) => post.id)).toEqual([
+        "sent-back",
+      ]);
+      expect(result.current.counts?.changes_requested).toBe(1);
+    });
+
+    it("ignores ?tab=changes_requested while off", async () => {
+      const { result } = await renderLoaded("/posts?tab=changes_requested");
+
+      expect(result.current.tab).toBe("pending");
+    });
+
+    it("lists a post with an unknown status only under All Posts", async () => {
+      const pending = await renderLoaded();
+      expect(
+        pending.result.current.posts.some(
+          (post) => post.id === unknownStatus.id,
+        ),
+      ).toBe(false);
+      expect(pending.result.current.counts?.pending).toBe(counts.pending);
+
+      const all = await renderLoaded("/posts?tab=all&size=48");
+      expect(
+        all.result.current.posts.some((post) => post.id === unknownStatus.id),
+      ).toBe(true);
+    });
+
+    it("can't select a sent-back or unknown-status post", async () => {
+      const { result } = await renderLoaded("/posts?tab=all&size=48");
+
+      act(() => {
+        result.current.toggleSelection(sentBack.id);
+        result.current.toggleSelection(unknownStatus.id);
+      });
+
+      expect(result.current.selectedCount).toBe(0);
+    });
   });
 
   it("exposes the error state and retries", async () => {

@@ -19,6 +19,12 @@ import {
 } from "../../services/analyticsService";
 import { AnalyticsScreen } from "./AnalyticsScreen";
 
+const flag = vi.hoisted(() => ({ requestChanges: false }));
+
+vi.mock("../../../../core/constants/featureFlags", () => ({
+  isRequestChangesEnabled: () => flag.requestChanges,
+}));
+
 vi.mock("../../services/analyticsService", () => ({
   fetchAnalyticsData: vi.fn(),
   fetchSectorCells: vi.fn(),
@@ -40,6 +46,7 @@ function renderScreen(initialEntry = "/analytics") {
 
 describe("AnalyticsScreen", () => {
   beforeEach(() => {
+    flag.requestChanges = false;
     vi.mocked(fetchUserCounts).mockResolvedValue(testUserCounts);
     vi.mocked(fetchSanctionsSince).mockResolvedValue([]);
     vi.mocked(fetchAnalyticsData).mockImplementation((range) =>
@@ -61,6 +68,35 @@ describe("AnalyticsScreen", () => {
     expect(await screen.findByText("66.7% Approved")).toBeInTheDocument();
     expect(
       screen.getByText(strings.reviewOutcomes.outcomes.awaitingTriage),
+    ).toBeInTheDocument();
+  });
+
+  it("hides an empty Changes requested outcome while the switch is off", async () => {
+    const outcome = strings.reviewOutcomes.outcomes.changesRequested;
+    const view = renderScreen();
+    await screen.findByText("66.7% Approved");
+    expect(screen.queryByText(outcome)).not.toBeInTheDocument();
+    view.unmount();
+
+    flag.requestChanges = true;
+    renderScreen();
+    expect(await screen.findByText(outcome)).toBeInTheDocument();
+  });
+
+  it("shows Changes requested with the switch off once a post is waiting", async () => {
+    vi.mocked(fetchAnalyticsData).mockImplementation((range) => {
+      const data = testAnalyticsData(range);
+      const [first, ...rest] = data.reports;
+      if (!first) throw new Error("Need a report");
+      return Promise.resolve({
+        ...data,
+        reports: [{ ...first, status: "changes_requested" }, ...rest],
+      });
+    });
+    renderScreen();
+
+    expect(
+      await screen.findByText(strings.reviewOutcomes.outcomes.changesRequested),
     ).toBeInTheDocument();
   });
 

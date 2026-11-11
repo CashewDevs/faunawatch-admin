@@ -13,7 +13,9 @@ import {
   type DeclineReason,
   type ModerationAction,
 } from "../models/moderation";
+import type { PostSummary } from "../models/post";
 import { decidePosts } from "../services/moderationService";
+import { allPostsQuery } from "./postQueries";
 
 interface OpenDialog {
   action: ModerationAction;
@@ -102,17 +104,45 @@ export function useModerationFlow(options?: {
           // A network or unknown failure stays in the dialog to retry.
           if (kind === "failed") return;
           setDialog(null);
+          if (kind === "alreadyDecided") {
+            // The server says "already decided" both for a post another
+            // admin decided and for one sent back for changes. Say the
+            // generic thing now; once the reloaded list shows which, swap in
+            // the exact message, unless a newer message has replaced this one.
+            const noticeId = notice.show(
+              "error",
+              isMany
+                ? strings.errors.alreadyDecidedMany
+                : strings.errors.alreadyDecided,
+            );
+            void refresh().then(() => {
+              const loaded = queryClient.getQueryData<PostSummary[]>(
+                allPostsQuery.queryKey,
+              );
+              const sentBack = postIds.filter(
+                (id) =>
+                  loaded?.find((post) => post.id === id)?.status ===
+                  "changes_requested",
+              ).length;
+              if (sentBack === 0) return;
+              notice.update(
+                noticeId,
+                sentBack < postIds.length
+                  ? strings.errors.decidedOrAwaitingChangesMany
+                  : isMany
+                    ? strings.errors.awaitingChangesMany
+                    : strings.errors.awaitingChanges,
+              );
+            });
+            return;
+          }
           notice.show(
             "error",
             kind === "forbidden"
               ? strings.errors.forbidden
-              : kind === "alreadyDecided"
-                ? isMany
-                  ? strings.errors.alreadyDecidedMany
-                  : strings.errors.alreadyDecided
-                : isMany
-                  ? strings.errors.notFoundMany
-                  : strings.errors.notFound,
+              : isMany
+                ? strings.errors.notFoundMany
+                : strings.errors.notFound,
           );
           void refresh();
         },
