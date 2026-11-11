@@ -1,17 +1,16 @@
-import { AppStrings } from "../../../../core/constants/appStrings";
-import type { ModerationFlow } from "../../viewmodels/useModerationFlow";
+import { AppStrings } from "../constants/appStrings";
+import type { Notice } from "../hooks/useNotice";
 
-interface ModerationNoticeProps {
-  moderation: ModerationFlow;
+interface ActionNoticeProps {
+  notice: Notice | null;
+  onDismiss: () => void;
 }
 
 /**
- * The result of the last decision, under the header on the right. Success
- * messages close on their own; errors stay until dismissed.
+ * The result of the last admin action, under the header on the right.
+ * Success messages close on their own; errors stay until dismissed.
  */
-export function ModerationNotice({ moderation }: ModerationNoticeProps) {
-  const { notice } = moderation;
-
+export function ActionNotice({ notice, onDismiss }: ActionNoticeProps) {
   return (
     // Always mounted, so screen readers announce what is put inside.
     <div
@@ -30,8 +29,8 @@ export function ModerationNotice({ moderation }: ModerationNoticeProps) {
           <p>{notice.message}</p>
           <button
             type="button"
-            onClick={moderation.dismissNotice}
-            aria-label={AppStrings.posts.moderation.dismiss}
+            onClick={onDismiss}
+            aria-label={AppStrings.common.dismissMessage}
             className="-my-0.5 shrink-0 rounded px-1 text-base leading-5 opacity-70 transition-opacity hover:opacity-100 focus-visible:outline-2 focus-visible:outline-current"
           >
             ×

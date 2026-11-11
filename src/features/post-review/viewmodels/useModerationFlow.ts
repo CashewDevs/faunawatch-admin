@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { AppStrings } from "../../../core/constants/appStrings";
+import { useNotice } from "../../../core/hooks/useNotice";
 import { formatNumber } from "../../../core/utils/formatters";
 import {
   declineReasons,
@@ -10,16 +11,6 @@ import {
   type ModerationAction,
 } from "../models/moderation";
 import { decidePosts } from "../services/moderationService";
-
-/** How long a success message stays up. Errors stay until dismissed. */
-export const successNoticeMs = 5000;
-
-export interface ModerationNotice {
-  /** Changes on every message, so a repeated message restarts its timer. */
-  id: number;
-  tone: "success" | "error";
-  message: string;
-}
 
 interface OpenDialog {
   action: ModerationAction;
@@ -48,26 +39,12 @@ export function useModerationFlow(options?: {
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<OpenDialog | null>(null);
   const [reason, setReason] = useState<DeclineReason | null>(null);
-  const [notice, setNotice] = useState<ModerationNotice | null>(null);
+  const notice = useNotice();
 
   const mutation = useMutation({
     mutationFn: ({ postIds, action, reason }: Decision) =>
       decidePosts(postIds, action, reason),
   });
-
-  useEffect(() => {
-    if (notice?.tone !== "success") return;
-    const timer = setTimeout(() => {
-      setNotice(null);
-    }, successNoticeMs);
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [notice]);
-
-  const showNotice = (tone: ModerationNotice["tone"], message: string) => {
-    setNotice({ id: Date.now(), tone, message });
-  };
 
   /** Posts, their counts, and the analytics built from them all change. */
   const refresh = () =>
@@ -81,7 +58,7 @@ export function useModerationFlow(options?: {
     if (unique.length === 0 || mutation.isPending) return;
     mutation.reset();
     setReason(null);
-    setNotice(null);
+    notice.dismiss();
     setDialog({ action, postIds: unique });
   };
 
@@ -105,7 +82,7 @@ export function useModerationFlow(options?: {
       {
         onSuccess: () => {
           setDialog(null);
-          showNotice(
+          notice.show(
             "success",
             isMany
               ? `${formatNumber(postIds.length)} ${strings.successMany[action]}`
@@ -119,7 +96,7 @@ export function useModerationFlow(options?: {
           // A network or unknown failure stays in the dialog to retry.
           if (kind === "failed") return;
           setDialog(null);
-          showNotice(
+          notice.show(
             "error",
             kind === "forbidden"
               ? strings.errors.forbidden
@@ -173,10 +150,8 @@ export function useModerationFlow(options?: {
     open,
     cancel,
     confirm,
-    notice,
-    dismissNotice: () => {
-      setNotice(null);
-    },
+    notice: notice.notice,
+    dismissNotice: notice.dismiss,
   };
 }
 

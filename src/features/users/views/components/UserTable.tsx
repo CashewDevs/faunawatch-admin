@@ -37,7 +37,13 @@ export function UserTable({ viewModel }: UserTableProps) {
   } else if (users.length === 0) {
     body = <MessageRow>{strings.empty}</MessageRow>;
   } else {
-    body = users.map((user) => <UserTableRow key={user.id} user={user} />);
+    body = users.map((user) => (
+      <UserTableRow
+        key={user.id}
+        user={user}
+        onToggleStatus={viewModel.suspension.open}
+      />
+    ));
   }
 
   return (

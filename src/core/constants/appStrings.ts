@@ -19,6 +19,8 @@ const declineReasonLabels = {
 export const AppStrings = {
   common: {
     loading: "Loading FaunaWatch Admin",
+    /** The × on a result message, e.g. "Post approved.". */
+    dismissMessage: "Dismiss message",
     /** Shown when a screen fails to load, e.g. its code couldn't download. */
     screenError: {
       message: "Couldn't load this screen.",
@@ -93,6 +95,8 @@ export const AppStrings = {
         suspended: "Suspended",
       },
       toggleStatus: "Account active",
+      /** Added to an admin's disabled switch, which can't be changed. */
+      adminLocked: "Admins can't be suspended",
       /** Shown when a profile has no name, username or email. */
       unnamed: "Unnamed user",
       noEmail: "No email",
@@ -100,6 +104,72 @@ export const AppStrings = {
     pagination: {
       users: "users",
       pageSizeLabel: "Users per page",
+    },
+    suspension: {
+      /** Titles name the user, e.g. "Suspend Klip Bautista?". */
+      titlePrefix: {
+        suspend: "Suspend",
+        reactivate: "Reactivate",
+      },
+      titleSuffix: "?",
+      body: {
+        suspend:
+          "They can still sign in, but can't post reports, comments or community responses until the suspension ends.",
+        reactivate:
+          "They can post reports, comments and community responses again straight away.",
+      },
+      durationLabel: "Length",
+      durations: {
+        oneDay: "1 day",
+        sevenDays: "7 days",
+        thirtyDays: "30 days",
+        untilReactivated: "Until reactivated",
+      },
+      reasonLabel: "Reason",
+      reasons: {
+        spam: "Spam",
+        harassment: "Harassment or abuse",
+        misleadingReports: "Fake or misleading reports",
+        inappropriateContent: "Inappropriate content",
+        other: "Other",
+      },
+      detailsLabel: "Details (optional)",
+      detailsRequiredLabel: "Details",
+      detailsHint: "The user can see the reason and these details.",
+      /** The active suspension, shown before reactivating. */
+      currentReason: "Reason",
+      currentEnds: "Ends",
+      untilReactivated: "When an admin reactivates them",
+      noReason: "No reason recorded",
+      cancel: "Cancel",
+      confirm: {
+        suspend: "Suspend",
+        reactivate: "Reactivate",
+      },
+      saving: "Saving…",
+      /** Shown in the dialog; the admin can try again. */
+      failed: "Couldn't save the change. Check your connection and try again.",
+      /** Shown after the dialog closes; nothing was changed. */
+      errors: {
+        isAdmin:
+          "Admins can't be suspended, so nothing was changed. The list has been reloaded.",
+        alreadySuspended:
+          "This user was already suspended by another admin, so nothing was changed. The list has been reloaded.",
+        notSuspended:
+          "This user isn't suspended any more, so nothing was changed. Another admin may have reactivated them, or the suspension ended. The list has been reloaded.",
+        notFound:
+          "This user no longer exists, so nothing was changed. The list has been reloaded.",
+        forbidden:
+          "Your account can't suspend users. Sign out and back in, or ask another admin.",
+      },
+      /** Success messages follow the user's name, e.g. "Klip Bautista suspended for 7 days." */
+      success: {
+        oneDay: "suspended for 1 day.",
+        sevenDays: "suspended for 7 days.",
+        thirtyDays: "suspended for 30 days.",
+        untilReactivated: "suspended until reactivated.",
+        reactivate: "reactivated.",
+      },
     },
     loading: "Loading users…",
     empty: "No users match your search or filters.",
@@ -238,7 +308,6 @@ export const AppStrings = {
         decline: "posts declined.",
         takeDown: "posts taken down.",
       },
-      dismiss: "Dismiss message",
     },
     bulk: {
       label: "Bulk actions",
