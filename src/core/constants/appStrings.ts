@@ -181,6 +181,7 @@ export const AppStrings = {
     tabsLabel: "Filter by review status",
     tabs: {
       pending: "Pending",
+      changes_requested: "Changes requested",
       approved: "Approved",
       declined: "Declined",
       all: "All Posts",
@@ -227,8 +228,11 @@ export const AppStrings = {
     },
     status: {
       pending: "Pending Review",
+      changes_requested: "Changes requested",
       approved: "Approved",
       declined: "Declined",
+      /** A status this site doesn't recognise; see toPostStatus. */
+      unknown: "Unknown status",
     },
     card: {
       invasive: "Invasive",
@@ -295,6 +299,14 @@ export const AppStrings = {
           "At least one of these posts no longer exists, so nothing was changed. The list has been reloaded.",
         forbidden:
           "Your account can't make moderation decisions. Sign out and back in, or ask another admin.",
+        /** The post was sent back for changes meanwhile (the server says "already decided"). */
+        awaitingChanges:
+          "This post is waiting for the reporter's changes, so nothing was changed. It has been reloaded.",
+        awaitingChangesMany:
+          "These posts are waiting for the reporter's changes, so nothing was changed. The list has been reloaded.",
+        /** Some of the selected posts were decided, the others sent back. */
+        decidedOrAwaitingChangesMany:
+          "Some of these posts were already decided or are waiting for the reporter's changes, so nothing was changed. The list has been reloaded.",
       },
       /** Success messages; several posts get the count in front, e.g. "3 posts approved." */
       success: {
@@ -306,6 +318,53 @@ export const AppStrings = {
         approve: "posts approved.",
         decline: "posts declined.",
         takeDown: "posts taken down.",
+      },
+    },
+    /** The Request changes / Withdraw request dialog and its result messages. */
+    changeRequest: {
+      title: {
+        request: "Request changes?",
+        withdraw: "Withdraw this request?",
+      },
+      body: {
+        request:
+          "The reporter will be asked to edit this post and resubmit it. It stays hidden from the community until it is approved.",
+        withdraw:
+          "The post goes back to Pending Review and the request is closed.",
+      },
+      fieldsLabel: "What needs fixing (optional)",
+      fields: {
+        photos: "Photos",
+        speciesDescription: "Species / description",
+        location: "Location",
+        category: "Category",
+      },
+      messageLabel: "Message to the reporter",
+      messageHint: "Say what to fix. The reporter will see this message.",
+      cancel: "Cancel",
+      confirm: {
+        request: "Request changes",
+        withdraw: "Withdraw request",
+      },
+      saving: "Saving…",
+      /** Shown in the dialog; the admin can try again. */
+      failed: "Couldn't save the change. Check your connection and try again.",
+      /** The server refused the message (invalid_parameter_value); the dialog stays open. */
+      invalidMessage: "The message must be 1–500 characters.",
+      /** Shown after the dialog closes; nothing was changed. */
+      errors: {
+        notPending:
+          "This post is no longer pending, so nothing was changed. It has been reloaded.",
+        notAwaitingChanges:
+          "This post is no longer waiting for the reporter's changes (they may have resubmitted, or another admin withdrew the request), so nothing was changed. It has been reloaded.",
+        notFound:
+          "This post no longer exists, so nothing was changed. It has been reloaded.",
+        forbidden:
+          "Your account can't make moderation decisions. Sign out and back in, or ask another admin.",
+      },
+      success: {
+        request: "Changes requested. The post is waiting for the reporter.",
+        withdraw: "Request withdrawn. The post is pending again.",
       },
     },
     bulk: {
@@ -498,6 +557,8 @@ export const AppStrings = {
         retry: "Try again",
         /** Shown in the decision dialog when there is unsaved note text. */
         savedWithDecision: "Your admin note will be saved with this decision.",
+        /** Shown in the Request changes / Withdraw dialog when there is unsaved note text. */
+        savedWithChange: "Your unsaved note will be saved with this change.",
         /** e.g. "1,980 / 2,000" near the limit. */
         lengthSeparator: "/",
       },
@@ -511,6 +572,23 @@ export const AppStrings = {
         requestChangesUnavailable: "Request changes isn't available yet",
         approve: "Approve",
         takeDown: "Take down",
+        withdrawRequest: "Withdraw request",
+      },
+      /** Every round of Request changes on the post, newest first. */
+      changeRequests: {
+        heading: "Change requests",
+        listLabel: "Change request rounds",
+        round: "Round",
+        fieldsLabel: "Needs fixing",
+        requestedByPrefix: "Requested by",
+        formerAdmin: "a former admin",
+        unknownAdmin: "an admin",
+        waitingSince: "Waiting since",
+        resubmitted: "Resubmitted",
+        withdrawnByPrefix: "Withdrawn by",
+        separator: "·",
+        loadFailed: "Couldn't load change requests.",
+        retry: "Try again",
       },
       loading: "Loading post…",
       error: "Couldn't load this post.",
@@ -576,6 +654,7 @@ export const AppStrings = {
         approved: "Approved Sightings",
         declined: "Declined",
         awaitingTriage: "Awaiting Review",
+        changesRequested: "Changes requested",
       },
     },
     topSpecies: {

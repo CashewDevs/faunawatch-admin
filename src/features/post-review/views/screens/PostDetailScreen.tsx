@@ -5,6 +5,8 @@ import { AppStrings } from "../../../../core/constants/appStrings";
 import { usePostDetailViewModel } from "../../viewmodels/usePostDetailViewModel";
 import { AdminNotesCard } from "../components/AdminNotesCard";
 import { AiAnalysisCard } from "../components/AiAnalysisCard";
+import { ChangeRequestDialog } from "../components/ChangeRequestDialog";
+import { ChangeRequestsCard } from "../components/ChangeRequestsCard";
 import { PostCommentsCard } from "../components/PostCommentsCard";
 import { PostContentCard } from "../components/PostContentCard";
 import { PostDecisionBar } from "../components/PostDecisionBar";
@@ -63,6 +65,7 @@ function PostDetailContent({ postId }: { postId: string }) {
             isVerified={viewModel.isReporterVerified}
           />
           <AiAnalysisCard post={post} viewModel={viewModel} />
+          <ChangeRequestsCard viewModel={viewModel} />
           <AdminNotesCard viewModel={viewModel} />
         </div>
       </div>
@@ -77,6 +80,7 @@ function PostDetailContent({ postId }: { postId: string }) {
       </div>
       {post && <PostDecisionBar post={post} viewModel={viewModel} />}
       <ModerationDialog moderation={viewModel.moderation} />
+      <ChangeRequestDialog changeRequest={viewModel.changeRequest} />
       <CommentModerationDialog
         commentModeration={viewModel.commentModeration}
       />

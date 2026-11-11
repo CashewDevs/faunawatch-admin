@@ -15,7 +15,8 @@ const buttonClass =
 /**
  * Sticky bar at the bottom of the page: which post this is, and the
  * Decline / Request changes / Approve decision while it's pending. Once
- * decided it shows the outcome, plus Take down on an approved post.
+ * decided it shows the outcome, plus Take down on an approved post, or
+ * Withdraw request on a post waiting for the reporter's changes.
  */
 export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
   const strings = AppStrings.posts;
@@ -60,6 +61,7 @@ export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
           </button>
           <button
             type="button"
+            onClick={viewModel.requestChanges}
             disabled={!viewModel.isRequestChangesAvailable}
             title={
               viewModel.isRequestChangesAvailable
@@ -89,6 +91,15 @@ export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
               className={`${buttonClass} text-danger hover:bg-danger-tint`}
             >
               {decision.takeDown}
+            </button>
+          )}
+          {viewModel.canWithdrawRequest && (
+            <button
+              type="button"
+              onClick={viewModel.withdrawRequest}
+              className={`${buttonClass} bg-surface-tint text-deep-blue hover:bg-chip`}
+            >
+              {decision.withdrawRequest}
             </button>
           )}
         </div>

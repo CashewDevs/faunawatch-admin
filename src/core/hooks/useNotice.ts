@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 /** How long a success message stays up. Errors stay until dismissed. */
 export const successNoticeMs = 5000;
@@ -16,6 +16,7 @@ export interface Notice {
  */
 export function useNotice() {
   const [notice, setNotice] = useState<Notice | null>(null);
+  const nextId = useRef(0);
 
   useEffect(() => {
     if (notice?.tone !== "success") return;
@@ -29,8 +30,21 @@ export function useNotice() {
 
   return {
     notice,
+    /** Returns the message's id, for `update`. */
     show: (tone: Notice["tone"], message: string) => {
-      setNotice({ id: Date.now(), tone, message });
+      nextId.current += 1;
+      const id = nextId.current;
+      setNotice({ id, tone, message });
+      return id;
+    },
+    /**
+     * Changes the text of message `id`, only while it is still the one
+     * shown: a newer message, or a dismissed one, is left alone.
+     */
+    update: (id: number, message: string) => {
+      setNotice((current) =>
+        current?.id === id ? { ...current, message } : current,
+      );
     },
     dismiss: () => {
       setNotice(null);

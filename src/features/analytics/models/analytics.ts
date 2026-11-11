@@ -12,6 +12,7 @@ import {
   reportCategories,
   type AiSpeciesMatch,
   type Filter,
+  type KnownPostStatus,
   type PostSeverity,
   type PostStatus,
   type ReportCategory,
@@ -370,6 +371,8 @@ export interface ReviewOutcomeCounts {
   declined: number;
   /** Submitted in the range and still waiting for a decision. */
   awaitingTriage: number;
+  /** Sent back to the reporter and waiting for their changes. */
+  changesRequested: number;
 }
 
 export type ReviewOutcome = keyof ReviewOutcomeCounts;
@@ -378,20 +381,28 @@ export const reviewOutcomes: readonly ReviewOutcome[] = [
   "approved",
   "declined",
   "awaitingTriage",
+  "changesRequested",
 ];
 
-/** Reports submitted in the range, by their current review status. */
+/**
+ * Reports submitted in the range, by their current review status. A status
+ * this site doesn't know ("unknown") is left out rather than counted as
+ * awaiting review.
+ */
 export function getReviewOutcomeCounts(
   reports: readonly AnalyticsReport[],
 ): ReviewOutcomeCounts {
-  const counts = countBy(
-    ["pending", "approved", "declined"],
-    reports.map((report) => report.status),
+  const counts = countBy<KnownPostStatus>(
+    ["pending", "changes_requested", "approved", "declined"],
+    reports.flatMap((report) =>
+      report.status === "unknown" ? [] : [report.status],
+    ),
   );
   return {
     approved: counts.approved,
     declined: counts.declined,
     awaitingTriage: counts.pending,
+    changesRequested: counts.changes_requested,
   };
 }
 
@@ -403,17 +414,30 @@ export interface ReviewOutcomeSummary {
   shares: Share<ReviewOutcome>[];
 }
 
+/**
+ * The Changes requested bucket is shown when Request changes is switched on,
+ * or whenever it has posts (a request can outlive the switch). It is hidden
+ * only when the switch is off and it is empty. Whenever it is shown it is in
+ * the shares and the total, so the total always equals every counted post;
+ * those posts never count as awaiting review.
+ */
 export function summarizeReviewOutcomes(
   counts: ReviewOutcomeCounts,
+  isRequestChangesEnabled: boolean,
 ): ReviewOutcomeSummary {
+  const showChangesRequested =
+    isRequestChangesEnabled || counts.changesRequested > 0;
+  const shown = showChangesRequested
+    ? reviewOutcomes
+    : reviewOutcomes.filter((outcome) => outcome !== "changesRequested");
   return {
-    total: counts.approved + counts.declined + counts.awaitingTriage,
+    total: shown.reduce((sum, outcome) => sum + counts[outcome], 0),
     approvalPercent: toPercent(
       counts.approved,
       counts.approved + counts.declined,
       1,
     ),
-    shares: toShares(counts, reviewOutcomes, 1),
+    shares: toShares(counts, shown, 1),
   };
 }
 

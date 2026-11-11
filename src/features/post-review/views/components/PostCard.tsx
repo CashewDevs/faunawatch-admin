@@ -13,6 +13,7 @@ import {
   type PostSeverity,
 } from "../../models/post";
 import { toPostLinkState } from "../../viewmodels/postNavigation";
+import { PostStatusPill } from "./PostStatusPill";
 import { ReporterAvatar } from "./ReporterAvatar";
 
 interface PostCardProps {
@@ -206,17 +207,7 @@ export function PostCard({
               )}
             </>
           ) : (
-            <span
-              className={`rounded-full px-3 py-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] ${
-                post.status === "declined"
-                  ? "bg-danger-tint text-danger"
-                  : post.status === "approved"
-                    ? "bg-teal-soft text-teal"
-                    : "bg-cyan/50 text-teal"
-              }`}
-            >
-              {strings.status[post.status]}
-            </span>
+            <PostStatusPill status={post.status} />
           )}
         </div>
       </div>

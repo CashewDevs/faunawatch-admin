@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router";
 import { AppStrings } from "../../../core/constants/appStrings";
+import { isRequestChangesEnabled } from "../../../core/constants/featureFlags";
 import { useNotice } from "../../../core/hooks/useNotice";
 import {
   formatCoordinates,
@@ -18,10 +19,13 @@ import {
   sortComments,
   type CommentSort,
 } from "../models/post";
+import { canWithdrawChangeRequest } from "../models/changeRequest";
 import { canTakeDown, isDecidable } from "../models/moderation";
+import { fetchChangeRequests } from "../services/changeRequestService";
 import { fetchPost } from "../services/postsService";
 import { getReturnPath } from "./postNavigation";
 import { allPostsQuery, signedUrlStaleTimeMs } from "./postQueries";
+import { useChangeRequestFlow } from "./useChangeRequestFlow";
 import { useCommentModerationFlow } from "./useCommentModerationFlow";
 import { useModerationFlow } from "./useModerationFlow";
 
@@ -139,8 +143,18 @@ export function usePostDetailViewModel(postId: string) {
     notice,
   });
   const commentModeration = useCommentModerationFlow({ postId, notice });
-  // TODO(moderation): Request changes has no backend yet; it is designed
-  // after approve/decline, with the app side (Cliff's area).
+  // Request changes and Withdraw share the page's message area too, and
+  // save unsaved note text with the change like a decision does.
+  const changeRequest = useChangeRequestFlow({
+    postId,
+    notice,
+    onChanged: saveNote,
+    dialogHint: hasNoteToSave ? noteStrings.savedWithChange : null,
+  });
+  const changeRequestsQuery = useQuery({
+    queryKey: ["posts", "changeRequests", postId],
+    queryFn: () => fetchChangeRequests(postId),
+  });
 
   return {
     post,
@@ -207,9 +221,16 @@ export function usePostDetailViewModel(postId: string) {
     retryNotes: () => void notesQuery.refetch(),
     moderation,
     commentModeration,
+    changeRequest,
+    changeRequests: changeRequestsQuery.data ?? [],
+    isChangeRequestsError: changeRequestsQuery.isError,
+    retryChangeRequests: () => void changeRequestsQuery.refetch(),
     canDecide: post ? isDecidable(post.status) : false,
     canTakeDown: post ? canTakeDown(post.status) : false,
-    isRequestChangesAvailable: false,
+    /** Request changes is switched on (see core/constants/featureFlags.ts). */
+    isRequestChangesAvailable: isRequestChangesEnabled(),
+    /** Withdraw works whatever the switch says, so a stray request can be handled. */
+    canWithdrawRequest: post ? canWithdrawChangeRequest(post.status) : false,
     approve: () => {
       moderation.open("approve", [postId]);
     },
@@ -218,6 +239,13 @@ export function usePostDetailViewModel(postId: string) {
     },
     takeDown: () => {
       moderation.open("takeDown", [postId]);
+    },
+    requestChanges: () => {
+      if (!isRequestChangesEnabled()) return;
+      changeRequest.open("request");
+    },
+    withdrawRequest: () => {
+      changeRequest.open("withdraw");
     },
   };
 }

@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useSearchParams } from "react-router";
+import { isRequestChangesEnabled } from "../../../core/constants/featureFlags";
 import { useDebouncedValue } from "../../../core/hooks/useDebouncedValue";
 import {
   getPageCount,
@@ -10,6 +11,7 @@ import {
 import {
   countPostsByTab,
   defaultPostListQuery,
+  getPostTabs,
   hasActiveFilters,
   parsePostListParams,
   queryPosts,
@@ -36,7 +38,10 @@ export const searchDebounceMs = 300;
  */
 export function usePostApprovalsViewModel() {
   const [params, setParams] = useSearchParams();
-  const urlQuery = parsePostListParams(params);
+  // "Changes requested" is offered (and read from the URL) only while
+  // Request changes is on; its posts still show under "All Posts".
+  const tabs = getPostTabs(isRequestChangesEnabled());
+  const urlQuery = parsePostListParams(params, tabs);
   const search = useDebouncedValue(urlQuery.search, searchDebounceMs);
   const query: PostListQuery = { ...urlQuery, search };
 
@@ -146,6 +151,7 @@ export function usePostApprovalsViewModel() {
 
   return {
     tab: urlQuery.tab,
+    tabs,
     searchInput: urlQuery.search,
     severity: urlQuery.severity,
     category: urlQuery.category,

@@ -11,9 +11,18 @@
 import type { AvatarImage, StoredAvatar } from "../../../core/utils/avatars";
 import { paginate } from "../../../core/utils/pagination";
 
-export type PostStatus = "pending" | "approved" | "declined";
+/** `report_status` values this site knows. */
+export type KnownPostStatus =
+  "pending" | "changes_requested" | "approved" | "declined";
 
-export type PostTab = PostStatus | "all";
+/**
+ * A post's review status. "unknown" is a `report_status` this site doesn't
+ * recognise (e.g. one added after this build): it is never decidable and
+ * never counted as pending, and only shows under "All Posts".
+ */
+export type PostStatus = KnownPostStatus | "unknown";
+
+export type PostTab = KnownPostStatus | "all";
 
 /**
  * The severity a card shows. "unrated" covers the AI's `uncertain` and
@@ -222,10 +231,20 @@ export type PostCounts = Record<PostTab, number>;
 
 export const postTabs: readonly PostTab[] = [
   "pending",
+  "changes_requested",
   "approved",
   "declined",
   "all",
 ];
+
+/** The tabs to offer; "Changes requested" only when Request changes is on. */
+export function getPostTabs(
+  isRequestChangesEnabled: boolean,
+): readonly PostTab[] {
+  return isRequestChangesEnabled
+    ? postTabs
+    : postTabs.filter((tab) => tab !== "changes_requested");
+}
 
 export const postSeverities: readonly PostSeverity[] = [
   "high",
@@ -247,7 +266,12 @@ export const postSortOptions: readonly PostSortOption[] = [
   "severity",
 ];
 
-const postStatuses: readonly PostStatus[] = ["pending", "approved", "declined"];
+const knownPostStatuses: readonly KnownPostStatus[] = [
+  "pending",
+  "changes_requested",
+  "approved",
+  "declined",
+];
 
 const speciesOrigins: readonly SpeciesOrigin[] = [
   "endemic",
@@ -299,9 +323,13 @@ function pickValue<T extends string>(
   return options.find((option) => option === value) ?? null;
 }
 
-/** `report_status` to the post status; unknown values count as pending. */
+/**
+ * `report_status` to the post status. A value this site doesn't know is
+ * "unknown", never "pending": treating it as pending would offer Approve and
+ * Decline on a post the server will refuse, and count it in the queue.
+ */
 export function toPostStatus(status: string): PostStatus {
-  return pickValue(status, postStatuses) ?? "pending";
+  return pickValue(status, knownPostStatuses) ?? "unknown";
 }
 
 /** `report_category`; null for a value this site doesn't know. */
@@ -539,6 +567,9 @@ export function queryPosts(
 export function countPostsByTab(posts: readonly PostSummary[]): PostCounts {
   return {
     pending: posts.filter((post) => post.status === "pending").length,
+    changes_requested: posts.filter(
+      (post) => post.status === "changes_requested",
+    ).length,
     approved: posts.filter((post) => post.status === "approved").length,
     declined: posts.filter((post) => post.status === "declined").length,
     all: posts.length,
@@ -659,11 +690,14 @@ function pickFilter<T extends string>(
  * Reads list state from URL search params so Back returns to the same
  * view. Unknown or invalid values fall back to the defaults.
  */
-export function parsePostListParams(params: URLSearchParams): PostListQuery {
+export function parsePostListParams(
+  params: URLSearchParams,
+  tabs: readonly PostTab[] = postTabs,
+): PostListQuery {
   const page = Number.parseInt(params.get("page") ?? "", 10);
   const pageSize = Number(params.get("size"));
   return {
-    tab: pickOption(params.get("tab"), postTabs, defaultPostListQuery.tab),
+    tab: pickOption(params.get("tab"), tabs, defaultPostListQuery.tab),
     search: params.get("q") ?? defaultPostListQuery.search,
     severity: pickFilter(params.get("severity"), postSeverities),
     category: pickFilter(params.get("category"), reportCategories),

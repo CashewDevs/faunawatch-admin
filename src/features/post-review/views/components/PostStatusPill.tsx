@@ -3,8 +3,10 @@ import type { PostStatus } from "../../models/post";
 
 const statusClass: Record<PostStatus, string> = {
   pending: "bg-cyan/50 text-teal",
+  changes_requested: "bg-amber-soft text-amber-ink",
   approved: "bg-teal-soft text-teal",
   declined: "bg-danger-tint text-danger",
+  unknown: "bg-chip text-slate",
 };
 
 /** Review status as a tinted pill, e.g. "Pending Review". */

@@ -105,7 +105,8 @@ const allReports: readonly AnalyticsReport[] = Array.from(
 
 const allReviews: readonly AnalyticsReview[] = allReports.flatMap(
   (report, index): AnalyticsReview[] =>
-    report.status === "pending" || !report.firstDecidedAt
+    (report.status !== "approved" && report.status !== "declined") ||
+    !report.firstDecidedAt
       ? []
       : [
           {
