@@ -240,7 +240,6 @@ export const AppStrings = {
       decline: "Decline",
       approve: "Approve",
     },
-    moderationUnavailable: "Moderation isn't connected yet",
     /** The approve / decline / take-down dialog and its result messages. */
     moderation: {
       title: {
@@ -382,11 +381,64 @@ export const AppStrings = {
           newest: "Newest",
           oldest: "Oldest",
         },
-        delete: "Delete comment by",
+        /** The trash button's name, followed by the author. */
+        removeCommentBy: "Remove comment by",
         flagged: "Flagged",
         remove: "Remove",
         reviewFlag: "Review Flag",
         moderationNote: "Moderation Note:",
+        /** A removed comment, still shown to admins. */
+        removed: "Removed",
+        removedBy: "Removed by",
+        /** Removed by an admin whose account was deleted. */
+        formerAdmin: "a former admin",
+        unknownAdmin: "an admin",
+        removalReason: "Reason:",
+        restore: "Restore",
+        /** The restore button's name, followed by the author. */
+        restoreCommentBy: "Restore comment by",
+        moderation: {
+          title: {
+            remove: "Remove this comment?",
+            restore: "Restore this comment?",
+            clearFlag: "Keep this comment?",
+          },
+          body: {
+            remove:
+              "It's hidden from the community straight away. You can restore it later.",
+            restore: "It becomes visible to the community again.",
+            clearFlag:
+              "The flag is cleared and the comment stays visible to the community.",
+          },
+          /** Introduces the comment being moderated. */
+          commentBy: "Comment by",
+          reasonLabel: "Reason",
+          reasonHint: "Only admins can see this.",
+          cancel: "Cancel",
+          confirm: {
+            remove: "Remove",
+            restore: "Restore",
+            clearFlag: "Clear flag",
+          },
+          saving: "Saving…",
+          /** Shown in the dialog; the admin can try again. */
+          failed:
+            "Couldn't save the change. Check your connection and try again.",
+          /** Shown after the dialog closes; nothing was changed. */
+          errors: {
+            alreadyChanged:
+              "Another admin already changed this comment, so nothing was changed. It has been reloaded.",
+            notFound:
+              "This comment no longer exists, so nothing was changed. Its author may have deleted it. The post has been reloaded.",
+            forbidden:
+              "Your account can't moderate comments. Sign out and back in, or ask another admin.",
+          },
+          success: {
+            remove: "Comment removed.",
+            restore: "Comment restored.",
+            clearFlag: "Flag cleared.",
+          },
+        },
         showMore: "Show more comments",
         showFewer: "Show fewer comments",
         empty: "No comments yet.",

@@ -1,7 +1,10 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { AppStrings } from "../../../core/constants/appStrings";
-import { useNotice } from "../../../core/hooks/useNotice";
+import {
+  useNotice,
+  type NoticeController,
+} from "../../../core/hooks/useNotice";
 import { formatNumber } from "../../../core/utils/formatters";
 import {
   declineReasons,
@@ -35,11 +38,14 @@ export function useModerationFlow(options?: {
   onDecided?: () => void;
   /** An extra line in the dialog, e.g. that a note is saved too. */
   dialogHint?: string | null;
+  /** A message area shared with the screen's other actions. */
+  notice?: NoticeController;
 }) {
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<OpenDialog | null>(null);
   const [reason, setReason] = useState<DeclineReason | null>(null);
-  const notice = useNotice();
+  const ownNotice = useNotice();
+  const notice = options?.notice ?? ownNotice;
 
   const mutation = useMutation({
     mutationFn: ({ postIds, action, reason }: Decision) =>

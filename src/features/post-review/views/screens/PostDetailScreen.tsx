@@ -10,6 +10,7 @@ import { PostContentCard } from "../components/PostContentCard";
 import { PostDecisionBar } from "../components/PostDecisionBar";
 import { PostDetailHeader } from "../components/PostDetailHeader";
 import { PostGallery } from "../components/PostGallery";
+import { CommentModerationDialog } from "../components/CommentModerationDialog";
 import { ModerationDialog } from "../components/ModerationDialog";
 import { PostLocationCard } from "../components/PostLocationCard";
 import { ReporterCard } from "../components/ReporterCard";
@@ -76,6 +77,9 @@ function PostDetailContent({ postId }: { postId: string }) {
       </div>
       {post && <PostDecisionBar post={post} viewModel={viewModel} />}
       <ModerationDialog moderation={viewModel.moderation} />
+      <CommentModerationDialog
+        commentModeration={viewModel.commentModeration}
+      />
       <ActionNotice
         notice={viewModel.moderation.notice}
         onDismiss={viewModel.moderation.dismissNotice}

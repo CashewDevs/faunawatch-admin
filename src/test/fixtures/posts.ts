@@ -127,6 +127,15 @@ const tarsierComments: readonly PostComment[] = commenters.map(
     body: `Comment ${String(index + 1)} about Carlito syrichta.`,
     isFlagged: index === 2,
     moderationNote: index === 2 ? "Possible location leak" : null,
+    removal:
+      index === 4
+        ? {
+            removedAt: new Date(startMs + 900_000).toISOString(),
+            reason: "Shared a phone number",
+            removedByName: "Alex Admin",
+            isRemovedByFormerAdmin: false,
+          }
+        : null,
   }),
 );
 

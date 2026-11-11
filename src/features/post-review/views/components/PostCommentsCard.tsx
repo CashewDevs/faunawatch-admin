@@ -10,6 +10,7 @@ import {
   formatNumber,
   formatRelativeTime,
 } from "../../../../core/utils/formatters";
+import type { CommentAction } from "../../models/commentModeration";
 import {
   type CommentSort,
   type PostComment,
@@ -32,11 +33,12 @@ const avatarToneClass: Record<AvatarTone, string> = {
 };
 
 const moderationButtonClass =
-  "flex cursor-not-allowed items-center gap-1 rounded px-2.5 py-1 text-[11px] leading-[14px] tracking-[0.44px]";
+  "flex cursor-pointer items-center gap-1 rounded px-2.5 py-1 text-[11px] leading-[14px] tracking-[0.44px] transition-colors focus-visible:outline-2 focus-visible:outline-primary";
 
 /**
- * Community comments with sort, flagged-comment moderation, and
- * show more / fewer.
+ * Community comments with sort, moderation (remove, review flag, restore),
+ * and show more / fewer. Removed comments stay listed for admins, dimmed,
+ * with who removed them and why.
  */
 export function PostCommentsCard({ post, viewModel }: PostCommentsCardProps) {
   const strings = AppStrings.posts.detail.comments;
@@ -100,6 +102,12 @@ export function PostCommentsCard({ post, viewModel }: PostCommentsCardProps) {
               comment={comment}
               scientificName={post.aiMatch?.scientificName ?? ""}
               timeLabel={formatRelativeTime(comment.postedAt, now)}
+              removedTimeLabel={
+                comment.removal
+                  ? formatRelativeTime(comment.removal.removedAt, now)
+                  : null
+              }
+              onAction={viewModel.commentModeration.open}
             />
           ))}
         </ul>
@@ -131,12 +139,26 @@ interface CommentItemProps {
   comment: PostComment;
   scientificName: string;
   timeLabel: string;
+  removedTimeLabel: string | null;
+  onAction: (action: CommentAction, comment: PostComment) => void;
 }
 
-function CommentItem({ comment, scientificName, timeLabel }: CommentItemProps) {
-  const strings = AppStrings.posts;
-  const commentStrings = strings.detail.comments;
+function CommentItem({
+  comment,
+  scientificName,
+  timeLabel,
+  removedTimeLabel,
+  onAction,
+}: CommentItemProps) {
+  const commentStrings = AppStrings.posts.detail.comments;
   const tone = getAvatarTone(comment.authorName);
+  const { removal } = comment;
+  const removedBy = removal
+    ? (removal.removedByName ??
+      (removal.isRemovedByFormerAdmin
+        ? commentStrings.formerAdmin
+        : commentStrings.unknownAdmin))
+    : null;
 
   return (
     <li
@@ -145,7 +167,9 @@ function CommentItem({ comment, scientificName, timeLabel }: CommentItemProps) {
       }`}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
+        <div
+          className={`flex min-w-0 items-start gap-3 ${removal ? "opacity-60" : ""}`}
+        >
           <span
             aria-hidden="true"
             className={`flex size-9 shrink-0 items-center justify-center rounded-full text-base leading-6 text-white ${avatarToneClass[tone]}`}
@@ -176,6 +200,11 @@ function CommentItem({ comment, scientificName, timeLabel }: CommentItemProps) {
                 {commentStrings.flagged}
               </span>
             )}
+            {removal && (
+              <span className="w-fit rounded-full bg-danger-tint px-2 py-0.5 text-[11px] leading-[14px] font-bold tracking-[0.44px] text-danger">
+                {commentStrings.removed}
+              </span>
+            )}
             <p className="text-sm leading-5 break-words text-ink">
               <ScientificText
                 text={comment.body}
@@ -185,25 +214,35 @@ function CommentItem({ comment, scientificName, timeLabel }: CommentItemProps) {
           </div>
         </div>
 
-        {/* TODO(moderation): Removing comments and resolving flags write
-            to comment_moderation. Visual only until the team switches
-            moderation on. */}
-        {comment.isFlagged ? (
+        {removal ? (
+          <button
+            type="button"
+            onClick={() => {
+              onAction("restore", comment);
+            }}
+            aria-label={`${commentStrings.restoreCommentBy} ${comment.authorName}`}
+            className={`${moderationButtonClass} shrink-0 bg-chip font-semibold text-deep-blue hover:bg-avatar`}
+          >
+            {commentStrings.restore}
+          </button>
+        ) : comment.isFlagged ? (
           <div className="flex shrink-0 items-center gap-1">
             <button
               type="button"
-              disabled
-              title={strings.moderationUnavailable}
-              className={`${moderationButtonClass} bg-surface font-bold text-danger`}
+              onClick={() => {
+                onAction("remove", comment);
+              }}
+              className={`${moderationButtonClass} bg-surface font-bold text-danger hover:bg-danger-tint`}
             >
               <img src={AppAssets.postDetail.iconRemove} alt="" />
               {commentStrings.remove}
             </button>
             <button
               type="button"
-              disabled
-              title={strings.moderationUnavailable}
-              className={`${moderationButtonClass} bg-cyan font-semibold text-ink`}
+              onClick={() => {
+                onAction("clearFlag", comment);
+              }}
+              className={`${moderationButtonClass} bg-cyan font-semibold text-ink hover:bg-cyan/80`}
             >
               <img src={AppAssets.postDetail.iconReviewFlag} alt="" />
               {commentStrings.reviewFlag}
@@ -212,17 +251,18 @@ function CommentItem({ comment, scientificName, timeLabel }: CommentItemProps) {
         ) : (
           <button
             type="button"
-            disabled
-            aria-label={`${commentStrings.delete} ${comment.authorName}`}
-            title={strings.moderationUnavailable}
-            className="flex shrink-0 cursor-not-allowed items-center justify-center p-1"
+            onClick={() => {
+              onAction("remove", comment);
+            }}
+            aria-label={`${commentStrings.removeCommentBy} ${comment.authorName}`}
+            className="flex shrink-0 cursor-pointer items-center justify-center rounded p-1 transition-colors hover:bg-danger-tint focus-visible:outline-2 focus-visible:outline-primary"
           >
             <img src={AppAssets.postDetail.iconDelete} alt="" />
           </button>
         )}
       </div>
 
-      {comment.moderationNote && (
+      {comment.isFlagged && comment.moderationNote && (
         <p className="ml-12 flex items-center gap-1.5 rounded bg-chip/60 px-3 py-1.5 text-[11px] leading-[14px] font-bold tracking-[0.44px] text-teal">
           <img
             src={AppAssets.postDetail.iconInfo}
@@ -231,6 +271,20 @@ function CommentItem({ comment, scientificName, timeLabel }: CommentItemProps) {
           />
           {commentStrings.moderationNote} {comment.moderationNote}
         </p>
+      )}
+
+      {removal && (
+        <div className="ml-12 flex flex-col gap-0.5 rounded bg-danger-tint px-3 py-1.5 text-[11px] leading-[14px] tracking-[0.44px] break-words text-danger">
+          <p className="font-bold">
+            {commentStrings.removedBy} {removedBy}
+            {removedTimeLabel && ` · ${removedTimeLabel}`}
+          </p>
+          {removal.reason && (
+            <p className="font-semibold">
+              {commentStrings.removalReason} {removal.reason}
+            </p>
+          )}
+        </div>
       )}
     </li>
   );
