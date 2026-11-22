@@ -2,9 +2,9 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   fetchAllPosts,
-  fetchPostCardMedia,
+  fetchPostCoverUrls,
 } from "../../post-review/services/postsService";
-import { testPosts, toTestCardData } from "../../../test/fixtures/posts";
+import { testPosts, toTestCoverUrls } from "../../../test/fixtures/posts";
 import { createRouterQueryWrapper } from "../../../test/routerWrapper";
 import { usePostsMapViewModel } from "./usePostsMapViewModel";
 
@@ -16,11 +16,11 @@ vi.mock("../../../core/constants/featureFlags", () => ({
 
 vi.mock("../../post-review/services/postsService", () => ({
   fetchAllPosts: vi.fn(),
-  fetchPostCardMedia: vi.fn(),
+  fetchPostCoverUrls: vi.fn(),
 }));
 
 const fetchAllPostsMock = vi.mocked(fetchAllPosts);
-const fetchPostCardMediaMock = vi.mocked(fetchPostCardMedia);
+const fetchPostCoverUrlsMock = vi.mocked(fetchPostCoverUrls);
 
 const firstPost = testPosts[0];
 const approvedPost = testPosts.find((post) => post.status === "approved");
@@ -44,9 +44,9 @@ describe("usePostsMapViewModel", () => {
     flag.requestChanges = false;
     fetchAllPostsMock.mockReset();
     fetchAllPostsMock.mockResolvedValue([...testPosts]);
-    fetchPostCardMediaMock.mockReset();
-    fetchPostCardMediaMock.mockImplementation((posts) =>
-      Promise.resolve(posts.map(toTestCardData)),
+    fetchPostCoverUrlsMock.mockReset();
+    fetchPostCoverUrlsMock.mockImplementation((posts) =>
+      Promise.resolve(toTestCoverUrls(posts)),
     );
   });
 
@@ -103,6 +103,34 @@ describe("usePostsMapViewModel", () => {
     expect(result.current.pins).toHaveLength(30);
   });
 
+  it("puts each post's first photo in its pin, signed once", async () => {
+    const { result } = await renderLoaded();
+    const coverUrl = toTestCoverUrls([firstPost]).get(firstPost.id);
+    await waitFor(() => {
+      expect(result.current.pins[0]?.photoUrl).toBe(coverUrl);
+    });
+    expect(fetchPostCoverUrlsMock).toHaveBeenCalledTimes(1);
+    expect(fetchPostCoverUrlsMock).toHaveBeenCalledWith(testPosts);
+
+    // Filtering doesn't sign the photos again.
+    act(() => {
+      result.current.toggleStatus("pending");
+    });
+    expect(result.current.pins[0]?.photoUrl).toBeTruthy();
+    expect(fetchPostCoverUrlsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the logo on pins whose photo can't be signed", async () => {
+    fetchPostCoverUrlsMock.mockResolvedValue(new Map());
+    const { result } = await renderLoaded();
+    await waitFor(() => {
+      expect(fetchPostCoverUrlsMock).toHaveBeenCalled();
+    });
+    expect(result.current.pins.every((pin) => pin.photoUrl === null)).toBe(
+      true,
+    );
+  });
+
   it("opens a pin's card with its photo, and closes it", async () => {
     const { result } = await renderLoaded();
 
@@ -110,14 +138,13 @@ describe("usePostsMapViewModel", () => {
       result.current.selectPost(firstPost.id);
     });
     expect(result.current.selectedPost?.id).toBe(firstPost.id);
-    expect(result.current.isSelectedCoverLoading).toBe(true);
+    // The card reuses the pin's photo.
     await waitFor(() => {
       expect(result.current.selectedCoverUrl).toBe(
-        toTestCardData(firstPost).coverUrl,
+        toTestCoverUrls([firstPost]).get(firstPost.id),
       );
     });
-    // Only the clicked post's photo is signed.
-    expect(fetchPostCardMediaMock).toHaveBeenCalledWith([firstPost]);
+    expect(result.current.isSelectedCoverLoading).toBe(false);
     // Back from the post returns to this map with the card open.
     expect(result.current.detailLinkState).toEqual({
       from: `/map?post=${firstPost.id}`,

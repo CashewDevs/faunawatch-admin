@@ -8,7 +8,7 @@ import {
   type MapViewMode,
 } from "../../../core/services/mapboxConfig";
 import type { KnownPostStatus } from "../../post-review/models/post";
-import { fetchPostCardMedia } from "../../post-review/services/postsService";
+import { fetchPostCoverUrls } from "../../post-review/services/postsService";
 import { toPostLinkState } from "../../post-review/viewmodels/postNavigation";
 import {
   allPostsQuery,
@@ -48,12 +48,23 @@ export function usePostsMapViewModel(token: string | null = getMapboxToken()) {
   const mappable = getMappablePosts(postsQuery.data ?? [], statuses);
   const counts = countMapPosts(mappable);
   const visiblePosts = getVisiblePosts(mappable, query.hidden);
+
+  // Every pin's photo, signed in one request. Keyed on all mappable posts,
+  // so switching filters doesn't sign them again.
+  const coversQuery = useQuery({
+    queryKey: ["posts", "covers", mappable.map((post) => post.id)],
+    queryFn: () => fetchPostCoverUrls(mappable),
+    enabled: mappable.length > 0,
+    staleTime: signedUrlStaleTimeMs,
+  });
+  const coverUrls = coversQuery.data;
   const pins: MapPin[] = visiblePosts.map((post) => ({
     id: post.id,
     latitude: post.latitude,
     longitude: post.longitude,
     // Mappable posts always have an offered (known) status.
     status: post.status as KnownPostStatus,
+    photoUrl: coverUrls?.get(post.id) ?? null,
     label: [
       getSpeciesName(post) ?? AppStrings.posts.category[post.category],
       AppStrings.posts.status[post.status],
@@ -63,14 +74,6 @@ export function usePostsMapViewModel(token: string | null = getMapboxToken()) {
   // A card only opens for a pin that's on the map.
   const selectedPost =
     visiblePosts.find((post) => post.id === query.postId) ?? null;
-
-  // The card's photo is signed only once its pin is clicked.
-  const mediaQuery = useQuery({
-    queryKey: ["posts", "media", selectedPost ? [selectedPost.id] : []],
-    queryFn: () => fetchPostCardMedia(selectedPost ? [selectedPost] : []),
-    enabled: selectedPost !== null,
-    staleTime: signedUrlStaleTimeMs,
-  });
 
   const update = (change: Partial<PostsMapQuery>) => {
     setSearchParams(
@@ -132,8 +135,11 @@ export function usePostsMapViewModel(token: string | null = getMapboxToken()) {
     },
 
     selectedPost,
-    selectedCoverUrl: mediaQuery.data?.[0]?.coverUrl ?? null,
-    isSelectedCoverLoading: selectedPost !== null && mediaQuery.isPending,
+    // The card reuses its pin's photo (already downloaded for the pin).
+    selectedCoverUrl: selectedPost
+      ? (coverUrls?.get(selectedPost.id) ?? null)
+      : null,
+    isSelectedCoverLoading: selectedPost !== null && coversQuery.isPending,
     selectPost: (postId: string) => {
       update({ postId });
     },

@@ -8,14 +8,14 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
-import { AppAssets } from "../../../../core/constants/appAssets";
+import { createMapPin } from "../../../../core/components/mapPin";
 import {
   MAP_PITCH_3D,
   MAPBOX_STYLE_URL,
   type MapViewMode,
 } from "../../../../core/services/mapboxConfig";
 import { getPinBounds, type MapPin } from "../../models/postsMap";
-import { mapStatusFill, mapStatusIcon } from "./mapStatusColors";
+import { mapStatusFill } from "./mapStatusColors";
 
 interface PostsMapProps {
   token: string;
@@ -40,6 +40,7 @@ interface PinEntry {
   marker: mapboxgl.Marker;
   /** The part that animates; Mapbox moves the marker element itself. */
   inner: HTMLElement;
+  setPhoto: (url: string | null) => void;
 }
 
 /** Roughly the whole Philippines, shown while the posts load. */
@@ -51,8 +52,8 @@ const FIT_MAX_ZOOM = 14;
 const SELECT_MIN_ZOOM = 13;
 /** Puts a selected pin below the centre so its card fits above it. */
 const SELECT_OFFSET: [number, number] = [0, 150];
-/** Lifts the card above the (enlarged) selected pin. */
-const CARD_OFFSET: [number, number] = [0, -70];
+/** Lifts the card above the selected pin (64px tall, enlarged 1.25x). */
+const CARD_OFFSET: [number, number] = [0, -88];
 const PIN_OUT_MS = 220;
 /** Pins landing together drop in a little after one another. */
 const pinStaggerClasses = [
@@ -217,6 +218,10 @@ export function PostsMap({
       ) {
         entries.delete(id);
         removePin(entry, shouldAnimate);
+      } else if (next.photoUrl !== entry.pin.photoUrl) {
+        // The photo arrived (or was re-signed): swap it in without
+        // dropping the pin in again.
+        entries.set(id, updatePinPhoto(entry, next));
       }
     }
 
@@ -227,13 +232,17 @@ export function PostsMap({
         pinStaggerClasses[landing % pinStaggerClasses.length] ??
         pinStaggerClasses[0];
       landing += 1;
-      const { element, inner } = createPinElement(pin, stagger, () => {
-        select(pin.id);
-      });
+      const { element, inner, setPhoto } = createPinElement(
+        pin,
+        stagger,
+        () => {
+          select(pin.id);
+        },
+      );
       const marker = new mapboxgl.Marker({ element, anchor: "bottom" })
         .setLngLat([pin.longitude, pin.latitude])
         .addTo(map);
-      entries.set(pin.id, { pin, marker, inner });
+      entries.set(pin.id, { pin, marker, inner, setPhoto });
     }
   }, [pins, isReady]);
 
@@ -332,15 +341,19 @@ export function PostsMap({
 }
 
 /**
- * A status-coloured pin shaped like the app's: a round head with the paw
- * and a pointer whose tip marks the spot. It's a button, so pins can be
- * reached and opened from the keyboard.
+ * The app's photo pin (see createMapPin) with its frame and pointer in the
+ * status colour. It's a button, so pins can be reached and opened from the
+ * keyboard.
  */
 function createPinElement(
   pin: MapPin,
   staggerClass: string,
   onClick: () => void,
-): { element: HTMLButtonElement; inner: HTMLElement } {
+): {
+  element: HTMLButtonElement;
+  inner: HTMLElement;
+  setPhoto: (url: string | null) => void;
+} {
   const fill = mapStatusFill[pin.status];
 
   const element = document.createElement("button");
@@ -348,33 +361,31 @@ function createPinElement(
   element.dataset.mapPin = "";
   element.setAttribute("aria-label", pin.label);
   element.className =
-    "block h-[50px] w-10 cursor-pointer rounded-full drop-shadow-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary";
+    "block h-16 w-[52px] cursor-pointer rounded-full drop-shadow-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary";
   element.addEventListener("click", onClick);
 
   const inner = document.createElement("span");
   inner.dataset.selected = "false";
   inner.className = `group relative block size-full origin-bottom animate-pin-in transition-transform duration-300 ease-out hover:scale-110 data-[selected=true]:scale-125 motion-reduce:animate-none motion-reduce:transition-none ${staggerClass}`;
 
-  // A soft pulse behind the selected pin.
+  // A soft pulse behind the selected pin's head.
   const halo = document.createElement("span");
-  halo.className = `absolute top-0 left-0 hidden size-10 animate-ping rounded-full opacity-40 group-data-[selected=true]:block motion-reduce:animate-none ${fill}`;
+  halo.className = `absolute top-0.5 left-[3px] hidden size-[46px] animate-ping rounded-full opacity-40 group-data-[selected=true]:block motion-reduce:animate-none ${fill}`;
 
-  const pointer = document.createElement("span");
-  pointer.className = `absolute top-[30px] left-[13px] h-[18px] w-3.5 [clip-path:polygon(0_0,100%_0,50%_100%)] ${fill}`;
+  const { pin: graphic, setPhoto } = createMapPin({
+    photoUrl: pin.photoUrl,
+    fillClass: fill,
+  });
 
-  const head = document.createElement("span");
-  head.className = `absolute top-0 left-0 flex size-10 items-center justify-center rounded-full ring-[3px] ring-white ${fill}`;
-
-  const icon = document.createElement("img");
-  icon.src = AppAssets.postDetail.iconMapPin;
-  icon.alt = "";
-  icon.draggable = false;
-  icon.className = `w-4 ${mapStatusIcon[pin.status]}`;
-
-  head.append(icon);
-  inner.append(halo, pointer, head);
+  inner.append(halo, graphic);
   element.append(inner);
-  return { element, inner };
+  return { element, inner, setPhoto };
+}
+
+/** Shows a pin's new photo and remembers it. */
+function updatePinPhoto(entry: PinEntry, pin: MapPin): PinEntry {
+  entry.setPhoto(pin.photoUrl);
+  return { ...entry, pin };
 }
 
 /** Enlarges the selected pin and keeps it above its neighbours. */

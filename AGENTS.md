@@ -66,9 +66,12 @@ not own the data model; the app and backend define it.
   in full screen a 3D/2D switch (3D = 55° tilt plus 3D buildings, the
   default). The card stays flat 2D. Keep these in step with the app's
   `mapbox_map_service.dart` and `map_pin_image.dart`.
-  The Map screen shows exact spots too. Its pins are coloured by review
-  status (Pending gold, Changes requested amber, Approved teal, Declined
-  red; "Changes requested" only while that feature flag is on), and its
+  Both maps draw that pin with `createMapPin` (`src/core/components/mapPin.ts`).
+  The Map screen shows exact spots too. Its pins are the same photo pin with
+  the frame and pointer coloured by review status instead of blue (Pending
+  gold, Changes requested amber, Approved teal, Declined red; "Changes
+  requested" only while that feature flag is on). Every pin's photo is
+  signed in one request (`fetchPostCoverUrls`) and loads lazily, and its
   filters, 3D/2D view and open summary card live in the URL
   (`?hide=…&view=2d&post=…`), so a post's "Back to Map" restores them.
 - Testing: Vitest + React Testing Library

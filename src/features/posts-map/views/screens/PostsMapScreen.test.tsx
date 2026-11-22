@@ -1,4 +1,4 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { Route, Routes, useLocation, useParams } from "react-router";
@@ -7,10 +7,10 @@ import { AppRoutes } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import {
   fetchAllPosts,
-  fetchPostCardMedia,
+  fetchPostCoverUrls,
 } from "../../../post-review/services/postsService";
 import { getReturnTarget } from "../../../post-review/viewmodels/postNavigation";
-import { testPosts, toTestCardData } from "../../../../test/fixtures/posts";
+import { testPosts, toTestCoverUrls } from "../../../../test/fixtures/posts";
 import { createRouterQueryWrapper } from "../../../../test/routerWrapper";
 import type { MapPin } from "../../models/postsMap";
 import { PostsMapScreen } from "./PostsMapScreen";
@@ -29,7 +29,7 @@ vi.mock("../../../../core/services/mapboxConfig", () => ({
 
 vi.mock("../../../post-review/services/postsService", () => ({
   fetchAllPosts: vi.fn(),
-  fetchPostCardMedia: vi.fn(),
+  fetchPostCoverUrls: vi.fn(),
 }));
 
 // jsdom has no WebGL, so a stand-in draws each pin as a button and the
@@ -52,6 +52,7 @@ vi.mock("../components/PostsMap", () => ({
           key={pin.id}
           type="button"
           data-pin=""
+          data-photo={pin.photoUrl ?? ""}
           aria-label={pin.label}
           onClick={() => {
             onSelect(pin.id);
@@ -103,8 +104,8 @@ describe("PostsMapScreen", () => {
     mapbox.token = "pk.test";
     vi.mocked(fetchAllPosts).mockReset();
     vi.mocked(fetchAllPosts).mockResolvedValue([...testPosts]);
-    vi.mocked(fetchPostCardMedia).mockImplementation((posts) =>
-      Promise.resolve(posts.map(toTestCardData)),
+    vi.mocked(fetchPostCoverUrls).mockImplementation((posts) =>
+      Promise.resolve(toTestCoverUrls(posts)),
     );
   });
 
@@ -113,6 +114,11 @@ describe("PostsMapScreen", () => {
     const { pins } = await findPins();
     expect(await screen.findAllByLabelText(/Pending Review$/)).toHaveLength(18);
     expect(pins()).toHaveLength(30);
+    // Each pin's head shows the post's first photo once it's signed.
+    const firstCover = toTestCoverUrls([firstPost]).get(firstPost.id);
+    await waitFor(() => {
+      expect(pins()[0]).toHaveAttribute("data-photo", firstCover);
+    });
 
     const filters = screen.getByRole("group", { name: strings.filtersLabel });
     expect(
