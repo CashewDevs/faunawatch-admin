@@ -2,8 +2,11 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useEffectEvent, useRef } from "react";
 import { AppAssets } from "../../../../core/constants/appAssets";
-import { MAPBOX_STYLE_URL } from "../../../../core/services/mapboxConfig";
-import type { MapViewMode } from "../../viewmodels/usePostLocationMapViewModel";
+import {
+  MAP_PITCH_3D,
+  MAPBOX_STYLE_URL,
+  type MapViewMode,
+} from "../../../../core/services/mapboxConfig";
 
 interface PostLocationMapProps {
   token: string;
@@ -18,9 +21,6 @@ interface PostLocationMapProps {
   label: string;
   onError: () => void;
 }
-
-/** The app's 3D camera tilt (mapbox_map_service.dart). */
-const PITCH_3D = 55;
 
 /**
  * A live Mapbox map centred on the post's exact spot, styled like the app's
@@ -60,7 +60,7 @@ export function PostLocationMap({
         },
         center: [longitude, latitude],
         zoom: variant === "full" ? 16 : 14,
-        pitch: is3d ? PITCH_3D : 0,
+        pitch: is3d ? MAP_PITCH_3D : 0,
         scrollZoom: variant === "full",
         // Don't send Mapbox speed reports. The required map-load report
         // still goes out (blocked by privacy browsers like Brave; harmless).
@@ -116,7 +116,7 @@ export function PostLocationMap({
     const is3d = mode === "3d";
     const apply = () => {
       map.setConfigProperty("basemap", "show3dObjects", is3d);
-      map.easeTo({ pitch: is3d ? PITCH_3D : 0 });
+      map.easeTo({ pitch: is3d ? MAP_PITCH_3D : 0 });
     };
     if (map.isStyleLoaded()) {
       apply();

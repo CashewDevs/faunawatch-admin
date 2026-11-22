@@ -13,6 +13,7 @@ import { LoginScreen } from "../features/auth/views/screens/LoginScreen";
 import { ResetPasswordScreen } from "../features/auth/views/screens/ResetPasswordScreen";
 import { PostApprovalsScreen } from "../features/post-review/views/screens/PostApprovalsScreen";
 import { PostDetailScreen } from "../features/post-review/views/screens/PostDetailScreen";
+import { PostsMapScreen } from "../features/posts-map/views/screens/PostsMapScreen";
 import { UserManagementScreen } from "../features/users/views/screens/UserManagementScreen";
 import { preloadFontDescriptors, preloadImageUrls } from "./preloadManifest";
 import { queryClient } from "./queryClient";
@@ -69,6 +70,7 @@ function App() {
                   path={AppRoutes.postDetail}
                   element={<PostDetailScreen />}
                 />
+                <Route path={AppRoutes.map} element={<PostsMapScreen />} />
                 <Route
                   path={AppRoutes.analytics}
                   element={

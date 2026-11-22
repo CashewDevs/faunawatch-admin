@@ -44,6 +44,7 @@ describe("AdminHeader", () => {
     [AppRoutes.posts, AppStrings.posts.heading],
     [postDetailPath("mock-post-1042"), AppStrings.posts.heading],
     [AppRoutes.analytics, AppStrings.analytics.heading],
+    [AppRoutes.map, AppStrings.postsMap.heading],
   ])("shows the page title for %s", (path, title) => {
     renderAt(path);
 

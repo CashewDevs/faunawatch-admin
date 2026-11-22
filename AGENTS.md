@@ -18,6 +18,8 @@ This repository contains the **admin website only**. Administrators use it to:
   rights are not managed here; they live in `admin_users` (dashboard only).
 - **Review posts** submitted through the app (approve, reject, flag), using
   the AI-generated fields stored with each report as decision support.
+- **See posts on a map** (every post as a pin, filtered by review status,
+  with a summary card that links to the post's review page).
 - **View analytics** (report volume, species and severity breakdowns, user
   activity, moderation outcomes).
 
@@ -47,11 +49,14 @@ not own the data model; the app and backend define it.
   instead of a blank app.
   `vite.config.ts` also splits React, Supabase and TanStack Query into
   vendor chunks.
-- Maps: mapbox-gl (Standard style, like the mobile app), only for the live
-  map on a post's Location card and its full-screen view. It is lazy-loaded
-  from `PostLocationCard`, so it ships in its own chunk; import it only from
-  `PostLocationMap.tsx`, which also imports Mapbox's own stylesheet (the one
-  allowed library CSS import). The token is `VITE_MAPBOX_PUBLIC_TOKEN`: a public
+- Maps: mapbox-gl (Standard style, like the mobile app), for two maps: the
+  live map on a post's Location card (and its full-screen view), and the
+  Map screen (`/map`, `src/features/posts-map/`) with a pin for every post.
+  Each is lazy-loaded (from `PostLocationCard` and `PostsMapScreen`), so
+  mapbox-gl ships in its own chunk; import it only from `PostLocationMap.tsx`
+  and `PostsMap.tsx`, which also import Mapbox's own stylesheet (the one
+  allowed library CSS import). Shared map settings (3D tilt, style URL,
+  `MapViewMode`) live in `src/core/services/mapboxConfig.ts`. The token is `VITE_MAPBOX_PUBLIC_TOKEN`: a public
   `pk.` token for the admin site only, limited to the admin's URLs in the
   Mapbox dashboard (`src/core/services/mapboxConfig.ts` refuses anything
   else). Without it, or if the map fails, the card shows "Map unavailable".
@@ -61,6 +66,11 @@ not own the data model; the app and backend define it.
   in full screen a 3D/2D switch (3D = 55° tilt plus 3D buildings, the
   default). The card stays flat 2D. Keep these in step with the app's
   `mapbox_map_service.dart` and `map_pin_image.dart`.
+  The Map screen shows exact spots too. Its pins are coloured by review
+  status (Pending gold, Changes requested amber, Approved teal, Declined
+  red; "Changes requested" only while that feature flag is on), and its
+  filters, 3D/2D view and open summary card live in the URL
+  (`?hide=…&view=2d&post=…`), so a post's "Back to Map" restores them.
 - Testing: Vitest + React Testing Library
 - Lint/format: ESLint + Prettier
 - Node.js LTS, npm
@@ -135,6 +145,7 @@ faunawatch-admin/
 │   │   ├── auth/              # Login, session, admin route guard
 │   │   ├── users/             # User Management
 │   │   ├── post-review/       # Post Approvals / Post Review
+│   │   ├── posts-map/         # Map of every post (reuses post-review data)
 │   │   └── analytics/         # Analytics dashboard
 │   │       ├── models/
 │   │       ├── services/

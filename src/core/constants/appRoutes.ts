@@ -8,6 +8,7 @@ export const AppRoutes = {
   users: "/users",
   posts: "/posts",
   postDetail: "/posts/:postId",
+  map: "/map",
   analytics: "/analytics",
 } as const;
 
