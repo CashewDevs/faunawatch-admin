@@ -182,6 +182,8 @@ directory. Do not create large generic folders with unrelated code.
   When adding or touching any of these files, remind the developer to
   convert them, and update the matching `appAssets.ts` import when the
   `.webp` version replaces the original.
+  Exception: `public/og-image.png` (the 1200 × 630 link preview image) stays
+  PNG, because some chat apps don't show WebP previews.
 - **Preset avatars:** `src/assets/shared/avatars/` holds copies of the
   mobile app's preset avatars (`profiles.avatar_path` = `preset:<name>`).
   Keep the names in `src/core/utils/avatars.ts` in sync with the mobile
@@ -283,6 +285,12 @@ branches get preview URLs. `vercel.json` holds the settings:
   them for a year; a new build gets new names.
 - Basic security headers. `X-Frame-Options: DENY` stops other sites from
   framing the admin pages.
+
+`index.html` carries the link preview tags (Open Graph + `twitter:card`)
+pointing at `public/og-image.png` by its full address, plus
+`robots: noindex` so search engines don't list the admin site. If the domain
+changes, update `og:url` and `og:image`. Chat apps cache previews; refresh
+Messenger/Facebook with the Sharing Debugger ("Scrape Again").
 
 Setup outside the repo, needed for each new site address:
 
