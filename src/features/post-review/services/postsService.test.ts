@@ -4,7 +4,12 @@ import {
   resolveAvatars,
 } from "../../../core/services/storageService";
 import type { PostSummary } from "../models/post";
-import { fetchAllPosts, fetchPost, fetchPostCardMedia } from "./postsService";
+import {
+  fetchAllPosts,
+  fetchPost,
+  fetchPostCardMedia,
+  fetchPostCoverUrls,
+} from "./postsService";
 
 const from = vi.hoisted(() => vi.fn());
 
@@ -253,6 +258,47 @@ describe("fetchPostCardMedia", () => {
       { id: "b", coverUrl: null, reporterAvatar: null },
       { id: "c", coverUrl: null, reporterAvatar: null },
     ]);
+  });
+});
+
+describe("fetchPostCoverUrls", () => {
+  const summary = (id: string, photoPaths: string[]): PostSummary => ({
+    id,
+    reference: id.toUpperCase(),
+    category: "animal_in_need",
+    description: "",
+    status: "approved",
+    severity: "unrated",
+    isInvasive: false,
+    submittedAt: "2026-10-20T10:00:00Z",
+    latitude: 0,
+    longitude: 0,
+    placeName: null,
+    photoPaths,
+    aiMatch: null,
+    reporterSpecies: null,
+    reporter: { id: "u", fullName: "", username: null, storedAvatar: null },
+  });
+
+  it("signs every cover in one request, keyed by post", async () => {
+    const urls = await fetchPostCoverUrls([
+      summary("a", ["u/a/cover.jpg", "u/a/second.jpg"]),
+      summary("b", ["u/b/unsignable.jpg"]),
+      summary("c", []),
+    ]);
+
+    expect(createSignedUrlsMock).toHaveBeenCalledTimes(1);
+    expect(createSignedUrlsMock).toHaveBeenCalledWith("report-images", [
+      "u/a/cover.jpg",
+      "u/b/unsignable.jpg",
+    ]);
+    expect(urls).toEqual(new Map([["a", "https://signed/u/a/cover.jpg"]]));
+  });
+
+  it("skips the request when no post has a photo", async () => {
+    const urls = await fetchPostCoverUrls([summary("c", [])]);
+    expect(urls.size).toBe(0);
+    expect(createSignedUrlsMock).not.toHaveBeenCalled();
   });
 });
 

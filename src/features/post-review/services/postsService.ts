@@ -252,6 +252,31 @@ export async function fetchPostCardMedia(
   });
 }
 
+/**
+ * Signs each post's cover (first) photo in one request, for map pins and
+ * their cards. Returns post id → URL; posts without a photo, or whose photo
+ * can't be signed, are left out and show the logo.
+ */
+export async function fetchPostCoverUrls(
+  posts: readonly PostSummary[],
+): Promise<Map<string, string>> {
+  const covers = posts.flatMap((post) => {
+    const path = post.photoPaths[0];
+    return path ? [{ id: post.id, path }] : [];
+  });
+  if (covers.length === 0) return new Map();
+  const urls = await createSignedUrls(
+    "report-images",
+    covers.map((cover) => cover.path),
+  );
+  return new Map(
+    covers.flatMap(({ id, path }) => {
+      const url = urls.get(path);
+      return url ? [[id, url] as const] : [];
+    }),
+  );
+}
+
 async function fetchReporterStatuses(userId: string) {
   const { data, error } = await supabase
     .from("reports")

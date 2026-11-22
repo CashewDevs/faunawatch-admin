@@ -109,6 +109,18 @@ export function toTestCardData(post: PostSummary): PostCardData {
   };
 }
 
+/** As the covers query returns them: post id → signed first photo. */
+export function toTestCoverUrls(
+  posts: readonly PostSummary[],
+): Map<string, string> {
+  return new Map(
+    posts.flatMap((post) => {
+      const cover = toTestCardData(post).coverUrl;
+      return cover ? [[post.id, cover] as const] : [];
+    }),
+  );
+}
+
 const commenters: readonly [string, string][] = [
   ["Dr. Aris Thorne", "thorne_botanist"],
   ["Bea Alcantara", "bea_ecowatch"],

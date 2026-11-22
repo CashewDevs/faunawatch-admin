@@ -16,6 +16,8 @@ export interface MapPin {
   latitude: number;
   longitude: number;
   status: KnownPostStatus;
+  /** The post's first photo for the pin's head; null shows the logo. */
+  photoUrl: string | null;
   /** What a screen reader announces for the pin. */
   label: string;
 }

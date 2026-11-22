@@ -1,7 +1,7 @@
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useEffectEvent, useRef } from "react";
-import { AppAssets } from "../../../../core/constants/appAssets";
+import { createMapPin } from "../../../../core/components/mapPin";
 import {
   MAP_PITCH_3D,
   MAPBOX_STYLE_URL,
@@ -89,7 +89,7 @@ export function PostLocationMap({
     );
 
     new mapboxgl.Marker({
-      element: createPinElement(photoUrl),
+      element: createMapPin({ photoUrl, className: "drop-shadow-md" }).pin,
       anchor: "bottom",
     })
       .setLngLat([longitude, latitude])
@@ -138,41 +138,4 @@ export function PostLocationMap({
       />
     </div>
   );
-}
-
-/**
- * The app's map pin (map_pin_image.dart), 52 x 64: a blue round head with
- * the photo cropped into it, and a pointer whose tip marks the spot. A
- * photo that fails to load falls back to the logo, like the app.
- */
-function createPinElement(photoUrl: string | null): HTMLElement {
-  const pin = document.createElement("div");
-  pin.className = "relative h-16 w-[52px] drop-shadow-md";
-
-  const pointer = document.createElement("span");
-  pointer.className =
-    "absolute top-[42px] left-[19px] h-[22px] w-3.5 bg-map-pin [clip-path:polygon(0_0,100%_0,50%_100%)]";
-
-  const head = document.createElement("span");
-  head.className =
-    "absolute top-0.5 left-[3px] flex size-[46px] items-center justify-center overflow-hidden rounded-full bg-map-pin";
-
-  const image = document.createElement("img");
-  image.alt = "";
-  image.draggable = false;
-  const showLogo = () => {
-    image.src = AppAssets.shared.pinLogo;
-    image.className = "w-[34px]";
-  };
-  if (photoUrl) {
-    image.src = photoUrl;
-    image.className = "size-[41px] rounded-full object-cover";
-    image.addEventListener("error", showLogo, { once: true });
-  } else {
-    showLogo();
-  }
-
-  head.append(image);
-  pin.append(pointer, head);
-  return pin;
 }
