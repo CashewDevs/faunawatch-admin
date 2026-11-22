@@ -17,7 +17,8 @@ const pagerButtonClass =
  */
 export function PostDetailHeader({ viewModel }: PostDetailHeaderProps) {
   const strings = AppStrings.posts.detail;
-  const { post, queue, returnPath, linkState } = viewModel;
+  const { post, queue, returnPath, returnSection, linkState } = viewModel;
+  const isFromMap = returnSection === "map";
 
   return (
     <div className="flex flex-col gap-4">
@@ -27,7 +28,7 @@ export function PostDetailHeader({ viewModel }: PostDetailHeaderProps) {
           className="flex items-center gap-1.5 rounded-lg bg-chip px-3 py-1.5 text-xs leading-4 font-semibold tracking-[0.24px] text-deep-blue transition-colors hover:bg-avatar focus-visible:outline-2 focus-visible:outline-primary"
         >
           <img src={AppAssets.postDetail.iconBackArrow} alt="" />
-          {strings.back}
+          {isFromMap ? strings.backToMap : strings.back}
         </Link>
 
         {post && (
@@ -40,7 +41,9 @@ export function PostDetailHeader({ viewModel }: PostDetailHeaderProps) {
                     to={returnPath}
                     className="text-slate hover:text-deep-blue focus-visible:outline-2 focus-visible:outline-primary"
                   >
-                    {AppStrings.posts.heading}
+                    {isFromMap
+                      ? AppStrings.postsMap.heading
+                      : AppStrings.posts.heading}
                   </Link>
                 </li>
                 <li aria-hidden="true" className="text-slate">

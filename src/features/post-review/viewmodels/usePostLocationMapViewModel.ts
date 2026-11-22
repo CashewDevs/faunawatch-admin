@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { getMapboxToken } from "../../../core/services/mapboxConfig";
+import {
+  getMapboxToken,
+  type MapViewMode,
+} from "../../../core/services/mapboxConfig";
 import { getPinPhotoUrl, type PostPhoto } from "../models/post";
-
-/** "3d" tilts the camera and shows buildings, like the app; "2d" is flat. */
-export type MapViewMode = "3d" | "2d";
 
 /**
  * The map on a post's Location card: whether it can be shown, and the

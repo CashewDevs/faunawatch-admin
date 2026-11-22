@@ -27,6 +27,7 @@ import sharedIconDecline from "../../assets/shared/icon-decline.svg";
 import sharedIconPostApprovals from "../../assets/shared/icon-post-approvals.svg";
 import sharedIconBell from "../../assets/shared/icon-bell.svg";
 import sharedIconLogout from "../../assets/shared/icon-logout.svg";
+import sharedIconMap from "../../assets/shared/icon-map.svg";
 import sharedIconUsers from "../../assets/shared/icon-users.svg";
 import analyticsIconCategory from "../../assets/analytics/icon-category.svg";
 import analyticsIconClipboardCheck from "../../assets/analytics/icon-clipboard-check.svg";
@@ -110,6 +111,7 @@ export const AppAssets = {
     iconDecline: sharedIconDecline,
     iconPostApprovals: sharedIconPostApprovals,
     iconAnalytics: sharedIconAnalytics,
+    iconMap: sharedIconMap,
   },
   // The mobile app's preset profile avatars (`preset:<name>`), copied from
   // the faunawatch repo's assets/images/. Keep the names in sync with it.

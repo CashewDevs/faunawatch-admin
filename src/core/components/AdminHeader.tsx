@@ -11,6 +11,7 @@ const iconButtonClass =
 const pageTitles = [
   { path: AppRoutes.users, title: AppStrings.users.heading },
   { path: AppRoutes.posts, title: AppStrings.posts.heading },
+  { path: AppRoutes.map, title: AppStrings.postsMap.heading },
   { path: AppRoutes.analytics, title: AppStrings.analytics.heading },
 ] as const;
 

@@ -23,7 +23,7 @@ import { canWithdrawChangeRequest } from "../models/changeRequest";
 import { canTakeDown, isDecidable } from "../models/moderation";
 import { fetchChangeRequests } from "../services/changeRequestService";
 import { fetchPost } from "../services/postsService";
-import { getReturnPath } from "./postNavigation";
+import { getReturnTarget } from "./postNavigation";
 import { allPostsQuery, signedUrlStaleTimeMs } from "./postQueries";
 import { useChangeRequestFlow } from "./useChangeRequestFlow";
 import { useCommentModerationFlow } from "./useCommentModerationFlow";
@@ -156,6 +156,8 @@ export function usePostDetailViewModel(postId: string) {
     queryFn: () => fetchChangeRequests(postId),
   });
 
+  const returnTarget = getReturnTarget(location.state);
+
   return {
     post,
     isLoading: postQuery.isPending,
@@ -165,7 +167,9 @@ export function usePostDetailViewModel(postId: string) {
     queue: allPosts
       ? (getQueuePosition(allPosts, postId) ?? undefined)
       : undefined,
-    returnPath: getReturnPath(location.state),
+    /** Where "Back" goes: the Post Approvals list, or the Map. */
+    returnPath: returnTarget.path,
+    returnSection: returnTarget.section,
     /** Router state to forward on Prev / Next so Back still works. */
     linkState: location.state as unknown,
     photoIndex,
