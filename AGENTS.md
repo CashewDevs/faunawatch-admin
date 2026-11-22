@@ -51,7 +51,7 @@ not own the data model; the app and backend define it.
   map on a post's Location card and its full-screen view. It is lazy-loaded
   from `PostLocationCard`, so it ships in its own chunk; import it only from
   `PostLocationMap.tsx`, which also imports Mapbox's own stylesheet (the one
-  allowed library CSS import). The token is `VITE_MAPBOX_TOKEN`: a public
+  allowed library CSS import). The token is `VITE_MAPBOX_PUBLIC_TOKEN`: a public
   `pk.` token for the admin site only, limited to the admin's URLs in the
   Mapbox dashboard (`src/core/services/mapboxConfig.ts` refuses anything
   else). Without it, or if the map fails, the card shows "Map unavailable".

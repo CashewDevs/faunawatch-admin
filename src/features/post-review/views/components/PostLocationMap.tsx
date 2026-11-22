@@ -43,6 +43,9 @@ export function PostLocationMap({
         center: [longitude, latitude],
         zoom: variant === "full" ? 16 : 14,
         scrollZoom: variant === "full",
+        // Don't send Mapbox speed reports. The required map-load report
+        // still goes out (blocked by privacy browsers like Brave; harmless).
+        performanceMetricsCollection: false,
       });
     } catch {
       // No WebGL in this browser.
@@ -89,12 +92,17 @@ export function PostLocationMap({
     };
   }, [token, latitude, longitude, variant]);
 
+  // Mapbox's stylesheet gives the map element position: relative, which
+  // would override `absolute inset-0` and collapse it to 0px tall. So the
+  // wrapper fills the box and the map fills the wrapper.
   return (
-    <div
-      ref={containerRef}
-      role="region"
-      aria-label={label}
-      className="absolute inset-0"
-    />
+    <div className="absolute inset-0">
+      <div
+        ref={containerRef}
+        role="region"
+        aria-label={label}
+        className="size-full"
+      />
+    </div>
   );
 }

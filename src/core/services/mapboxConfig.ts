@@ -10,7 +10,7 @@ export const MAPBOX_STYLE_URL = "mapbox://styles/mapbox/standard";
  * the admin site's addresses.
  */
 export function getMapboxToken(
-  raw: string | undefined = import.meta.env.VITE_MAPBOX_TOKEN,
+  raw: string | undefined = import.meta.env.VITE_MAPBOX_PUBLIC_TOKEN,
 ): string | null {
   const token = raw?.trim() ?? "";
   return token.startsWith("pk.") ? token : null;
