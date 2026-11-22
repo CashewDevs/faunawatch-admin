@@ -45,8 +45,10 @@ const haloSize: Record<DensityLevel, string> = {
 /**
  * A small, flat live Mapbox map for the Sighting Hotspots card, styled like
  * the other maps (Standard, day lighting). Each hotspot is a density circle
- * at its grid cell's centre, never a sighting's own spot. Hovering, focusing
- * or clicking a circle shows its area, report count and density. Loaded
+ * at the average spot of its area's reports (see `SightingHotspot`), named
+ * by the area's centre. Hovering, focusing or clicking a circle shows its
+ * area, report count and density. Circles are redrawn when the category
+ * changes, since each category has its own spot. Loaded
  * lazily from the Hotspots tab, so mapbox-gl downloads only there.
  */
 export function HotspotsMap({

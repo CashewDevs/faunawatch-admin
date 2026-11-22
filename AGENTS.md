@@ -77,10 +77,16 @@ not own the data model; the app and backend define it.
   (`?hide=…&view=2d&post=…`), so a post's "Back to Map" restores them.
   The Hotspots map is flat 2D only, inside the card: drag, zoom buttons and
   Ctrl/⌘ + scroll (Mapbox's `cooperativeGestures`, so plain scrolling still
-  scrolls the page), plus "Show all". It draws density circles at
-  `admin_sector_stats()` grid-cell centres (~11 km cells, fewer than 3
-  reports left out), never a sighting's own spot, so keep it that way. A
-  circle's bubble (area, count, density) shows on hover, keyboard focus or
+  scrolls the page), plus "Show all". It draws one density circle per
+  `admin_sector_stats()` grid cell (~11 km cells, fewer than 3 reports left
+  out), at the exact average spot of the cell's reports (`avg_lat`/`avg_lng`)
+  or, with a category picked, that category's spot (`category_spots`). The
+  database gives a category with fewer than 3 reports in the cell the cell's
+  average, so never draw a single sighting's own spot or work around that
+  rule. If the database doesn't return averages yet, circles fall back to
+  the cell centre. The averages are not rounded: the pilot accepted
+  (2026-11-22) that comparing two date ranges can reveal one sighting's
+  spot. Circles are named by the cell centre. A circle's bubble (area, count, density) shows on hover, keyboard focus or
   click. `getMapBounds` (`src/core/utils/mapBounds.ts`) frames both the
   Map screen's pins and the hotspots.
 - Testing: Vitest + React Testing Library

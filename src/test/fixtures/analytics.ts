@@ -137,18 +137,33 @@ export const testSectorCells: readonly SectorCell[] = [
   {
     latitude: 7.05,
     longitude: 125.25,
+    averageSpot: { latitude: 7.0712, longitude: 125.2234 },
+    categorySpots: {
+      animal_in_need: { latitude: 7.0801, longitude: 125.2105 },
+      possible_invasive_species: { latitude: 7.0534, longitude: 125.2492 },
+    },
     reportCount: 12,
     categoryCounts: { animal_in_need: 8, possible_invasive_species: 4 },
   },
   {
     latitude: 10.35,
     longitude: 123.95,
+    averageSpot: { latitude: 10.3187, longitude: 123.9021 },
+    categorySpots: {
+      // Under 3 reports, so the database gives it the cell's average.
+      animal_in_need: { latitude: 10.3187, longitude: 123.9021 },
+      other_wildlife_incident: { latitude: 10.3312, longitude: 123.8833 },
+    },
     reportCount: 5,
     categoryCounts: { animal_in_need: 2, other_wildlife_incident: 3 },
   },
   {
     latitude: 14.65,
     longitude: 121.05,
+    averageSpot: { latitude: 14.6091, longitude: 121.0337 },
+    categorySpots: {
+      potentially_dangerous_animal: { latitude: 14.6091, longitude: 121.0337 },
+    },
     reportCount: 3,
     categoryCounts: { potentially_dangerous_animal: 3 },
   },

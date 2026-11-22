@@ -444,6 +444,8 @@ describe("hotspot cells", () => {
       {
         latitude: 7.05,
         longitude: 125.25,
+        averageSpot: null,
+        categorySpots: {},
         reportCount: 5,
         categoryCounts: { animal_in_need: 3, other_wildlife_incident: 2 },
       },
@@ -463,6 +465,53 @@ describe("hotspot cells", () => {
     expect(
       toSightingHotspots(cells, "possible_invasive_species")[0]?.sightingCount,
     ).toBe(0);
+  });
+
+  describe("where each circle is drawn", () => {
+    const cell = {
+      latitude: 7.05,
+      longitude: 125.25,
+      averageSpot: { latitude: 7.046, longitude: 125.246 },
+      categorySpots: {
+        animal_in_need: { latitude: 7.02, longitude: 125.22 },
+      },
+      reportCount: 5,
+      categoryCounts: { animal_in_need: 3, other_wildlife_incident: 2 },
+    };
+
+    it("uses the cell's average spot for every category, named by its centre", () => {
+      expect(toSightingHotspots([cell], "all")[0]).toMatchObject({
+        name: "7.05°N, 125.25°E",
+        latitude: 7.046,
+        longitude: 125.246,
+      });
+    });
+
+    it("uses a category's own spot when it has one", () => {
+      expect(toSightingHotspots([cell], "animal_in_need")[0]).toMatchObject({
+        name: "7.05°N, 125.25°E",
+        latitude: 7.02,
+        longitude: 125.22,
+      });
+    });
+
+    it("uses the cell's average when a category has no spot", () => {
+      expect(
+        toSightingHotspots([cell], "other_wildlife_incident")[0],
+      ).toMatchObject({ latitude: 7.046, longitude: 125.246 });
+    });
+
+    it("uses the cell's centre when the database has no averages yet", () => {
+      const oldCell = { ...cell, averageSpot: null, categorySpots: {} };
+      expect(toSightingHotspots([oldCell], "all")[0]).toMatchObject({
+        latitude: 7.05,
+        longitude: 125.25,
+      });
+      expect(toSightingHotspots([oldCell], "animal_in_need")[0]).toMatchObject({
+        latitude: 7.05,
+        longitude: 125.25,
+      });
+    });
   });
 });
 

@@ -284,10 +284,65 @@ describe("fetchSectorCells", () => {
       {
         latitude: 7.05,
         longitude: 125.25,
+        averageSpot: null,
+        categorySpots: {},
         reportCount: 5,
         categoryCounts: { animal_in_need: 3, other_wildlife_incident: 1 },
       },
     ]);
+  });
+
+  it("reads the average spots and skips unknown or broken ones", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        {
+          cell_lat: 7.05,
+          cell_lng: 125.25,
+          report_count: 5,
+          categories: { animal_in_need: 3, other_wildlife_incident: 2 },
+          avg_lat: 7.046,
+          avg_lng: 125.246,
+          category_spots: {
+            animal_in_need: { lat: 7.02, lng: 125.22 },
+            other_wildlife_incident: { lat: 7.046, lng: 125.246 },
+            mammal: { lat: 7.1, lng: 125.3 },
+            possible_invasive_species: { lat: "7.1", lng: 125.3 },
+            potentially_dangerous_animal: null,
+          },
+        },
+      ],
+      error: null,
+    });
+
+    const [cell] = await fetchSectorCells("30d");
+
+    expect(cell?.averageSpot).toEqual({ latitude: 7.046, longitude: 125.246 });
+    expect(cell?.categorySpots).toEqual({
+      animal_in_need: { latitude: 7.02, longitude: 125.22 },
+      other_wildlife_incident: { latitude: 7.046, longitude: 125.246 },
+    });
+  });
+
+  it("has no average spot when a coordinate is missing", async () => {
+    rpc.mockResolvedValue({
+      data: [
+        {
+          cell_lat: 7.05,
+          cell_lng: 125.25,
+          report_count: 3,
+          categories: { animal_in_need: 3 },
+          avg_lat: 7.046,
+          avg_lng: null,
+          category_spots: null,
+        },
+      ],
+      error: null,
+    });
+
+    const [cell] = await fetchSectorCells("30d");
+
+    expect(cell?.averageSpot).toBeNull();
+    expect(cell?.categorySpots).toEqual({});
   });
 
   it("throws when the RPC fails", async () => {

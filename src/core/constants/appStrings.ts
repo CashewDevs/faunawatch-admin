@@ -738,7 +738,8 @@ export const AppStrings = {
     },
     hotspots: {
       heading: "Sighting Hotspots",
-      description: "Where reports cluster, by map area (about 11 km across)",
+      description:
+        "Where reports cluster: each circle sits at the average spot of an area's reports (areas about 11 km across)",
       categoryLabel: "Filter hotspots by category",
       allCategories: "All Categories",
       mapLabel: "Map of report hotspots by area",

@@ -133,6 +133,8 @@ describe("HotspotsTab", () => {
       {
         latitude: 10.25,
         longitude: 123.85,
+        averageSpot: null,
+        categorySpots: {},
         reportCount: 7,
         categoryCounts: { animal_in_need: 7 },
       },

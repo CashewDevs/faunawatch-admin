@@ -45,7 +45,7 @@ describe("useHotspotsViewModel", () => {
     );
   });
 
-  it("maps the range's grid cells, named by their centre", async () => {
+  it("maps the range's grid cells at their average spot, named by their centre", async () => {
     const { result } = renderViewModel();
 
     await waitFor(() => {
@@ -55,8 +55,8 @@ describe("useHotspotsViewModel", () => {
     // Quietest first, so the busiest is drawn on top.
     expect(result.current.hotspots.at(-1)).toMatchObject({
       name: "7.05°N, 125.25°E",
-      latitude: 7.05,
-      longitude: 125.25,
+      latitude: 7.0712,
+      longitude: 125.2234,
       sightingCount: 12,
       density: "critical",
     });
@@ -81,6 +81,11 @@ describe("useHotspotsViewModel", () => {
       ["10.35°N, 123.95°E", 2],
       ["7.05°N, 125.25°E", 8],
     ]);
+    // The busiest circle moves to that category's own spot.
+    expect(result.current.hotspots.at(-1)).toMatchObject({
+      latitude: 7.0801,
+      longitude: 125.2105,
+    });
     expect(fetchSectorCellsMock).toHaveBeenCalledTimes(1);
   });
 
@@ -89,6 +94,8 @@ describe("useHotspotsViewModel", () => {
       {
         latitude: 10.25,
         longitude: 123.85,
+        averageSpot: null,
+        categorySpots: {},
         reportCount: 7,
         categoryCounts: { animal_in_need: 7 },
       },

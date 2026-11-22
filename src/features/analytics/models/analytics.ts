@@ -546,11 +546,28 @@ export function formatReviewTime(minutes: number): string {
 
 // ── Hotspots & invasives ─────────────────────────────────────
 
-/** One grid cell from `admin_sector_stats()`. */
-export interface SectorCell {
-  /** Centre of the cell. */
+/** A point on the map. */
+export interface MapSpot {
   latitude: number;
   longitude: number;
+}
+
+/** One grid cell from `admin_sector_stats()`. */
+export interface SectorCell {
+  /** Centre of the cell; it names the area. */
+  latitude: number;
+  longitude: number;
+  /**
+   * Exact average spot of the cell's reports. Null while the database
+   * doesn't return averages yet (migration not applied).
+   */
+  averageSpot: MapSpot | null;
+  /**
+   * Each category's spot. The database gives a category the average of its
+   * own reports only when it has at least 3 in the cell, and the cell's
+   * average otherwise. Empty while the database doesn't return spots yet.
+   */
+  categorySpots: Partial<Record<ReportCategory, MapSpot>>;
   reportCount: number;
   categoryCounts: Partial<Record<ReportCategory, number>>;
 }
@@ -560,8 +577,12 @@ export interface SightingHotspot {
   /** The cell's centre as text, e.g. "7.05°N, 125.25°E". */
   name: string;
   /**
-   * Centre of a grid cell. Never an individual sighting's coordinates,
-   * so endangered-species locations aren't exposed.
+   * Where the circle is drawn: the exact average spot of the counted
+   * reports, or the cell's centre while the database doesn't return
+   * averages. Cells under 3 reports are never returned, and a category
+   * under 3 reports gets the cell's average, so one or two sightings can't
+   * be pinpointed directly. Comparing two date ranges can still reveal one
+   * sighting's spot; the pilot accepted that (2026-11-22).
    */
   latitude: number;
   longitude: number;
@@ -577,18 +598,26 @@ export function formatCellName(latitude: number, longitude: number): string {
   return `${lat}, ${lng}`;
 }
 
-/** Each cell's report count, for every category or just one. */
+/**
+ * Each cell's report count and where to draw it, for every category or
+ * just one. The spot is the category's own (when filtered), else the
+ * cell's average, else the cell's centre.
+ */
 export function toSightingHotspots(
   cells: readonly SectorCell[],
   category: HotspotCategoryFilter,
 ): SightingHotspot[] {
   return cells.map((cell) => {
     const name = formatCellName(cell.latitude, cell.longitude);
+    const centre = { latitude: cell.latitude, longitude: cell.longitude };
+    const categorySpot =
+      category === "all" ? undefined : cell.categorySpots[category];
+    const spot = categorySpot ?? cell.averageSpot ?? centre;
     return {
       id: name,
       name,
-      latitude: cell.latitude,
-      longitude: cell.longitude,
+      latitude: spot.latitude,
+      longitude: spot.longitude,
       sightingCount:
         category === "all"
           ? cell.reportCount
