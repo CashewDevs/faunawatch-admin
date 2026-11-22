@@ -13,6 +13,31 @@
       content="Administration dashboard for the FaunaWatch wildlife reporting platform."
     />
     <title>FaunaWatch Admin</title>
+    <!-- Admin-only site: keep it out of search results. -->
+    <meta name="robots" content="noindex, nofollow" />
+    <!--
+      Link preview card (Messenger, Discord, Slack, X...). The image must be
+      a full https address, so update it if the site's domain changes.
+    -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="FaunaWatch" />
+    <meta property="og:title" content="FaunaWatch Admin" />
+    <meta
+      property="og:description"
+      content="Administration dashboard for the FaunaWatch wildlife reporting platform."
+    />
+    <meta property="og:url" content="https://faunawatch-admin.vercel.app/" />
+    <meta
+      property="og:image"
+      content="https://faunawatch-admin.vercel.app/og-image.png"
+    />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="FaunaWatch logo with the tagline Mapping life, one sighting at a time."
+    />
+    <meta name="twitter:card" content="summary_large_image" />
     <!--
       Approved exception to the "no inline styles" rule (see AGENTS.md).
       Shows a splash while the JS bundle downloads, before Tailwind loads.
