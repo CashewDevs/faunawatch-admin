@@ -14,7 +14,8 @@ import {
   MAPBOX_STYLE_URL,
   type MapViewMode,
 } from "../../../../core/services/mapboxConfig";
-import { getPinBounds, type MapPin } from "../../models/postsMap";
+import { getMapBounds } from "../../../../core/utils/mapBounds";
+import type { MapPin } from "../../models/postsMap";
 import { mapStatusFill } from "./mapStatusColors";
 
 interface PostsMapProps {
@@ -252,7 +253,7 @@ export function PostsMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !isReady || hasFittedRef.current) return;
-    const bounds = getPinBounds(pins);
+    const bounds = getMapBounds(pins);
     if (!bounds) return;
     hasFittedRef.current = true;
     if (selectedId !== null && pins.some((pin) => pin.id === selectedId)) {
@@ -269,7 +270,7 @@ export function PostsMap({
   useEffect(() => {
     const map = mapRef.current;
     if (!map || fitAllRequest === 0) return;
-    const bounds = getPinBounds(readPins());
+    const bounds = getMapBounds(readPins());
     if (!bounds) return;
     map.fitBounds(bounds, {
       padding: FIT_PADDING,

@@ -546,11 +546,28 @@ export function formatReviewTime(minutes: number): string {
 
 // ── Hotspots & invasives ─────────────────────────────────────
 
-/** One grid cell from `admin_sector_stats()`. */
-export interface SectorCell {
-  /** Centre of the cell. */
+/** A point on the map. */
+export interface MapSpot {
   latitude: number;
   longitude: number;
+}
+
+/** One grid cell from `admin_sector_stats()`. */
+export interface SectorCell {
+  /** Centre of the cell; it names the area. */
+  latitude: number;
+  longitude: number;
+  /**
+   * Exact average spot of the cell's reports. Null while the database
+   * doesn't return averages yet (migration not applied).
+   */
+  averageSpot: MapSpot | null;
+  /**
+   * Each category's spot. The database gives a category the average of its
+   * own reports only when it has at least 3 in the cell, and the cell's
+   * average otherwise. Empty while the database doesn't return spots yet.
+   */
+  categorySpots: Partial<Record<ReportCategory, MapSpot>>;
   reportCount: number;
   categoryCounts: Partial<Record<ReportCategory, number>>;
 }
@@ -560,8 +577,12 @@ export interface SightingHotspot {
   /** The cell's centre as text, e.g. "7.05°N, 125.25°E". */
   name: string;
   /**
-   * Centre of a grid cell. Never an individual sighting's coordinates,
-   * so endangered-species locations aren't exposed.
+   * Where the circle is drawn: the exact average spot of the counted
+   * reports, or the cell's centre while the database doesn't return
+   * averages. Cells under 3 reports are never returned, and a category
+   * under 3 reports gets the cell's average, so one or two sightings can't
+   * be pinpointed directly. Comparing two date ranges can still reveal one
+   * sighting's spot; the pilot accepted that (2026-11-22).
    */
   latitude: number;
   longitude: number;
@@ -577,18 +598,26 @@ export function formatCellName(latitude: number, longitude: number): string {
   return `${lat}, ${lng}`;
 }
 
-/** Each cell's report count, for every category or just one. */
+/**
+ * Each cell's report count and where to draw it, for every category or
+ * just one. The spot is the category's own (when filtered), else the
+ * cell's average, else the cell's centre.
+ */
 export function toSightingHotspots(
   cells: readonly SectorCell[],
   category: HotspotCategoryFilter,
 ): SightingHotspot[] {
   return cells.map((cell) => {
     const name = formatCellName(cell.latitude, cell.longitude);
+    const centre = { latitude: cell.latitude, longitude: cell.longitude };
+    const categorySpot =
+      category === "all" ? undefined : cell.categorySpots[category];
+    const spot = categorySpot ?? cell.averageSpot ?? centre;
     return {
       id: name,
       name,
-      latitude: cell.latitude,
-      longitude: cell.longitude,
+      latitude: spot.latitude,
+      longitude: spot.longitude,
       sightingCount:
         category === "all"
           ? cell.reportCount
@@ -615,66 +644,26 @@ export function getDensityLevel(count: number, maxCount: number): DensityLevel {
   return "low";
 }
 
-/** Bounding box of the Philippines, for placing hotspots on the panel. */
-const philippineBounds = {
-  north: 21.2,
-  south: 4.5,
-  west: 116.8,
-  east: 126.7,
-};
-
-/** Keeps markers off the panel edges, in percent. */
-const panelInsetPercent = 10;
+export interface MappedHotspot extends SightingHotspot {
+  density: DensityLevel;
+}
 
 /**
- * Position of a coordinate on the hotspot panel, as left/top percentages.
- * The panel is a schematic, not a map, so each axis is scaled to fill it.
+ * The hotspots to draw on the map, each with its density tier. Empty cells
+ * are left out, and the quietest come first so the busiest are drawn on top
+ * where circles overlap.
  */
-export function projectToPanel(
-  latitude: number,
-  longitude: number,
-): { leftPercent: number; topPercent: number } {
-  const { north, south, west, east } = philippineBounds;
-  const clamp = (value: number) => Math.min(1, Math.max(0, value));
-  const usable = 100 - panelInsetPercent * 2;
-  return {
-    leftPercent:
-      panelInsetPercent + clamp((longitude - west) / (east - west)) * usable,
-    topPercent:
-      panelInsetPercent + clamp((north - latitude) / (north - south)) * usable,
-  };
-}
-
-export interface PlacedHotspot extends SightingHotspot {
-  density: DensityLevel;
-  leftPercent: number;
-  topPercent: number;
-  /** Whether the name is shown on the panel (busiest few only). */
-  isLabelled: boolean;
-}
-
-/** How many of the busiest hotspots get a visible label. */
-export const labelledHotspotCount = 2;
-
-export function placeHotspots(
+export function toMappedHotspots(
   hotspots: readonly SightingHotspot[],
-): PlacedHotspot[] {
-  const maxCount = Math.max(0, ...hotspots.map((h) => h.sightingCount));
-  const labelledIds = new Set(
-    [...hotspots]
-      .filter((hotspot) => hotspot.sightingCount > 0)
-      .sort((a, b) => b.sightingCount - a.sightingCount)
-      .slice(0, labelledHotspotCount)
-      .map((hotspot) => hotspot.id),
-  );
-  return hotspots
-    .filter((hotspot) => hotspot.sightingCount > 0)
+): MappedHotspot[] {
+  const shown = hotspots.filter((hotspot) => hotspot.sightingCount > 0);
+  const maxCount = Math.max(0, ...shown.map((h) => h.sightingCount));
+  return shown
     .map((hotspot) => ({
       ...hotspot,
-      ...projectToPanel(hotspot.latitude, hotspot.longitude),
       density: getDensityLevel(hotspot.sightingCount, maxCount),
-      isLabelled: labelledIds.has(hotspot.id),
-    }));
+    }))
+    .sort((a, b) => a.sightingCount - b.sightingCount);
 }
 
 export interface InvasiveAlert {

@@ -63,12 +63,20 @@ export const densityFill: Record<DensityLevel, string> = {
   critical: "fill-danger",
 };
 
-/** Halo behind a hotspot marker, a tint of its density colour. */
-export const densityHaloFill: Record<DensityLevel, string> = {
-  low: "fill-amber-ink/25",
-  moderate: "fill-primary/25",
-  high: "fill-cyan/50",
-  critical: "fill-danger/25",
+/** The same density colours for the map's HTML circles. */
+export const densityBg: Record<DensityLevel, string> = {
+  low: "bg-amber-ink",
+  moderate: "bg-primary",
+  high: "bg-cyan",
+  critical: "bg-danger",
+};
+
+/** Halo around a hotspot's dot on the map, a tint of its density colour. */
+export const densityHaloBg: Record<DensityLevel, string> = {
+  low: "bg-amber-ink/25",
+  moderate: "bg-primary/25",
+  high: "bg-cyan/50",
+  critical: "bg-danger/25",
 };
 
 /** By reviewer position, busiest first; the last is the folded "Others". */

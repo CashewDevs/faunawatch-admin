@@ -17,6 +17,7 @@ import {
   type AnalyticsReport,
   type AnalyticsReview,
   type InvasiveAlert,
+  type MapSpot,
   type SectorCell,
 } from "../models/analytics";
 
@@ -68,12 +69,19 @@ interface ReviewRow {
   reviewer: ProfileNameRow | null;
 }
 
-/** A row from `admin_sector_stats()`. */
+/**
+ * A row from `admin_sector_stats()`. The average columns are missing until
+ * the database has migration `add_average_spot_to_sector_stats`.
+ */
 interface SectorRow {
   cell_lat: number;
   cell_lng: number;
   report_count: number;
   categories: unknown;
+  avg_lat?: unknown;
+  avg_lng?: unknown;
+  /** `{ "<category>": { "lat": …, "lng": … } }` */
+  category_spots?: unknown;
 }
 
 /** One range's raw records, loaded together so every card agrees. */
@@ -221,9 +229,35 @@ function toCategoryCounts(
   return counts;
 }
 
+/** A spot from two coordinates; null unless both are real numbers. */
+function toMapSpot(latitude: unknown, longitude: unknown): MapSpot | null {
+  if (typeof latitude !== "number" || typeof longitude !== "number") {
+    return null;
+  }
+  if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return null;
+  return { latitude, longitude };
+}
+
+function toCategorySpots(
+  value: unknown,
+): Partial<Record<ReportCategory, MapSpot>> {
+  if (typeof value !== "object" || value === null) return {};
+  const spots: Partial<Record<ReportCategory, MapSpot>> = {};
+  Object.entries(value).forEach(([key, raw]) => {
+    const category = reportCategories.find((option) => option === key);
+    if (!category || typeof raw !== "object" || raw === null) return;
+    const { lat, lng } = raw as { lat?: unknown; lng?: unknown };
+    const spot = toMapSpot(lat, lng);
+    if (spot) spots[category] = spot;
+  });
+  return spots;
+}
+
 /**
  * Report counts per ~11 km grid cell (the RPC's 0.1° default), leaving out
- * cells with fewer than 3 reports so single sightings can't be pinpointed.
+ * cells with fewer than 3 reports so single sightings can't be pinpointed,
+ * with the exact average spot of each cell's reports and of each category's
+ * (the database gives a category under 3 reports the cell's average).
  */
 export async function fetchSectorCells(
   range: AnalyticsRange,
@@ -241,6 +275,8 @@ export async function fetchSectorCells(
   return rows.map((row) => ({
     latitude: row.cell_lat,
     longitude: row.cell_lng,
+    averageSpot: toMapSpot(row.avg_lat, row.avg_lng),
+    categorySpots: toCategorySpots(row.category_spots),
     reportCount: row.report_count,
     categoryCounts: toCategoryCounts(row.categories),
   }));

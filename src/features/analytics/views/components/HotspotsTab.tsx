@@ -1,21 +1,27 @@
+import { lazy, Suspense } from "react";
+import { ScreenErrorBoundary } from "../../../../core/components/ScreenErrorBoundary";
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import {
   formatMonthDay,
   formatNumber,
 } from "../../../../core/utils/formatters";
+import { usePrefersReducedMotion } from "../../../../core/hooks/usePrefersReducedMotion";
 import { getInitials } from "../../../../core/utils/names";
-import {
-  densityLevels,
-  type AnalyticsRange,
-  type DensityLevel,
-} from "../../models/analytics";
+import { densityLevels, type AnalyticsRange } from "../../models/analytics";
 import {
   useHotspotsViewModel,
   type HotspotsViewModel,
 } from "../../viewmodels/useHotspotsViewModel";
 import { AnalyticsCard, CardContent, LegendDot } from "./AnalyticsCard";
-import { densityFill, densityHaloFill } from "./analyticsColors";
+import { densityFill } from "./analyticsColors";
+
+// mapbox-gl is large, so it downloads only when the Hotspots tab is opened.
+const HotspotsMap = lazy(() =>
+  import("./HotspotsMap").then((module) => ({
+    default: module.HotspotsMap,
+  })),
+);
 
 /**
  * Hotspots & Invasives tab: sighting hotspots and invasive-species alerts.
@@ -35,18 +41,11 @@ interface CardProps {
   viewModel: HotspotsViewModel;
 }
 
-/** Halo radius in px; busier tiers draw bigger. */
-const haloRadius: Record<DensityLevel, number> = {
-  low: 16,
-  moderate: 22,
-  high: 28,
-  critical: 34,
-};
-
 function HotspotsCard({ viewModel }: CardProps) {
   const strings = AppStrings.analytics.hotspots;
   const categoryNames = AppStrings.analytics.categories.names;
-  const { hotspots } = viewModel;
+  const { hotspots, mapToken } = viewModel;
+  const reduceMotion = usePrefersReducedMotion();
 
   return (
     <AnalyticsCard
@@ -82,66 +81,46 @@ function HotspotsCard({ viewModel }: CardProps) {
     >
       <CardContent
         state={viewModel.hotspotsState}
-        isEmpty={hotspots.length === 0}
+        isEmpty={viewModel.isHotspotsEmpty}
       >
         <div className="relative h-80 overflow-hidden rounded-2xl bg-surface-tint">
-          {/* Schematic panel: markers are placed in SVG by percentage so
-              no inline styles are needed. Labels use foreignObject for the
-              HTML pill. */}
-          <svg
-            role="img"
-            aria-label={strings.panelLabel}
-            className="absolute inset-0 size-full overflow-visible"
-          >
-            {hotspots.map((hotspot) => {
-              const cx = `${String(hotspot.leftPercent)}%`;
-              const cy = `${String(hotspot.topPercent)}%`;
-              return (
-                <g key={hotspot.id}>
-                  <title>
-                    {`${hotspot.name}: ${formatNumber(hotspot.sightingCount)} ${strings.sightingsSuffix}`}
-                  </title>
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={haloRadius[hotspot.density]}
-                    className={densityHaloFill[hotspot.density]}
+          {mapToken === null ? (
+            <MapNotice>{strings.mapUnavailable}</MapNotice>
+          ) : (
+            <>
+              <ScreenErrorBoundary>
+                <Suspense fallback={null}>
+                  <HotspotsMap
+                    token={mapToken}
+                    hotspots={hotspots}
+                    fitAllRequest={viewModel.fitAllRequest}
+                    reduceMotion={reduceMotion}
+                    label={strings.mapLabel}
+                    onError={viewModel.reportMapFailed}
                   />
-                  <circle
-                    cx={cx}
-                    cy={cy}
-                    r={7}
-                    className={`${densityFill[hotspot.density]} stroke-white stroke-2`}
-                  />
-                </g>
-              );
-            })}
-            {hotspots
-              .filter((hotspot) => hotspot.isLabelled)
-              .map((hotspot) => (
-                <foreignObject
-                  key={hotspot.id}
-                  x={`${String(hotspot.leftPercent)}%`}
-                  y={`${String(hotspot.topPercent)}%`}
-                  width="1"
-                  height="1"
-                  className="overflow-visible"
-                >
-                  <span
-                    className={`flex w-max -translate-x-1/2 items-center ${
-                      // Below the marker in the top half, above it lower down,
-                      // so the label stays inside the panel.
-                      hotspot.topPercent > 55
-                        ? "-translate-y-[calc(100%+2.75rem)]"
-                        : "translate-y-10"
-                    } gap-1.5 rounded-lg bg-white px-3 py-1.5 text-sm leading-5 font-semibold text-ink shadow-sm`}
-                  >
-                    <LegendDot fillClass={densityFill[hotspot.density]} />
-                    {hotspot.name} ({formatNumber(hotspot.sightingCount)})
-                  </span>
-                </foreignObject>
-              ))}
-          </svg>
+                </Suspense>
+              </ScreenErrorBoundary>
+              {/* Top-left: Mapbox's zoom buttons take the top-right corner
+                  and its logo and credits the bottom ones. */}
+              <button
+                type="button"
+                onClick={viewModel.showAllHotspots}
+                disabled={hotspots.length === 0}
+                title={strings.showAllHint}
+                className="absolute top-3 left-3 rounded-lg bg-white/90 px-3 py-1.5 text-sm font-semibold text-primary shadow-md ring-1 ring-navy/5 backdrop-blur-md transition-colors hover:bg-white focus-visible:outline-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {strings.showAll}
+              </button>
+            </>
+          )}
+          {viewModel.isCategoryEmpty && (
+            <div className="pointer-events-none absolute inset-x-4 bottom-10 flex justify-center">
+              <p className="rounded-xl bg-white/95 px-4 py-2.5 text-center text-sm font-semibold text-slate shadow-lg ring-1 ring-navy/5">
+                {strings.categoryEmpty}
+              </p>
+            </div>
+          )}
+          {/* What the map shows, for screen readers. */}
           <ul className="sr-only">
             {hotspots.map((hotspot) => (
               <li key={hotspot.id}>
@@ -169,6 +148,15 @@ function HotspotsCard({ viewModel }: CardProps) {
         </div>
       </CardContent>
     </AnalyticsCard>
+  );
+}
+
+/** A message in place of the map. */
+function MapNotice({ children }: { children: string }) {
+  return (
+    <p className="absolute inset-0 flex items-center justify-center text-sm font-semibold text-slate">
+      {children}
+    </p>
   );
 }
 
