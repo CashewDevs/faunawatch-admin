@@ -741,8 +741,14 @@ export const AppStrings = {
       description: "Where reports cluster, by map area (about 11 km across)",
       categoryLabel: "Filter hotspots by category",
       allCategories: "All Categories",
-      panelLabel: "Report hotspots by map area",
+      mapLabel: "Map of report hotspots by area",
+      mapUnavailable: "Map unavailable",
+      showAll: "Show all",
+      showAllHint: "Zoom to fit every hotspot",
+      categoryEmpty: "No reports in this category for this date range.",
       sightingsSuffix: "reports",
+      /** Joins a hotspot's count and density in its bubble. */
+      detailSeparator: " · ",
       densityLabel: "Density Index:",
       density: {
         low: "Low",

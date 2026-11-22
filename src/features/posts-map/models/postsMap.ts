@@ -1,6 +1,6 @@
 /**
  * Map domain model: which posts get a pin, the status filters and their
- * counts, the map's address-bar state, and the area that fits every pin.
+ * counts, and the map's address-bar state.
  * Posts come from the Post Approvals model; the map adds no data of its own.
  */
 
@@ -30,9 +30,6 @@ export interface PostsMapQuery {
   /** The post whose summary card is open. */
   postId: string | null;
 }
-
-/** West-south and east-north corners, as [longitude, latitude]. */
-export type MapBounds = [[number, number], [number, number]];
 
 const allMapStatuses: readonly KnownPostStatus[] = [
   "pending",
@@ -129,28 +126,6 @@ export function toggleHiddenStatus(
   return hidden.includes(status)
     ? hidden.filter((candidate) => candidate !== status)
     : [...hidden, status];
-}
-
-/** The smallest area holding every pin; null without pins. */
-export function getPinBounds(
-  pins: readonly Pick<MapPin, "latitude" | "longitude">[],
-): MapBounds | null {
-  const [first, ...rest] = pins;
-  if (!first) return null;
-  let west = first.longitude;
-  let east = first.longitude;
-  let south = first.latitude;
-  let north = first.latitude;
-  for (const pin of rest) {
-    west = Math.min(west, pin.longitude);
-    east = Math.max(east, pin.longitude);
-    south = Math.min(south, pin.latitude);
-    north = Math.max(north, pin.latitude);
-  }
-  return [
-    [west, south],
-    [east, north],
-  ];
 }
 
 /**

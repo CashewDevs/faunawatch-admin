@@ -21,8 +21,8 @@ vi.mock("../services/analyticsService", () => ({
 const fetchSectorCellsMock = vi.mocked(fetchSectorCells);
 const signAlertPhotosMock = vi.mocked(signAlertPhotos);
 
-function renderViewModel() {
-  return renderHook(() => useHotspotsViewModel("30d"), {
+function renderViewModel(token: string | null = "pk.test") {
+  return renderHook(() => useHotspotsViewModel("30d", token), {
     wrapper: createQueryWrapper(),
   });
 }
@@ -45,19 +45,23 @@ describe("useHotspotsViewModel", () => {
     );
   });
 
-  it("places the range's grid cells, named by their centre", async () => {
+  it("maps the range's grid cells, named by their centre", async () => {
     const { result } = renderViewModel();
 
     await waitFor(() => {
       expect(result.current.hotspots).toHaveLength(3);
     });
     expect(fetchSectorCellsMock).toHaveBeenCalledWith("30d");
-    expect(result.current.hotspots[0]).toMatchObject({
+    // Quietest first, so the busiest is drawn on top.
+    expect(result.current.hotspots.at(-1)).toMatchObject({
       name: "7.05°N, 125.25°E",
+      latitude: 7.05,
+      longitude: 125.25,
       sightingCount: 12,
       density: "critical",
-      isLabelled: true,
     });
+    expect(result.current.isHotspotsEmpty).toBe(false);
+    expect(result.current.isCategoryEmpty).toBe(false);
   });
 
   it("filters cells by category without reloading", async () => {
@@ -74,10 +78,86 @@ describe("useHotspotsViewModel", () => {
     expect(
       result.current.hotspots.map((h) => [h.name, h.sightingCount]),
     ).toEqual([
-      ["7.05°N, 125.25°E", 8],
       ["10.35°N, 123.95°E", 2],
+      ["7.05°N, 125.25°E", 8],
     ]);
     expect(fetchSectorCellsMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("says when the chosen category has no hotspots", async () => {
+    fetchSectorCellsMock.mockResolvedValue([
+      {
+        latitude: 10.25,
+        longitude: 123.85,
+        reportCount: 7,
+        categoryCounts: { animal_in_need: 7 },
+      },
+    ]);
+    const { result } = renderViewModel();
+    await waitFor(() => {
+      expect(result.current.hotspots).toHaveLength(1);
+    });
+
+    act(() => {
+      result.current.changeCategory("possible_invasive_species");
+    });
+
+    expect(result.current.hotspots).toEqual([]);
+    expect(result.current.isCategoryEmpty).toBe(true);
+    expect(result.current.isHotspotsEmpty).toBe(false);
+  });
+
+  it("is empty when no area in the range has enough reports", async () => {
+    fetchSectorCellsMock.mockResolvedValue([]);
+    const { result } = renderViewModel();
+
+    await waitFor(() => {
+      expect(result.current.hotspotsState.isLoading).toBe(false);
+    });
+    expect(result.current.isHotspotsEmpty).toBe(true);
+    expect(result.current.isCategoryEmpty).toBe(false);
+  });
+
+  it("keeps the hotspot list the same between renders", async () => {
+    const { result, rerender } = renderViewModel();
+    await waitFor(() => {
+      expect(result.current.hotspots).toHaveLength(3);
+    });
+    const first = result.current.hotspots;
+
+    rerender();
+
+    expect(result.current.hotspots).toBe(first);
+  });
+
+  it("hands over the map token until the map fails", () => {
+    const { result } = renderViewModel();
+    expect(result.current.mapToken).toBe("pk.test");
+
+    act(() => {
+      result.current.reportMapFailed();
+    });
+
+    expect(result.current.mapToken).toBeNull();
+  });
+
+  it("has no map without a token", () => {
+    const { result } = renderViewModel(null);
+    expect(result.current.mapToken).toBeNull();
+  });
+
+  it("asks the map to fit every hotspot on Show all", () => {
+    const { result } = renderViewModel();
+    expect(result.current.fitAllRequest).toBe(0);
+
+    act(() => {
+      result.current.showAllHotspots();
+    });
+    act(() => {
+      result.current.showAllHotspots();
+    });
+
+    expect(result.current.fitAllRequest).toBe(2);
   });
 
   it("lists the newest invasive reports and signs their photos", async () => {

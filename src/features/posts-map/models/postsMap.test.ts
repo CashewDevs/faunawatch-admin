@@ -6,7 +6,6 @@ import {
   defaultPostsMapQuery,
   getMappablePosts,
   getMapStatuses,
-  getPinBounds,
   getSpeciesName,
   getVisiblePosts,
   hasValidCoordinates,
@@ -104,32 +103,6 @@ describe("filters and counts", () => {
     expect(toggleHiddenStatus([], "approved")).toEqual(["approved"]);
     expect(toggleHiddenStatus(["approved", "pending"], "approved")).toEqual([
       "pending",
-    ]);
-  });
-});
-
-describe("getPinBounds", () => {
-  it("is null without pins", () => {
-    expect(getPinBounds([])).toBeNull();
-  });
-
-  it("wraps every pin", () => {
-    expect(
-      getPinBounds([
-        { latitude: 10, longitude: 124 },
-        { latitude: 8, longitude: 126 },
-        { latitude: 12, longitude: 121 },
-      ]),
-    ).toEqual([
-      [121, 8],
-      [126, 12],
-    ]);
-  });
-
-  it("is a single point for one pin", () => {
-    expect(getPinBounds([{ latitude: 9, longitude: 124 }])).toEqual([
-      [124, 9],
-      [124, 9],
     ]);
   });
 });

@@ -13,6 +13,7 @@ import {
   getSpeciesBreakdown,
   getTopContributors,
   toDeclineReason,
+  toMappedHotspots,
   toSightingHotspots,
   getAvailableGranularities,
   getBarPercent,
@@ -22,8 +23,6 @@ import {
   getSeverityShares,
   getTrendPeriodStarts,
   parseAnalyticsParams,
-  placeHotspots,
-  projectToPanel,
   resolveGranularity,
   summarizeReviewOutcomes,
   toAnalyticsParams,
@@ -247,15 +246,7 @@ describe("hotspots", () => {
     expect(getDensityLevel(0, 0)).toBe("low");
   });
 
-  it("projects coordinates inside the panel", () => {
-    const corner = projectToPanel(30, 100);
-    expect(corner).toEqual({ leftPercent: 10, topPercent: 10 });
-    const mtApo = projectToPanel(7.0, 125.27);
-    expect(mtApo.leftPercent).toBeGreaterThan(70);
-    expect(mtApo.topPercent).toBeGreaterThan(70);
-  });
-
-  it("labels only the busiest hotspots and drops empty ones", () => {
+  it("drops empty hotspots and draws the busiest last", () => {
     const hotspot = (id: string, sightingCount: number): SightingHotspot => ({
       id,
       name: id,
@@ -263,18 +254,25 @@ describe("hotspots", () => {
       longitude: 122,
       sightingCount,
     });
-    const placed = placeHotspots([
+    const mapped = toMappedHotspots([
       hotspot("a", 100),
       hotspot("b", 800),
       hotspot("c", 0),
-      hotspot("d", 600),
+      hotspot("d", 500),
     ]);
-    expect(placed.map((h) => h.id)).toEqual(["a", "b", "d"]);
-    expect(placed.filter((h) => h.isLabelled).map((h) => h.id)).toEqual([
-      "b",
-      "d",
+    expect(mapped.map((h) => [h.id, h.density])).toEqual([
+      ["a", "low"],
+      ["d", "high"],
+      ["b", "critical"],
     ]);
-    expect(placed.find((h) => h.id === "b")?.density).toBe("critical");
+  });
+
+  it("has nothing to draw when every hotspot is empty", () => {
+    expect(
+      toMappedHotspots([
+        { id: "a", name: "a", latitude: 10, longitude: 122, sightingCount: 0 },
+      ]),
+    ).toEqual([]);
   });
 });
 

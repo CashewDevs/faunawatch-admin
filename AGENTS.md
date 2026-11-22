@@ -49,13 +49,14 @@ not own the data model; the app and backend define it.
   instead of a blank app.
   `vite.config.ts` also splits React, Supabase and TanStack Query into
   vendor chunks.
-- Maps: mapbox-gl (Standard style, like the mobile app), for two maps: the
-  live map on a post's Location card (and its full-screen view), and the
-  Map screen (`/map`, `src/features/posts-map/`) with a pin for every post.
-  Each is lazy-loaded (from `PostLocationCard` and `PostsMapScreen`), so
-  mapbox-gl ships in its own chunk; import it only from `PostLocationMap.tsx`
-  and `PostsMap.tsx`, which also import Mapbox's own stylesheet (the one
-  allowed library CSS import). Shared map settings (3D tilt, style URL,
+- Maps: mapbox-gl (Standard style, like the mobile app), for three maps: the
+  live map on a post's Location card (and its full-screen view), the
+  Map screen (`/map`, `src/features/posts-map/`) with a pin for every post,
+  and the Sighting Hotspots card on Analytics → Hotspots & Invasives.
+  Each is lazy-loaded (from `PostLocationCard`, `PostsMapScreen` and
+  `HotspotsTab`), so mapbox-gl ships in its own chunk; import it only from
+  `PostLocationMap.tsx`, `PostsMap.tsx` and `HotspotsMap.tsx`, which also
+  import Mapbox's own stylesheet (the one allowed library CSS import). Shared map settings (3D tilt, style URL,
   `MapViewMode`) live in `src/core/services/mapboxConfig.ts`. The token is `VITE_MAPBOX_PUBLIC_TOKEN`: a public
   `pk.` token for the admin site only, limited to the admin's URLs in the
   Mapbox dashboard (`src/core/services/mapboxConfig.ts` refuses anything
@@ -74,6 +75,14 @@ not own the data model; the app and backend define it.
   signed in one request (`fetchPostCoverUrls`) and loads lazily, and its
   filters, 3D/2D view and open summary card live in the URL
   (`?hide=…&view=2d&post=…`), so a post's "Back to Map" restores them.
+  The Hotspots map is flat 2D only, inside the card: drag, zoom buttons and
+  Ctrl/⌘ + scroll (Mapbox's `cooperativeGestures`, so plain scrolling still
+  scrolls the page), plus "Show all". It draws density circles at
+  `admin_sector_stats()` grid-cell centres (~11 km cells, fewer than 3
+  reports left out), never a sighting's own spot, so keep it that way. A
+  circle's bubble (area, count, density) shows on hover, keyboard focus or
+  click. `getMapBounds` (`src/core/utils/mapBounds.ts`) frames both the
+  Map screen's pins and the hotspots.
 - Testing: Vitest + React Testing Library
 - Lint/format: ESLint + Prettier
 - Node.js LTS, npm

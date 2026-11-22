@@ -31,6 +31,11 @@ vi.mock("../../services/analyticsService", () => ({
   signAlertPhotos: vi.fn(),
 }));
 
+// jsdom has no WebGL; HotspotsTab.test covers the map card itself.
+vi.mock("../components/HotspotsMap", () => ({
+  HotspotsMap: () => null,
+}));
+
 vi.mock("../../../users/services/usersService", () => ({
   fetchUserCounts: vi.fn(),
   fetchSanctionsSince: vi.fn(),

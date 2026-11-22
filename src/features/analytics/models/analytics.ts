@@ -615,66 +615,26 @@ export function getDensityLevel(count: number, maxCount: number): DensityLevel {
   return "low";
 }
 
-/** Bounding box of the Philippines, for placing hotspots on the panel. */
-const philippineBounds = {
-  north: 21.2,
-  south: 4.5,
-  west: 116.8,
-  east: 126.7,
-};
-
-/** Keeps markers off the panel edges, in percent. */
-const panelInsetPercent = 10;
+export interface MappedHotspot extends SightingHotspot {
+  density: DensityLevel;
+}
 
 /**
- * Position of a coordinate on the hotspot panel, as left/top percentages.
- * The panel is a schematic, not a map, so each axis is scaled to fill it.
+ * The hotspots to draw on the map, each with its density tier. Empty cells
+ * are left out, and the quietest come first so the busiest are drawn on top
+ * where circles overlap.
  */
-export function projectToPanel(
-  latitude: number,
-  longitude: number,
-): { leftPercent: number; topPercent: number } {
-  const { north, south, west, east } = philippineBounds;
-  const clamp = (value: number) => Math.min(1, Math.max(0, value));
-  const usable = 100 - panelInsetPercent * 2;
-  return {
-    leftPercent:
-      panelInsetPercent + clamp((longitude - west) / (east - west)) * usable,
-    topPercent:
-      panelInsetPercent + clamp((north - latitude) / (north - south)) * usable,
-  };
-}
-
-export interface PlacedHotspot extends SightingHotspot {
-  density: DensityLevel;
-  leftPercent: number;
-  topPercent: number;
-  /** Whether the name is shown on the panel (busiest few only). */
-  isLabelled: boolean;
-}
-
-/** How many of the busiest hotspots get a visible label. */
-export const labelledHotspotCount = 2;
-
-export function placeHotspots(
+export function toMappedHotspots(
   hotspots: readonly SightingHotspot[],
-): PlacedHotspot[] {
-  const maxCount = Math.max(0, ...hotspots.map((h) => h.sightingCount));
-  const labelledIds = new Set(
-    [...hotspots]
-      .filter((hotspot) => hotspot.sightingCount > 0)
-      .sort((a, b) => b.sightingCount - a.sightingCount)
-      .slice(0, labelledHotspotCount)
-      .map((hotspot) => hotspot.id),
-  );
-  return hotspots
-    .filter((hotspot) => hotspot.sightingCount > 0)
+): MappedHotspot[] {
+  const shown = hotspots.filter((hotspot) => hotspot.sightingCount > 0);
+  const maxCount = Math.max(0, ...shown.map((h) => h.sightingCount));
+  return shown
     .map((hotspot) => ({
       ...hotspot,
-      ...projectToPanel(hotspot.latitude, hotspot.longitude),
       density: getDensityLevel(hotspot.sightingCount, maxCount),
-      isLabelled: labelledIds.has(hotspot.id),
-    }));
+    }))
+    .sort((a, b) => a.sightingCount - b.sightingCount);
 }
 
 export interface InvasiveAlert {
