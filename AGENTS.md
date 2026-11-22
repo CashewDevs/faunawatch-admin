@@ -269,6 +269,30 @@ is changed. In development only, `VITE_ENABLE_REQUEST_CHANGES=true` in a
 local env file (never committed) turns it on without editing code. Tests mock
 the module instead of reading the variable.
 
+## Hosting (Vercel)
+
+The site is hosted on Vercel's free Hobby plan (non-commercial use only),
+deployed from this public repo. Every merge to `main` goes live; other
+branches get preview URLs. `vercel.json` holds the settings:
+
+- Any address that isn't a real file is served `index.html`, so React Router
+  can open it (refreshing `/map` would otherwise be a 404). `/assets/` is left
+  out, so a missing chunk from an old deploy is a real 404 and
+  `ScreenErrorBoundary` shows its Reload button.
+- Files in `/assets/` have a content hash in their name, so browsers keep
+  them for a year; a new build gets new names.
+- Basic security headers. `X-Frame-Options: DENY` stops other sites from
+  framing the admin pages.
+
+Setup outside the repo, needed for each new site address:
+
+- Vercel → Project → Settings → Environment Variables: `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY`, `VITE_MAPBOX_PUBLIC_TOKEN`. Vite reads them at
+  build time, so redeploy after changing one.
+- Supabase → Authentication → URL Configuration → Redirect URLs: add
+  `https://<site>/login**` and `https://<site>/reset-password**`.
+- Mapbox → the admin token's URL restrictions: add the site's address.
+
 ## UI and Design Guidelines
 
 - Follow the approved Google Stitch designs. Do not invent layouts.
