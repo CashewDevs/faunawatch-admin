@@ -8,6 +8,7 @@ import {
   getDistanceMeters,
   getExifLocationCheck,
   getExtraPhotoCount,
+  getPinPhotoUrl,
   getObserverDevices,
   getPostTabs,
   getQueuePosition,
@@ -581,5 +582,16 @@ describe("list URL params", () => {
         ),
       ),
     ).toEqual(defaultPostListQuery);
+  });
+});
+
+describe("getPinPhotoUrl", () => {
+  it("uses the first photo, like the app's map pins", () => {
+    expect(getPinPhotoUrl([{ url: "a.jpg" }, { url: "b.jpg" }])).toBe("a.jpg");
+  });
+
+  it("falls back to the logo (null) without a usable first photo", () => {
+    expect(getPinPhotoUrl([])).toBeNull();
+    expect(getPinPhotoUrl([{ url: null }, { url: "b.jpg" }])).toBeNull();
   });
 });

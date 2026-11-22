@@ -33,7 +33,7 @@ const exifBadgeClass: Record<ExifLocationCheck, string> = {
 export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
   const strings = AppStrings.posts.detail.location;
   const { location } = post;
-  const map = usePostLocationMapViewModel();
+  const map = usePostLocationMapViewModel(post.photos);
   const { mapToken } = map;
   const exifLabel: Record<ExifLocationCheck, string> = {
     verified: strings.exifVerified,
@@ -108,6 +108,8 @@ export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
                   latitude={location.latitude}
                   longitude={location.longitude}
                   variant="card"
+                  mode="2d"
+                  photoUrl={map.pinPhotoUrl}
                   label={strings.mapLabel}
                   onError={map.reportMapFailed}
                 />
@@ -147,13 +149,34 @@ export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
               {viewModel.coordinatesLabel}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={map.closeFullMap}
-            className="shrink-0 rounded-lg bg-surface-tint px-4 py-2 text-sm font-bold text-deep-blue hover:bg-chip focus-visible:outline-2 focus-visible:outline-primary"
-          >
-            {strings.fullMapClose}
-          </button>
+          <div className="flex shrink-0 items-center gap-3">
+            <div
+              role="group"
+              aria-label={strings.viewModeLabel}
+              className="flex rounded-lg bg-surface-tint p-1"
+            >
+              {(["3d", "2d"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  aria-pressed={map.fullMapMode === mode}
+                  onClick={() => {
+                    map.setFullMapMode(mode);
+                  }}
+                  className="rounded-md px-3 py-1 text-sm font-extrabold text-deep-blue aria-pressed:bg-deep-blue aria-pressed:text-white focus-visible:outline-2 focus-visible:outline-primary"
+                >
+                  {strings.viewMode[mode]}
+                </button>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={map.closeFullMap}
+              className="shrink-0 rounded-lg bg-surface-tint px-4 py-2 text-sm font-bold text-deep-blue hover:bg-chip focus-visible:outline-2 focus-visible:outline-primary"
+            >
+              {strings.fullMapClose}
+            </button>
+          </div>
         </div>
         {mapToken !== null && (
           <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-xl bg-chip">
@@ -164,6 +187,8 @@ export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
                   latitude={location.latitude}
                   longitude={location.longitude}
                   variant="full"
+                  mode={map.fullMapMode}
+                  photoUrl={map.pinPhotoUrl}
                   label={strings.mapLabel}
                   onError={map.reportMapFailed}
                 />
