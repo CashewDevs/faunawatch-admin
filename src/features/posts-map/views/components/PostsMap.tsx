@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { createMapMarkerButton } from "../../../../core/components/mapMarkerButton";
 import { createMapPin } from "../../../../core/components/mapPin";
 import {
   MAP_PITCH_3D,
@@ -343,8 +344,9 @@ export function PostsMap({
 
 /**
  * The app's photo pin (see createMapPin) with its frame and pointer in the
- * status colour. It's a button, so pins can be reached and opened from the
- * keyboard.
+ * status colour. It's a button (see createMapMarkerButton), so pins can be
+ * reached and opened from the keyboard, and screen readers announce them as
+ * buttons, not pictures.
  */
 function createPinElement(
   pin: MapPin,
@@ -357,13 +359,10 @@ function createPinElement(
 } {
   const fill = mapStatusFill[pin.status];
 
-  const element = document.createElement("button");
-  element.type = "button";
+  const element = createMapMarkerButton(pin.label, onClick);
   element.dataset.mapPin = "";
-  element.setAttribute("aria-label", pin.label);
   element.className =
     "block h-16 w-[52px] cursor-pointer rounded-full drop-shadow-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary";
-  element.addEventListener("click", onClick);
 
   const inner = document.createElement("span");
   inner.dataset.selected = "false";
