@@ -51,11 +51,16 @@ not own the data model; the app and backend define it.
   map on a post's Location card and its full-screen view. It is lazy-loaded
   from `PostLocationCard`, so it ships in its own chunk; import it only from
   `PostLocationMap.tsx`, which also imports Mapbox's own stylesheet (the one
-  allowed library CSS import). The token is `VITE_MAPBOX_TOKEN`: a public
+  allowed library CSS import). The token is `VITE_MAPBOX_PUBLIC_TOKEN`: a public
   `pk.` token for the admin site only, limited to the admin's URLs in the
   Mapbox dashboard (`src/core/services/mapboxConfig.ts` refuses anything
   else). Without it, or if the map fails, the card shows "Map unavailable".
   The map shows the exact spot (admins only), not the app's ~1 km blur.
+  It mirrors the app's map: day lighting, the app's blue photo pin (first
+  photo, logo fallback; `--color-map-pin`, `AppAssets.shared.pinLogo`), and
+  in full screen a 3D/2D switch (3D = 55° tilt plus 3D buildings, the
+  default). The card stays flat 2D. Keep these in step with the app's
+  `mapbox_map_service.dart` and `map_pin_image.dart`.
 - Testing: Vitest + React Testing Library
 - Lint/format: ESLint + Prettier
 - Node.js LTS, npm

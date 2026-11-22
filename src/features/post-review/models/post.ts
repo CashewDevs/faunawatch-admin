@@ -606,6 +606,16 @@ export function getQueuePosition(
   };
 }
 
+/**
+ * The photo shown in the post's map pin: the first (oldest) photo, like the
+ * app's community map pins. Null shows the logo instead.
+ */
+export function getPinPhotoUrl(
+  photos: readonly Pick<PostPhoto, "url">[],
+): string | null {
+  return photos[0]?.url ?? null;
+}
+
 /** Extra photos beyond the cover, for the "+3" badge. */
 export function getExtraPhotoCount(post: PostSummary): number {
   return Math.max(0, post.photoPaths.length - 1);

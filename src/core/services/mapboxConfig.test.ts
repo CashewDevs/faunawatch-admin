@@ -6,8 +6,9 @@ describe("getMapboxToken", () => {
     expect(getMapboxToken(" pk.abc123 ")).toBe("pk.abc123");
   });
 
-  it("returns null when no token is set", () => {
-    expect(getMapboxToken(undefined)).toBeNull();
+  // Not getMapboxToken(undefined): that falls back to the real env, which
+  // Vitest loads from a local .env.
+  it("returns null when the token is blank", () => {
     expect(getMapboxToken("")).toBeNull();
     expect(getMapboxToken("   ")).toBeNull();
   });

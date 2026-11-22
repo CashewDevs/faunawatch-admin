@@ -26,7 +26,7 @@ export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
     <div
       role="region"
       aria-label={decision.label}
-      className="sticky bottom-4 z-10 mx-8 mb-4 flex flex-wrap items-center justify-between gap-4 rounded-xl bg-white/95 px-8 py-3.5 shadow-lg backdrop-blur-[6px]"
+      className="sticky bottom-4 z-10 mx-8 mb-4 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-surface-tint/95 px-8 py-3.5 shadow-lg backdrop-blur-[6px]"
     >
       <div className="flex min-w-0 items-center gap-3">
         <span className="rounded-md bg-deep-blue px-2.5 py-1 text-xs leading-4 font-bold tracking-[0.24px] text-white">
@@ -68,7 +68,7 @@ export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
                 ? undefined
                 : decision.requestChangesUnavailable
             }
-            className={`${buttonClass} bg-surface-tint text-deep-blue hover:bg-chip disabled:hover:bg-surface-tint`}
+            className={`${buttonClass} bg-white text-deep-blue hover:bg-chip disabled:hover:bg-white`}
           >
             {decision.requestChanges}
           </button>
@@ -97,7 +97,7 @@ export function PostDecisionBar({ post, viewModel }: PostDecisionBarProps) {
             <button
               type="button"
               onClick={viewModel.withdrawRequest}
-              className={`${buttonClass} bg-surface-tint text-deep-blue hover:bg-chip`}
+              className={`${buttonClass} bg-white text-deep-blue hover:bg-chip`}
             >
               {decision.withdrawRequest}
             </button>

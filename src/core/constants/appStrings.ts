@@ -433,6 +433,8 @@ export const AppStrings = {
         mapLabel: "Map of the post's location",
         mapUnavailable: "Map unavailable",
         fullMapClose: "Close",
+        viewModeLabel: "Map view",
+        viewMode: { "3d": "3D", "2d": "2D" },
       },
       comments: {
         heading: "Comments",

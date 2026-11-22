@@ -52,6 +52,8 @@
      Near-identical Figma colours reuse the tokens above: #006874 → teal,
      #ba1a1a → danger, #717781 → muted, #001f24 → ink, #e4efff → chip. */
   --color-deep-blue: #004271;
+  /* The mobile app's map pin blue (map_pin_image.dart). */
+  --color-map-pin: #2563eb;
   --color-cyan: #96f0ff;
   --color-amber: #735100;
   --color-amber-ink: #553b00;

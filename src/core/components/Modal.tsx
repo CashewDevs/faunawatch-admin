@@ -13,7 +13,9 @@ interface ModalProps {
 
 const sizeClass = {
   default: "w-[calc(100%-2rem)] max-w-md",
-  full: "flex h-[calc(100%-2rem)] max-h-none w-[calc(100%-2rem)] max-w-none flex-col",
+  // open:flex, not flex: a plain display class would override the closed
+  // <dialog>'s display:none and show it on the page.
+  full: "h-[calc(100%-2rem)] max-h-none w-[calc(100%-2rem)] max-w-none flex-col open:flex",
 };
 
 /**

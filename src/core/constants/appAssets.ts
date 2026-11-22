@@ -9,6 +9,7 @@
  */
 import faunawatchLogomark from "../../assets/shared/faunawatch-logomark.png";
 import faunawatchLogoVertical from "../../assets/shared/faunawatch-logo-vertical.png";
+import faunawatchPinLogo from "../../assets/shared/faunawatch-pin-logo.webp";
 import avatarPanda from "../../assets/shared/avatars/panda.webp";
 import avatarBunny from "../../assets/shared/avatars/bunny.webp";
 import avatarTweety from "../../assets/shared/avatars/tweety.webp";
@@ -95,6 +96,8 @@ export const AppAssets = {
   shared: {
     logomark: faunawatchLogomark,
     logoVertical: faunawatchLogoVertical,
+    /** The mobile app's logo, shown in a map pin when a post has no photo. */
+    pinLogo: faunawatchPinLogo,
     // TODO(loader): Placeholder — replace with the final loading-screen
     // logo and keep index.html's splash <img> in sync.
     loaderLogo: faunawatchLogomark,
