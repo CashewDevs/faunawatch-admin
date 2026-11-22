@@ -430,7 +430,9 @@ export const AppStrings = {
         copied: "Copied",
         copyLabel: "Copy coordinates",
         fullMap: "View in full map",
-        fullMapUnavailable: "Full map view isn't available yet",
+        mapLabel: "Map of the post's location",
+        mapUnavailable: "Map unavailable",
+        fullMapClose: "Close",
       },
       comments: {
         heading: "Comments",

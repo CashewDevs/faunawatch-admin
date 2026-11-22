@@ -6,8 +6,15 @@ interface ModalProps {
   onClose: () => void;
   titleId: string;
   descriptionId?: string;
+  /** "full" fills the window (minus a margin), e.g. for a map. */
+  size?: "default" | "full";
   children: ReactNode;
 }
+
+const sizeClass = {
+  default: "w-[calc(100%-2rem)] max-w-md",
+  full: "flex h-[calc(100%-2rem)] max-h-none w-[calc(100%-2rem)] max-w-none flex-col",
+};
 
 /**
  * A centred modal dialog on a dimmed backdrop. Uses the native <dialog>
@@ -20,6 +27,7 @@ export function Modal({
   onClose,
   titleId,
   descriptionId,
+  size = "default",
   children,
 }: ModalProps) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -41,7 +49,7 @@ export function Modal({
         event.preventDefault();
         onClose();
       }}
-      className="m-auto w-[calc(100%-2rem)] max-w-md rounded-xl bg-white p-0 text-ink shadow-2xl backdrop:bg-navy/50 open:animate-fade-in motion-reduce:open:animate-none"
+      className={`m-auto ${sizeClass[size]} rounded-xl bg-white p-0 text-ink shadow-2xl backdrop:bg-navy/50 open:animate-fade-in motion-reduce:open:animate-none`}
     >
       {isOpen && children}
     </dialog>

@@ -47,6 +47,15 @@ not own the data model; the app and backend define it.
   instead of a blank app.
   `vite.config.ts` also splits React, Supabase and TanStack Query into
   vendor chunks.
+- Maps: mapbox-gl (Standard style, like the mobile app), only for the live
+  map on a post's Location card and its full-screen view. It is lazy-loaded
+  from `PostLocationCard`, so it ships in its own chunk; import it only from
+  `PostLocationMap.tsx`, which also imports Mapbox's own stylesheet (the one
+  allowed library CSS import). The token is `VITE_MAPBOX_TOKEN`: a public
+  `pk.` token for the admin site only, limited to the admin's URLs in the
+  Mapbox dashboard (`src/core/services/mapboxConfig.ts` refuses anything
+  else). Without it, or if the map fails, the card shows "Map unavailable".
+  The map shows the exact spot (admins only), not the app's ~1 km blur.
 - Testing: Vitest + React Testing Library
 - Lint/format: ESLint + Prettier
 - Node.js LTS, npm
