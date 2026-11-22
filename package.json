@@ -17,6 +17,7 @@
   "dependencies": {
     "@supabase/supabase-js": "2.117.3",
     "@tanstack/react-query": "5.104.1",
+    "mapbox-gl": "3.34.2",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-router": "8.4.0",

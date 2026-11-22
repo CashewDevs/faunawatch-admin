@@ -1,7 +1,18 @@
+import { lazy, Suspense } from "react";
+import { Modal } from "../../../../core/components/Modal";
+import { ScreenErrorBoundary } from "../../../../core/components/ScreenErrorBoundary";
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import type { ExifLocationCheck, PostDetail } from "../../models/post";
 import type { PostDetailViewModel } from "../../viewmodels/usePostDetailViewModel";
+import { usePostLocationMapViewModel } from "../../viewmodels/usePostLocationMapViewModel";
+
+// mapbox-gl is large, so it downloads only when a post's map is shown.
+const PostLocationMap = lazy(() =>
+  import("./PostLocationMap").then((module) => ({
+    default: module.PostLocationMap,
+  })),
+);
 
 interface PostLocationCardProps {
   post: PostDetail;
@@ -16,11 +27,14 @@ const exifBadgeClass: Record<ExifLocationCheck, string> = {
 
 /**
  * Whether the photos' EXIF GPS matches the report, the area name when known,
- * copyable coordinates, and a map placeholder.
+ * copyable coordinates, and a live map of the exact spot that can open
+ * full screen.
  */
 export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
   const strings = AppStrings.posts.detail.location;
   const { location } = post;
+  const map = usePostLocationMapViewModel();
+  const { mapToken } = map;
   const exifLabel: Record<ExifLocationCheck, string> = {
     verified: strings.exifVerified,
     mismatch: strings.exifMismatch,
@@ -83,35 +97,100 @@ export function PostLocationCard({ post, viewModel }: PostLocationCardProps) {
       </div>
 
       <div className="relative h-64 overflow-hidden rounded-xl bg-chip shadow-[inset_0_2px_4px_0_rgb(0_0_0/0.05)]">
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 flex items-center justify-center"
-        >
-          <span className="relative flex size-6 items-center justify-center">
-            <span className="absolute size-24 rounded-full bg-primary/20" />
-            <span className="absolute size-14 rounded-full bg-primary/30" />
-            <span className="relative flex size-6 items-center justify-center rounded-full bg-deep-blue shadow-lg">
-              <img src={AppAssets.postDetail.iconMapPin} alt="" />
-            </span>
-          </span>
-        </div>
+        {mapToken === null ? (
+          <MapPlaceholder message={strings.mapUnavailable} />
+        ) : (
+          <>
+            <ScreenErrorBoundary>
+              <Suspense fallback={<MapPlaceholder />}>
+                <PostLocationMap
+                  token={mapToken}
+                  latitude={location.latitude}
+                  longitude={location.longitude}
+                  variant="card"
+                  label={strings.mapLabel}
+                  onError={map.reportMapFailed}
+                />
+              </Suspense>
+            </ScreenErrorBoundary>
 
-        <div className="absolute right-3 bottom-3">
-          {/* TODO(map): Opening an external map would send the sighting's
-              exact coordinates (possibly of an endangered species) to a
-              third party. Decide on a map provider and whether to blur
-              coordinates first. */}
+            {/* Top-left: Mapbox's logo and credits take the bottom corners. */}
+            <div className="absolute top-3 left-3">
+              <button
+                type="button"
+                onClick={map.openFullMap}
+                className="flex items-center gap-1 rounded-lg bg-deep-blue px-3 py-1.5 text-[11px] leading-[14px] font-bold tracking-[0.44px] text-white shadow-md hover:bg-navy focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              >
+                {strings.fullMap}
+                <img src={AppAssets.postDetail.iconExternalLink} alt="" />
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+
+      <Modal
+        isOpen={map.isFullMapOpen}
+        onClose={map.closeFullMap}
+        titleId="post-full-map-heading"
+        size="full"
+      >
+        <div className="flex items-center justify-between gap-4 px-6 py-4">
+          <div className="min-w-0">
+            <h2
+              id="post-full-map-heading"
+              className="truncate text-base leading-6 font-bold text-deep-blue"
+            >
+              {location.placeName ?? strings.heading}
+            </h2>
+            <p className="font-mono text-[13px] leading-[18px] text-slate">
+              {viewModel.coordinatesLabel}
+            </p>
+          </div>
           <button
             type="button"
-            disabled
-            title={strings.fullMapUnavailable}
-            className="flex cursor-not-allowed items-center gap-1 rounded-lg bg-deep-blue px-3 py-1.5 text-[11px] leading-[14px] font-bold tracking-[0.44px] text-white shadow-md"
+            onClick={map.closeFullMap}
+            className="shrink-0 rounded-lg bg-surface-tint px-4 py-2 text-sm font-bold text-deep-blue hover:bg-chip focus-visible:outline-2 focus-visible:outline-primary"
           >
-            {strings.fullMap}
-            <img src={AppAssets.postDetail.iconExternalLink} alt="" />
+            {strings.fullMapClose}
           </button>
         </div>
-      </div>
+        {mapToken !== null && (
+          <div className="relative min-h-0 flex-1 overflow-hidden rounded-b-xl bg-chip">
+            <ScreenErrorBoundary>
+              <Suspense fallback={<MapPlaceholder />}>
+                <PostLocationMap
+                  token={mapToken}
+                  latitude={location.latitude}
+                  longitude={location.longitude}
+                  variant="full"
+                  label={strings.mapLabel}
+                  onError={map.reportMapFailed}
+                />
+              </Suspense>
+            </ScreenErrorBoundary>
+          </div>
+        )}
+      </Modal>
     </section>
+  );
+}
+
+/** The paw pin on a plain background, while the map loads or without one. */
+function MapPlaceholder({ message }: { message?: string }) {
+  return (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-10">
+      <span
+        aria-hidden="true"
+        className="relative flex size-6 items-center justify-center"
+      >
+        <span className="absolute size-24 rounded-full bg-primary/20" />
+        <span className="absolute size-14 rounded-full bg-primary/30" />
+        <span className="relative flex size-6 items-center justify-center rounded-full bg-deep-blue shadow-lg">
+          <img src={AppAssets.postDetail.iconMapPin} alt="" />
+        </span>
+      </span>
+      {message && <p className="text-sm font-semibold text-slate">{message}</p>}
+    </div>
   );
 }
