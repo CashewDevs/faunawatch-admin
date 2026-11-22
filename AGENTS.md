@@ -191,6 +191,8 @@ directory. Do not create large generic folders with unrelated code.
   When adding or touching any of these files, remind the developer to
   convert them, and update the matching `appAssets.ts` import when the
   `.webp` version replaces the original.
+  Exception: `public/og-image.png` (the 1200 × 630 link preview image) stays
+  PNG, because some chat apps don't show WebP previews.
 - **Preset avatars:** `src/assets/shared/avatars/` holds copies of the
   mobile app's preset avatars (`profiles.avatar_path` = `preset:<name>`).
   Keep the names in `src/core/utils/avatars.ts` in sync with the mobile
@@ -277,6 +279,36 @@ dark. `isRequestChangesEnabled()` is false in production until its constant
 is changed. In development only, `VITE_ENABLE_REQUEST_CHANGES=true` in a
 local env file (never committed) turns it on without editing code. Tests mock
 the module instead of reading the variable.
+
+## Hosting (Vercel)
+
+The site is hosted on Vercel's free Hobby plan (non-commercial use only),
+deployed from this public repo. Every merge to `main` goes live; other
+branches get preview URLs. `vercel.json` holds the settings:
+
+- Any address that isn't a real file is served `index.html`, so React Router
+  can open it (refreshing `/map` would otherwise be a 404). `/assets/` is left
+  out, so a missing chunk from an old deploy is a real 404 and
+  `ScreenErrorBoundary` shows its Reload button.
+- Files in `/assets/` have a content hash in their name, so browsers keep
+  them for a year; a new build gets new names.
+- Basic security headers. `X-Frame-Options: DENY` stops other sites from
+  framing the admin pages.
+
+`index.html` carries the link preview tags (Open Graph + `twitter:card`)
+pointing at `public/og-image.png` by its full address, plus
+`robots: noindex` so search engines don't list the admin site. If the domain
+changes, update `og:url` and `og:image`. Chat apps cache previews; refresh
+Messenger/Facebook with the Sharing Debugger ("Scrape Again").
+
+Setup outside the repo, needed for each new site address:
+
+- Vercel → Project → Settings → Environment Variables: `VITE_SUPABASE_URL`,
+  `VITE_SUPABASE_ANON_KEY`, `VITE_MAPBOX_PUBLIC_TOKEN`. Vite reads them at
+  build time, so redeploy after changing one.
+- Supabase → Authentication → URL Configuration → Redirect URLs: add
+  `https://<site>/login**` and `https://<site>/reset-password**`.
+- Mapbox → the admin token's URL restrictions: add the site's address.
 
 ## UI and Design Guidelines
 
