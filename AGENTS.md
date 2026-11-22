@@ -86,9 +86,15 @@ not own the data model; the app and backend define it.
   rule. If the database doesn't return averages yet, circles fall back to
   the cell centre. The averages are not rounded: the pilot accepted
   (2026-11-22) that comparing two date ranges can reveal one sighting's
-  spot. Circles are named by the cell centre. A circle's bubble (area, count, density) shows on hover, keyboard focus or
-  click. `getMapBounds` (`src/core/utils/mapBounds.ts`) frames both the
-  Map screen's pins and the hotspots.
+  spot. Circles are named by the cell centre. A circle's bubble (area,
+  count, density) shows on hover, keyboard focus or click.
+  `getMapBounds` (`src/core/utils/mapBounds.ts`) frames both the Map
+  screen's pins and the hotspots. Every clickable marker (Map screen pins,
+  hotspot circles) is made with `createMapMarkerButton`
+  (`src/core/components/mapMarkerButton.ts`): it sets `role="button"` and
+  a label before Mapbox sees the element. Without them Mapbox gives the
+  marker `role="img"` and the label "Map marker", so screen readers read it
+  as a picture, not a button.
 - Testing: Vitest + React Testing Library
 - Lint/format: ESLint + Prettier
 - Node.js LTS, npm

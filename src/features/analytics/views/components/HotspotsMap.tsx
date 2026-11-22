@@ -1,6 +1,7 @@
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
+import { createMapMarkerButton } from "../../../../core/components/mapMarkerButton";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import { MAPBOX_STYLE_URL } from "../../../../core/services/mapboxConfig";
 import { formatNumber } from "../../../../core/utils/formatters";
@@ -234,16 +235,10 @@ function createHotspotElement(
     strings.density[hotspot.density],
   ].join(strings.detailSeparator);
 
-  const element = document.createElement("button");
-  element.type = "button";
+  const element = createMapMarkerButton(`${hotspot.name}: ${detail}`, onClick);
   element.dataset.hotspot = hotspot.id;
   element.dataset.open = "false";
-  // Set before Mapbox sees it: Mapbox labels unlabelled markers "Map
-  // marker" and gives role-less ones role="img", which would hide the button.
-  element.setAttribute("role", "button");
-  element.setAttribute("aria-label", `${hotspot.name}: ${detail}`);
   element.className = `group block ${haloSize[hotspot.density]} cursor-pointer rounded-full hover:z-10 focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary data-[open=true]:z-10`;
-  element.addEventListener("click", onClick);
 
   const halo = document.createElement("span");
   halo.className = `relative flex size-full animate-fade-in items-center justify-center rounded-full motion-reduce:animate-none ${densityHaloBg[hotspot.density]}`;
