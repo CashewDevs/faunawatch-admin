@@ -69,6 +69,8 @@ const suspensions = new Map<
   ],
 ]);
 const verifiedUsernames = new Set(["thorne_botanist"]);
+/** Users waiting for their account to be deleted, with the delete date. */
+const deletions = new Map([["enzo_m", "2026-12-01T07:40:00+00:00"]]);
 const adminUsernames = new Set(["ramon_s"]);
 
 export const testUsers: readonly AdminUser[] = people.map(
@@ -87,6 +89,7 @@ export const testUsers: readonly AdminUser[] = people.map(
     suspendedUntil: suspensions.get(username)?.[1] ?? null,
     suspensionCategory: suspensions.get(username)?.[2] ?? null,
     suspensionLevel: suspensions.get(username)?.[3] ?? null,
+    deletionScheduledFor: deletions.get(username) ?? null,
   }),
 );
 

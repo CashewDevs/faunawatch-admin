@@ -103,6 +103,14 @@ export const AppStrings = {
       /** Shown when a profile has no name, username or email. */
       unnamed: "Unnamed user",
       noEmail: "No email",
+      /** Badge: "Deletion scheduled · Dec 1, 2026". */
+      deletionScheduled: "Deletion scheduled",
+      /** The badge's tooltip, around the date and time. */
+      deletionScheduledHint: {
+        before:
+          "This user asked to delete their account. It will be deleted on ",
+        after: " unless they sign in to the app and keep it.",
+      },
     },
     pagination: {
       users: "users",

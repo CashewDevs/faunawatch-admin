@@ -108,6 +108,28 @@ describe("UserManagementScreen", () => {
     );
   });
 
+  it("shows a Deletion scheduled badge only for users waiting to be deleted", async () => {
+    renderScreen();
+
+    const table = screen.getByRole("table", { name: strings.table.caption });
+    const enzo = (await within(table).findByText("Enzo Morales")).closest("tr");
+    if (!enzo) throw new Error("Enzo's row is missing");
+    const badge = within(enzo).getByText(
+      `${strings.table.deletionScheduled}${strings.table.levelSeparator}Dec 01, 2026`,
+    );
+    expect(badge).toHaveAttribute(
+      "title",
+      expect.stringContaining(strings.table.deletionScheduledHint.before),
+    );
+    // Still active: a waiting deletion is not a suspension.
+    expect(
+      within(enzo).getByText(strings.table.status.active),
+    ).toBeInTheDocument();
+    expect(
+      within(table).getAllByText(new RegExp(strings.table.deletionScheduled)),
+    ).toHaveLength(1);
+  });
+
   it("has no role column", async () => {
     renderScreen();
     await screen.findByText("Enzo Morales");
