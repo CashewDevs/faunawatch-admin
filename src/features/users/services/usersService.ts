@@ -15,8 +15,9 @@ import {
 } from "../models/suspension";
 
 /**
- * Users Service: loads pages of users for the User Management screen, the
- * counts and sanctions behind its statistics, and one user's verified flag.
+ * Users Service: loads pages of users for the User Management screen (with
+ * any waiting account deletion), the counts and sanctions behind its
+ * statistics, and one user's verified flag.
  *
  * These go through admin RPCs because they read emails from auth.users,
  * which the browser can't query directly. The client has no generated types;
@@ -59,6 +60,35 @@ interface SanctionRow {
   created_at: string;
 }
 
+/** A waiting row of `account_deletions` (admins may read every row). */
+interface AccountDeletionRow {
+  user_id: string;
+  delete_after: string;
+}
+
+/**
+ * Delete dates of these users' waiting account deletions, by user id. The
+ * badge is extra information, so a failure (e.g. the table isn't there yet)
+ * gives an empty map instead of failing the users page.
+ */
+async function fetchDeletionDates(
+  userIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (userIds.length === 0) return new Map();
+  try {
+    const { data, error } = await supabase
+      .from("account_deletions")
+      .select("user_id, delete_after")
+      .in("user_id", [...userIds])
+      .is("cancelled_at", null)
+      .overrideTypes<AccountDeletionRow[], { merge: false }>();
+    if (error) return new Map();
+    return new Map(data.map((row) => [row.user_id, row.delete_after]));
+  } catch {
+    return new Map();
+  }
+}
+
 /**
  * One page of the users matching the query, with uploaded avatars signed for
  * display. A page past the end has no rows, so its total is 0.
@@ -77,9 +107,10 @@ export async function fetchUserPage(query: UserListQuery): Promise<UserPage> {
   const data: unknown = result.data;
   const rows = (data ?? []) as AdminListUsersRow[];
 
-  const avatars = await resolveAvatars(
-    rows.map((row) => parseAvatarPath(row.avatar_path)),
-  );
+  const [avatars, deletionDates] = await Promise.all([
+    resolveAvatars(rows.map((row) => parseAvatarPath(row.avatar_path))),
+    fetchDeletionDates(rows.map((row) => row.user_id)),
+  ]);
   return {
     users: rows.map((row, index): AdminUser => ({
       id: row.user_id,
@@ -108,6 +139,7 @@ export async function fetchUserPage(query: UserListQuery): Promise<UserPage> {
         ? fromSuspensionLevel(row.suspension_level)
         : null,
       suspendedUntil: row.is_suspended ? row.suspended_until : null,
+      deletionScheduledFor: deletionDates.get(row.user_id) ?? null,
     })),
     totalCount: rows[0]?.total_count ?? 0,
   };

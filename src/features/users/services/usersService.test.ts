@@ -57,7 +57,24 @@ beforeEach(() => {
   );
 });
 
+/** Stands in for the `account_deletions` query; returns its spies. */
+function mockDeletions(result: { data: unknown; error: unknown } | Error) {
+  const overrideTypes =
+    result instanceof Error
+      ? vi.fn().mockRejectedValue(result)
+      : vi.fn().mockResolvedValue(result);
+  const is = vi.fn().mockReturnValue({ overrideTypes });
+  const inFilter = vi.fn().mockReturnValue({ is });
+  const select = vi.fn().mockReturnValue({ in: inFilter });
+  from.mockReturnValue({ select });
+  return { select, inFilter, is };
+}
+
 describe("fetchUserPage", () => {
+  beforeEach(() => {
+    mockDeletions({ data: [], error: null });
+  });
+
   it("passes the query to admin_list_users as a page offset", async () => {
     mockRpc({ data: [row], error: null });
 
@@ -121,6 +138,7 @@ describe("fetchUserPage", () => {
         suspensionCategory: null,
         suspensionLevel: null,
         suspendedUntil: null,
+        deletionScheduledFor: null,
       },
       {
         id: "user-2",
@@ -138,8 +156,49 @@ describe("fetchUserPage", () => {
         suspensionCategory: "hateOrThreats",
         suspensionLevel: "locked",
         suspendedUntil: "2026-12-01T08:00:00+00:00",
+        deletionScheduledFor: null,
       },
     ]);
+  });
+
+  it("adds the date of a waiting account deletion", async () => {
+    mockRpc({ data: [row, { ...row, user_id: "user-2" }], error: null });
+    const { select, inFilter, is } = mockDeletions({
+      data: [{ user_id: "user-2", delete_after: "2026-12-01T07:40:00+00:00" }],
+      error: null,
+    });
+
+    const { users } = await fetchUserPage(defaultUserListQuery);
+
+    expect(from).toHaveBeenCalledWith("account_deletions");
+    expect(select).toHaveBeenCalledWith("user_id, delete_after");
+    expect(inFilter).toHaveBeenCalledWith("user_id", ["user-1", "user-2"]);
+    expect(is).toHaveBeenCalledWith("cancelled_at", null);
+    expect(users.map((user) => user.deletionScheduledFor)).toEqual([
+      null,
+      "2026-12-01T07:40:00+00:00",
+    ]);
+  });
+
+  it("still shows the users when deletions can't be loaded", async () => {
+    mockRpc({ data: [row], error: null });
+
+    mockDeletions({
+      data: null,
+      error: { message: "relation does not exist" },
+    });
+    let page = await fetchUserPage(defaultUserListQuery);
+    expect(page.users[0]?.deletionScheduledFor).toBeNull();
+
+    mockDeletions(new Error("network"));
+    page = await fetchUserPage(defaultUserListQuery);
+    expect(page.users[0]?.deletionScheduledFor).toBeNull();
+  });
+
+  it("doesn't look up deletions for an empty page", async () => {
+    mockRpc({ data: [], error: null });
+    await fetchUserPage(defaultUserListQuery);
+    expect(from).not.toHaveBeenCalled();
   });
 
   it("leaves the name empty when there is nothing to show", async () => {

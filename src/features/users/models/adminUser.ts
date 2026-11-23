@@ -49,6 +49,12 @@ export interface AdminUser {
    * or when it lasts until an admin reactivates the user.
    */
   suspendedUntil: string | null;
+  /**
+   * ISO 8601 date-time the account will be deleted: the user asked to
+   * delete it in the app and hasn't kept it yet (`account_deletions`). Null
+   * when no deletion is waiting.
+   */
+  deletionScheduledFor: string | null;
 }
 
 /** When an admin suspended a user. */

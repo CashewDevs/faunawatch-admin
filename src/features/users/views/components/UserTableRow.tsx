@@ -1,6 +1,10 @@
 import { AppAssets } from "../../../../core/constants/appAssets";
 import { AppStrings } from "../../../../core/constants/appStrings";
-import { formatDate, formatNumber } from "../../../../core/utils/formatters";
+import {
+  formatDate,
+  formatDateTime,
+  formatNumber,
+} from "../../../../core/utils/formatters";
 import type { AdminUser } from "../../models/adminUser";
 import { canChangeSuspension } from "../../models/suspension";
 import { UserAvatar } from "./UserAvatar";
@@ -17,6 +21,8 @@ const cellClass = "flex items-center";
 /**
  * One user row: identity, email, join date, post count, and account status.
  * The status switch asks to suspend or reactivate; it is locked for admins.
+ * A "Deletion scheduled" badge shows when the user asked to delete their
+ * account in the app.
  * Rendered inside UserTable's grid (the row itself is `display: contents`).
  */
 export function UserTableRow({ user, onToggleStatus }: UserTableRowProps) {
@@ -80,6 +86,18 @@ export function UserTableRow({ user, onToggleStatus }: UserTableRowProps) {
         </span>
       </td>
       <td role="cell" className={`${cellClass} justify-end gap-3 pr-6 pl-4`}>
+        {user.deletionScheduledFor && (
+          <span
+            title={`${strings.deletionScheduledHint.before}${formatDateTime(
+              user.deletionScheduledFor,
+            )}${strings.deletionScheduledHint.after}`}
+            className="rounded-full bg-amber-soft px-3 py-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] whitespace-nowrap text-amber-ink"
+          >
+            {`${strings.deletionScheduled}${strings.levelSeparator}${formatDate(
+              user.deletionScheduledFor,
+            )}`}
+          </span>
+        )}
         <span
           className={`rounded-full px-3 py-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] whitespace-nowrap ${
             isSuspended
