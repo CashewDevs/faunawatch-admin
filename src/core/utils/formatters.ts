@@ -74,6 +74,24 @@ export function formatDateTime(isoDateTime: string, timeZone?: string): string {
 }
 
 /**
+ * "2026-11-23T17:30:00Z" → "Nov 24, 2026" in the given time zone (the
+ * viewer's own by default), styled like formatDate. For moments the viewer
+ * acts on, such as a scheduled account deletion, where the UTC date could be
+ * a day off.
+ */
+export function formatLocalDate(
+  isoDateTime: string,
+  timeZone?: string,
+): string {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "2-digit",
+    year: "numeric",
+    timeZone,
+  }).format(new Date(isoDateTime));
+}
+
+/**
  * Short elapsed time: "just now", "24m ago", "3h ago", "5d ago", then the
  * date once it is over 30 days old.
  */
