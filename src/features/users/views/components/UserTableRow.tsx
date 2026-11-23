@@ -3,6 +3,7 @@ import { AppStrings } from "../../../../core/constants/appStrings";
 import {
   formatDate,
   formatDateTime,
+  formatLocalDate,
   formatNumber,
 } from "../../../../core/utils/formatters";
 import type { AdminUser } from "../../models/adminUser";
@@ -93,7 +94,9 @@ export function UserTableRow({ user, onToggleStatus }: UserTableRowProps) {
             )}${strings.deletionScheduledHint.after}`}
             className="rounded-full bg-amber-soft px-3 py-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] whitespace-nowrap text-amber-ink"
           >
-            {`${strings.deletionScheduled}${strings.levelSeparator}${formatDate(
+            {/* The viewer's own date, like the tooltip and the user's email;
+                the UTC date can be a day off. */}
+            {`${strings.deletionScheduled}${strings.levelSeparator}${formatLocalDate(
               user.deletionScheduledFor,
             )}`}
           </span>

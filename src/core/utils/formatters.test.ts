@@ -3,6 +3,7 @@ import {
   formatCoordinates,
   formatDate,
   formatDateTime,
+  formatLocalDate,
   formatMonth,
   formatMonthDay,
   formatMonthYear,
@@ -34,6 +35,17 @@ describe("formatters", () => {
   it("formats a date and 24-hour time in the given time zone", () => {
     expect(formatDateTime("2024-10-24T11:40:00Z", "Asia/Manila")).toBe(
       "Oct 24, 2024 • 19:40",
+    );
+  });
+
+  it("formats a date in the given time zone, not UTC", () => {
+    // 1:30 AM on Nov 24 in Manila is still Nov 23 in UTC.
+    expect(formatLocalDate("2026-11-23T17:30:00Z", "Asia/Manila")).toBe(
+      "Nov 24, 2026",
+    );
+    expect(formatLocalDate("2026-11-23T17:30:00Z", "UTC")).toBe("Nov 23, 2026");
+    expect(formatLocalDate("2026-12-01T07:40:00Z", "Asia/Manila")).toBe(
+      "Dec 01, 2026",
     );
   });
 
