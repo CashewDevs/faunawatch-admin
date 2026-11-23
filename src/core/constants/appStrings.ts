@@ -860,7 +860,7 @@ export const AppStrings = {
     sentHeading: "Check your email",
     sentLead: "If an account exists for",
     sentTail:
-      ", we've sent a reset link to that address. Open it in this browser. The link lasts 1 hour. If you don't see it, check your spam folder.",
+      ", we've sent a reset link to that address. You can open it in any browser. The link lasts 1 hour, and only the newest one works. If you don't see it, check your spam folder.",
     sendAgain: "Send again",
     sendAgainIn: "in",
   },
