@@ -9,6 +9,10 @@ import type {
   UserListQuery,
   UserPage,
 } from "../models/adminUser";
+import {
+  fromSuspensionCategory,
+  fromSuspensionLevel,
+} from "../models/suspension";
 
 /**
  * Users Service: loads pages of users for the User Management screen, the
@@ -35,6 +39,8 @@ interface AdminListUsersRow {
   suspension_reason: string | null;
   suspended_until: string | null;
   is_admin: boolean;
+  suspension_category: string | null;
+  suspension_level: string | null;
   total_count: number;
 }
 
@@ -95,6 +101,12 @@ export async function fetchUserPage(query: UserListQuery): Promise<UserPage> {
       avatar: avatars[index] ?? null,
       isAdmin: row.is_admin,
       suspensionReason: row.is_suspended ? row.suspension_reason : null,
+      suspensionCategory: row.is_suspended
+        ? fromSuspensionCategory(row.suspension_category)
+        : null,
+      suspensionLevel: row.is_suspended
+        ? fromSuspensionLevel(row.suspension_level)
+        : null,
       suspendedUntil: row.is_suspended ? row.suspended_until : null,
     })),
     totalCount: rows[0]?.total_count ?? 0,

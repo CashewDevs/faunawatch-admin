@@ -24,6 +24,13 @@ export function UserTableRow({ user, onToggleStatus }: UserTableRowProps) {
   const isSuspended = user.status === "suspended";
   const name = user.fullName || strings.unnamed;
   const isLocked = !canChangeSuspension(user);
+  // "Suspended · Locked"; just "Suspended" when the level isn't known.
+  const statusLabel =
+    isSuspended && user.suspensionLevel
+      ? `${strings.status.suspended}${strings.levelSeparator}${
+          AppStrings.users.suspension.levels[user.suspensionLevel]
+        }`
+      : strings.status[user.status];
 
   return (
     <tr
@@ -74,13 +81,13 @@ export function UserTableRow({ user, onToggleStatus }: UserTableRowProps) {
       </td>
       <td role="cell" className={`${cellClass} justify-end gap-3 pr-6 pl-4`}>
         <span
-          className={`rounded-full px-3 py-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] ${
+          className={`rounded-full px-3 py-1 text-[11px] leading-[14px] font-bold tracking-[0.44px] whitespace-nowrap ${
             isSuspended
               ? "bg-danger-tint text-danger"
               : "bg-teal-soft text-teal"
           }`}
         >
-          {strings.status[user.status]}
+          {statusLabel}
         </span>
         {/* The switch shows the current status; the dialog changes it. */}
         <button

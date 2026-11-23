@@ -1,6 +1,7 @@
 /**
  * Suspending and reactivating users: how long a suspension lasts, the
- * reasons an admin picks from, and why the server refused a change.
+ * reasons and levels an admin picks from, and why the server refused a
+ * change.
  *
  * The database (`admin_suspend_user` / `admin_reactivate_user` in the
  * faunawatch repo) enforces the rules: admins can't be suspended, a user
@@ -35,55 +36,110 @@ export function getSuspensionDays(duration: SuspensionDuration): number | null {
   return daysByDuration[duration];
 }
 
+/**
+ * Why a user is suspended: the database's `suspension_category`. The app,
+ * the in-app notification and the email show the same labels.
+ */
 export type SuspensionReason =
   | "spam"
-  | "harassment"
   | "misleadingReports"
   | "inappropriateContent"
+  | "harassment"
+  | "hateOrThreats"
+  | "scamOrImpersonation"
   | "other";
 
 export const suspensionReasons: readonly SuspensionReason[] = [
   "spam",
-  "harassment",
   "misleadingReports",
   "inappropriateContent",
+  "harassment",
+  "hateOrThreats",
+  "scamOrImpersonation",
   "other",
 ];
 
-/** The database's limit on the stored reason. */
-export const suspensionReasonMaxLength = 500;
+const reasonDbValues: Record<SuspensionReason, string> = {
+  spam: "spam",
+  misleadingReports: "misleading_reports",
+  inappropriateContent: "inappropriate_content",
+  harassment: "harassment",
+  hateOrThreats: "hate_or_threats",
+  scamOrImpersonation: "scam_or_impersonation",
+  other: "other",
+};
 
-/** Leaves room for the reason's label in front of the details. */
-export const suspensionDetailsMaxLength = 400;
+/** The `suspension_category` value saved for a reason. */
+export function toSuspensionCategory(reason: SuspensionReason): string {
+  return reasonDbValues[reason];
+}
 
-/** "Other" means nothing on its own, so it needs details. */
-export function needsSuspensionDetails(reason: SuspensionReason): boolean {
-  return reason === "other";
+/** A stored category; null for suspensions made before categories. */
+export function fromSuspensionCategory(
+  value: string | null | undefined,
+): SuspensionReason | null {
+  return (
+    suspensionReasons.find((reason) => reasonDbValues[reason] === value) ?? null
+  );
 }
 
 /**
- * The reason as stored and shown to the user: the label, then any details
- * ("Spam: posted ads"). "Other" stores the details alone.
+ * What a suspension takes away (`suspension_level`): restricted users can
+ * browse the app but not post, comment, like, message or edit their
+ * profile; locked users see only the suspension screen.
  */
-export function composeSuspensionReason(
-  reason: SuspensionReason,
-  label: string,
-  details: string,
-): string {
-  const text = details.trim();
-  if (needsSuspensionDetails(reason)) return text;
-  return text ? `${label}: ${text}` : label;
+export type SuspensionLevel = "restricted" | "locked";
+
+export const suspensionLevels: readonly SuspensionLevel[] = [
+  "restricted",
+  "locked",
+];
+
+/** A stored level; null when unknown (e.g. not suspended). */
+export function fromSuspensionLevel(
+  value: string | null | undefined,
+): SuspensionLevel | null {
+  return value === "restricted" || value === "locked" ? value : null;
 }
 
-/** Whether the chosen reason and details can be saved. */
-export function isSuspensionReasonComplete(
-  reason: SuspensionReason | null,
-  details: string,
-): boolean {
-  if (!reason) return false;
-  const text = details.trim();
-  if (text.length > suspensionDetailsMaxLength) return false;
-  return !needsSuspensionDetails(reason) || text !== "";
+const presetLevels: Record<SuspensionReason, SuspensionLevel | null> = {
+  spam: "restricted",
+  misleadingReports: "restricted",
+  inappropriateContent: "restricted",
+  harassment: "locked",
+  hateOrThreats: "locked",
+  scamOrImpersonation: "locked",
+  other: null,
+};
+
+/**
+ * The level a reason starts with; the admin can change it. Null for Other,
+ * where the admin must choose.
+ */
+export function getPresetLevel(
+  reason: SuspensionReason,
+): SuspensionLevel | null {
+  return presetLevels[reason];
+}
+
+/** The database's limit on the admin's message to the user. */
+export const suspensionMessageMaxLength = 500;
+
+/** Whether a suspension's choices and message can be saved. */
+export function isSuspensionComplete(choice: {
+  duration: SuspensionDuration | null;
+  reason: SuspensionReason | null;
+  level: SuspensionLevel | null;
+  message: string;
+}): boolean {
+  const text = choice.message.trim();
+  return (
+    choice.duration !== null &&
+    choice.reason !== null &&
+    choice.level !== null &&
+    text !== "" &&
+    text.length <= suspensionMessageMaxLength
+  );
 }
 
 /** What the account switch does for this user. */

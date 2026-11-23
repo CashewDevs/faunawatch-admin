@@ -39,6 +39,8 @@ const row = {
   suspension_reason: null,
   suspended_until: null,
   is_admin: true,
+  suspension_category: null,
+  suspension_level: null,
   total_count: 37,
 };
 
@@ -90,9 +92,11 @@ describe("fetchUserPage", () => {
           avatar_path: "user-2/photo.jpg",
           report_count: 0,
           is_suspended: true,
-          suspension_reason: "Spam",
+          suspension_reason: "Posted ads in comments.",
           suspended_until: "2026-12-01T08:00:00+00:00",
           is_admin: false,
+          suspension_category: "hate_or_threats",
+          suspension_level: "locked",
         },
       ],
       error: null,
@@ -114,6 +118,8 @@ describe("fetchUserPage", () => {
         avatar: { kind: "preset", name: "bunny" },
         isAdmin: true,
         suspensionReason: null,
+        suspensionCategory: null,
+        suspensionLevel: null,
         suspendedUntil: null,
       },
       {
@@ -128,7 +134,9 @@ describe("fetchUserPage", () => {
         isVerified: false,
         avatar: { kind: "photo", url: "https://signed/user-2/photo.jpg" },
         isAdmin: false,
-        suspensionReason: "Spam",
+        suspensionReason: "Posted ads in comments.",
+        suspensionCategory: "hateOrThreats",
+        suspensionLevel: "locked",
         suspendedUntil: "2026-12-01T08:00:00+00:00",
       },
     ]);

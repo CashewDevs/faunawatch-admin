@@ -2,13 +2,17 @@ import { describe, expect, it } from "vitest";
 import { testUsers } from "../../../test/fixtures/users";
 import {
   canChangeSuspension,
-  composeSuspensionReason,
+  fromSuspensionCategory,
+  fromSuspensionLevel,
+  getPresetLevel,
   getSuspensionAction,
   getSuspensionDays,
   getSuspensionErrorKind,
-  isSuspensionReasonComplete,
+  isSuspensionComplete,
   SuspensionError,
-  suspensionDetailsMaxLength,
+  suspensionMessageMaxLength,
+  suspensionReasons,
+  toSuspensionCategory,
   toSuspensionErrorKind,
 } from "./suspension";
 
@@ -24,42 +28,82 @@ describe("getSuspensionDays", () => {
   });
 });
 
-describe("composeSuspensionReason", () => {
-  it("puts the label before trimmed details", () => {
-    expect(composeSuspensionReason("spam", "Spam", "  posted ads ")).toBe(
-      "Spam: posted ads",
-    );
+describe("categories", () => {
+  it("uses the database's suspension_category values", () => {
+    expect(suspensionReasons.map(toSuspensionCategory)).toEqual([
+      "spam",
+      "misleading_reports",
+      "inappropriate_content",
+      "harassment",
+      "hate_or_threats",
+      "scam_or_impersonation",
+      "other",
+    ]);
   });
 
-  it("uses the label alone without details", () => {
-    expect(composeSuspensionReason("spam", "Spam", "   ")).toBe("Spam");
+  it("reads every stored category back, and null for older suspensions", () => {
+    for (const reason of suspensionReasons) {
+      expect(fromSuspensionCategory(toSuspensionCategory(reason))).toBe(reason);
+    }
+    expect(fromSuspensionCategory(null)).toBeNull();
+    expect(fromSuspensionCategory("unknown")).toBeNull();
   });
 
-  it("stores only the details for Other", () => {
-    expect(composeSuspensionReason("other", "Other", " Impersonation ")).toBe(
-      "Impersonation",
-    );
+  it("reads levels, and null when unknown", () => {
+    expect(fromSuspensionLevel("restricted")).toBe("restricted");
+    expect(fromSuspensionLevel("locked")).toBe("locked");
+    expect(fromSuspensionLevel(null)).toBeNull();
+    expect(fromSuspensionLevel("banned")).toBeNull();
   });
 });
 
-describe("isSuspensionReasonComplete", () => {
-  it("needs a reason", () => {
-    expect(isSuspensionReasonComplete(null, "details")).toBe(false);
-    expect(isSuspensionReasonComplete("spam", "")).toBe(true);
+describe("getPresetLevel", () => {
+  it("restricts for content problems and locks for abuse", () => {
+    expect(getPresetLevel("spam")).toBe("restricted");
+    expect(getPresetLevel("misleadingReports")).toBe("restricted");
+    expect(getPresetLevel("inappropriateContent")).toBe("restricted");
+    expect(getPresetLevel("harassment")).toBe("locked");
+    expect(getPresetLevel("hateOrThreats")).toBe("locked");
+    expect(getPresetLevel("scamOrImpersonation")).toBe("locked");
   });
 
-  it("needs details for Other", () => {
-    expect(isSuspensionReasonComplete("other", "  ")).toBe(false);
-    expect(isSuspensionReasonComplete("other", "Impersonation")).toBe(true);
+  it("leaves Other for the admin to choose", () => {
+    expect(getPresetLevel("other")).toBeNull();
+  });
+});
+
+describe("isSuspensionComplete", () => {
+  const complete = {
+    duration: "sevenDays",
+    reason: "spam",
+    level: "restricted",
+    message: "Posted ads in comments.",
+  } as const;
+
+  it("accepts a reason, level, length and message", () => {
+    expect(isSuspensionComplete(complete)).toBe(true);
   });
 
-  it("refuses details over the limit", () => {
+  it("needs every choice", () => {
+    expect(isSuspensionComplete({ ...complete, duration: null })).toBe(false);
+    expect(isSuspensionComplete({ ...complete, reason: null })).toBe(false);
+    expect(isSuspensionComplete({ ...complete, level: null })).toBe(false);
+  });
+
+  it("always needs a message, within the limit", () => {
+    expect(isSuspensionComplete({ ...complete, message: "   " })).toBe(false);
     expect(
-      isSuspensionReasonComplete(
-        "spam",
-        "a".repeat(suspensionDetailsMaxLength + 1),
-      ),
+      isSuspensionComplete({
+        ...complete,
+        message: "a".repeat(suspensionMessageMaxLength + 1),
+      }),
     ).toBe(false);
+    expect(
+      isSuspensionComplete({
+        ...complete,
+        message: "a".repeat(suspensionMessageMaxLength),
+      }),
+    ).toBe(true);
   });
 });
 

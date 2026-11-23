@@ -1,36 +1,49 @@
 import { supabase } from "../../../core/services/supabaseClient";
 import {
   SuspensionError,
-  suspensionReasonMaxLength,
+  suspensionMessageMaxLength,
+  toSuspensionCategory,
   toSuspensionErrorKind,
+  type SuspensionLevel,
+  type SuspensionReason,
 } from "../models/suspension";
 
 /**
  * Suspension Service: suspends and reactivates users through
- * `admin_suspend_user` and `admin_reactivate_user`, the only way to write
+ * `admin_suspend_user(user_id, category, level, reason, days)` and
+ * `admin_reactivate_user`, the only way to write
  * `user_sanctions`. Each throws a SuspensionError whose `kind` says why
  * nothing was changed.
  */
 
+export interface Suspension {
+  reason: SuspensionReason;
+  level: SuspensionLevel;
+  /** The admin's message to the user (app and email). */
+  message: string;
+  /** Null = until an admin reactivates the user. */
+  days: number | null;
+}
+
 /**
- * Suspends a user for `days` days, or until reactivated when `days` is
- * null. A suspended user can sign in but can't post reports, comments or
- * community responses.
+ * Suspends a user. The database then notifies and emails them, and the
+ * app restricts or locks their account by the level.
  */
 export async function suspendUser(
   userId: string,
-  reason: string,
-  days: number | null,
+  suspension: Suspension,
 ): Promise<void> {
-  const text = reason.trim();
-  if (!text || text.length > suspensionReasonMaxLength) {
-    throw new Error("A reason of at most 500 characters is required.");
+  const text = suspension.message.trim();
+  if (!text || text.length > suspensionMessageMaxLength) {
+    throw new Error("A message of at most 500 characters is required.");
   }
 
   const { error } = await supabase.rpc("admin_suspend_user", {
     p_user_id: userId,
+    p_category: toSuspensionCategory(suspension.reason),
+    p_level: suspension.level,
     p_reason: text,
-    p_days: days,
+    p_days: suspension.days,
   });
   if (error) {
     throw new SuspensionError(toSuspensionErrorKind(error.code, "suspend"), {

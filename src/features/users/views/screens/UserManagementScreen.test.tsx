@@ -153,7 +153,25 @@ describe("UserManagementScreen", () => {
       return { user, dialog: await screen.findByRole("dialog") };
     }
 
-    it("suspends after a length and reason are chosen", async () => {
+    type Dialog = Awaited<ReturnType<typeof openSwitch>>;
+
+    /** Picks a reason (bringing its level), a length and a message. */
+    async function fillSuspension({ user, dialog }: Dialog) {
+      await user.click(
+        within(dialog).getByRole("radio", { name: suspension.reasons.spam }),
+      );
+      await user.click(
+        within(dialog).getByRole("radio", {
+          name: suspension.durations.oneDay,
+        }),
+      );
+      await user.type(
+        within(dialog).getByRole("textbox", { name: suspension.messageLabel }),
+        "Posted ads in comments.",
+      );
+    }
+
+    it("suspends with a reason, its suggested level, a length and a message", async () => {
       renderScreen();
       const { user, dialog } = await openSwitch("Enzo Morales");
 
@@ -164,26 +182,34 @@ describe("UserManagementScreen", () => {
       expect(confirm).toBeDisabled();
 
       await user.click(
+        within(dialog).getByRole("radio", { name: suspension.reasons.spam }),
+      );
+      // Spam suggests Restricted.
+      expect(
+        within(dialog).getByRole("radio", {
+          name: suspension.levels.restricted,
+        }),
+      ).toBeChecked();
+      await user.click(
         within(dialog).getByRole("radio", {
           name: suspension.durations.sevenDays,
         }),
       );
+      // The message is always required.
       expect(confirm).toBeDisabled();
-      await user.click(
-        within(dialog).getByRole("radio", { name: suspension.reasons.spam }),
-      );
       await user.type(
-        within(dialog).getByRole("textbox", { name: suspension.detailsLabel }),
-        "posted ads",
+        within(dialog).getByRole("textbox", { name: suspension.messageLabel }),
+        "Posted ads in comments.",
       );
       const loads = vi.mocked(fetchUserPage).mock.calls.length;
       await user.click(confirm);
 
-      expect(suspendUser).toHaveBeenCalledWith(
-        "test-user-24",
-        "Spam: posted ads",
-        7,
-      );
+      expect(suspendUser).toHaveBeenCalledWith("test-user-24", {
+        reason: "spam",
+        level: "restricted",
+        message: "Posted ads in comments.",
+        days: 7,
+      });
       expect(await screen.findByRole("status")).toHaveTextContent(
         `Enzo Morales ${suspension.success.sevenDays}`,
       );
@@ -195,39 +221,112 @@ describe("UserManagementScreen", () => {
       });
     });
 
-    it("needs details for Other and can suspend until reactivated", async () => {
+    it("lets the admin change the suggested level", async () => {
       renderScreen();
       const { user, dialog } = await openSwitch("Enzo Morales");
+      await fillSuspension({ user, dialog });
+
+      await user.click(
+        within(dialog).getByRole("radio", { name: suspension.levels.locked }),
+      );
+      await user.click(
+        within(dialog).getByRole("button", {
+          name: suspension.confirm.suspend,
+        }),
+      );
+
+      expect(suspendUser).toHaveBeenCalledWith(
+        "test-user-24",
+        expect.objectContaining({ reason: "spam", level: "locked" }),
+      );
+    });
+
+    it("suggests Locked for harassment, and none for Other", async () => {
+      renderScreen();
+      const { user, dialog } = await openSwitch("Enzo Morales");
+      const restricted = within(dialog).getByRole("radio", {
+        name: suspension.levels.restricted,
+      });
+      const locked = within(dialog).getByRole("radio", {
+        name: suspension.levels.locked,
+      });
+
+      await user.click(
+        within(dialog).getByRole("radio", {
+          name: suspension.reasons.harassment,
+        }),
+      );
+      expect(locked).toBeChecked();
+
+      await user.click(
+        within(dialog).getByRole("radio", { name: suspension.reasons.other }),
+      );
+      expect(restricted).not.toBeChecked();
+      expect(locked).not.toBeChecked();
 
       await user.click(
         within(dialog).getByRole("radio", {
           name: suspension.durations.untilReactivated,
         }),
       );
-      await user.click(
-        within(dialog).getByRole("radio", { name: suspension.reasons.other }),
+      await user.type(
+        within(dialog).getByRole("textbox", { name: suspension.messageLabel }),
+        "Pretended to be a park ranger.",
       );
       const confirm = within(dialog).getByRole("button", {
         name: suspension.confirm.suspend,
       });
+      // Other needs a level chosen by hand.
       expect(confirm).toBeDisabled();
-
-      await user.type(
-        within(dialog).getByRole("textbox", {
-          name: suspension.detailsRequiredLabel,
-        }),
-        "Impersonating a ranger",
-      );
+      await user.click(locked);
       await user.click(confirm);
 
-      expect(suspendUser).toHaveBeenCalledWith(
-        "test-user-24",
-        "Impersonating a ranger",
-        null,
-      );
+      expect(suspendUser).toHaveBeenCalledWith("test-user-24", {
+        reason: "other",
+        level: "locked",
+        message: "Pretended to be a park ranger.",
+        days: null,
+      });
     });
 
-    it("shows the suspension being lifted and reactivates", async () => {
+    it("shows the level in the status badge", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      await screen.findByText("Enzo Morales");
+      await user.click(
+        screen.getByRole("button", { name: strings.statusFilter.suspended }),
+      );
+
+      expect(
+        await screen.findByText(
+          `${strings.table.status.suspended}${strings.table.levelSeparator}${suspension.levels.locked}`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(
+          `${strings.table.status.suspended}${strings.table.levelSeparator}${suspension.levels.restricted}`,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("shows a suspension's reason, level, message and end before reactivating", async () => {
+      const user = userEvent.setup();
+      renderScreen();
+      await screen.findByText("Enzo Morales");
+      await user.click(
+        screen.getByRole("button", { name: strings.statusFilter.suspended }),
+      );
+      const { dialog } = await openSwitch("Miguel Torres");
+
+      expect(dialog).toHaveTextContent(suspension.reasons.harassment);
+      expect(dialog).toHaveTextContent(suspension.levels.locked);
+      expect(dialog).toHaveTextContent(
+        "Repeated abusive comments on other users' posts.",
+      );
+      expect(dialog).not.toHaveTextContent(suspension.untilReactivated);
+    });
+
+    it("shows an older suspension's text and reactivates", async () => {
       const user = userEvent.setup();
       renderScreen();
       await screen.findByText("Enzo Morales");
@@ -237,6 +336,7 @@ describe("UserManagementScreen", () => {
       const { dialog } = await openSwitch("Klip Bautista");
 
       expect(dialog).toHaveAccessibleName("Reactivate Klip Bautista?");
+      expect(dialog).toHaveTextContent(suspension.noReason);
       expect(dialog).toHaveTextContent("Spam: posted ads in comments");
       expect(dialog).toHaveTextContent(suspension.untilReactivated);
       expect(within(dialog).queryByRole("radio")).not.toBeInTheDocument();
@@ -259,14 +359,7 @@ describe("UserManagementScreen", () => {
       );
       renderScreen();
       const { user, dialog } = await openSwitch("Enzo Morales");
-      await user.click(
-        within(dialog).getByRole("radio", {
-          name: suspension.durations.oneDay,
-        }),
-      );
-      await user.click(
-        within(dialog).getByRole("radio", { name: suspension.reasons.spam }),
-      );
+      await fillSuspension({ user, dialog });
       await user.click(
         within(dialog).getByRole("button", {
           name: suspension.confirm.suspend,
@@ -283,14 +376,7 @@ describe("UserManagementScreen", () => {
       vi.mocked(suspendUser).mockRejectedValue(new Error("network"));
       renderScreen();
       const { user, dialog } = await openSwitch("Enzo Morales");
-      await user.click(
-        within(dialog).getByRole("radio", {
-          name: suspension.durations.oneDay,
-        }),
-      );
-      await user.click(
-        within(dialog).getByRole("radio", { name: suspension.reasons.spam }),
-      );
+      await fillSuspension({ user, dialog });
       await user.click(
         within(dialog).getByRole("button", {
           name: suspension.confirm.suspend,

@@ -4,6 +4,10 @@ import type {
   UserListQuery,
   UserPage,
 } from "../../features/users/models/adminUser";
+import type {
+  SuspensionLevel,
+  SuspensionReason,
+} from "../../features/users/models/suspension";
 
 /**
  * Fictional users for tests. Every name and address is made up
@@ -39,10 +43,30 @@ const people: ReadonlyArray<
   ["Enzo Morales", "enzo_m", "2025-04-06", 1],
 ];
 
-/** Active suspensions: reason, and end (null = until reactivated). */
-const suspensions = new Map<string, [reason: string, until: string | null]>([
-  ["klip123", ["Spam: posted ads in comments", null]],
-  ["migs_t", ["Harassment or abuse", "2026-12-01T08:00:00+00:00"]],
+/**
+ * Active suspensions: the admin's message, end (null = until reactivated),
+ * reason and level. Klip's is an older one, saved before reasons and
+ * levels were stored separately.
+ */
+const suspensions = new Map<
+  string,
+  [
+    message: string,
+    until: string | null,
+    reason: SuspensionReason | null,
+    level: SuspensionLevel,
+  ]
+>([
+  ["klip123", ["Spam: posted ads in comments", null, null, "restricted"]],
+  [
+    "migs_t",
+    [
+      "Repeated abusive comments on other users' posts.",
+      "2026-12-01T08:00:00+00:00",
+      "harassment",
+      "locked",
+    ],
+  ],
 ]);
 const verifiedUsernames = new Set(["thorne_botanist"]);
 const adminUsernames = new Set(["ramon_s"]);
@@ -61,6 +85,8 @@ export const testUsers: readonly AdminUser[] = people.map(
     isAdmin: adminUsernames.has(username),
     suspensionReason: suspensions.get(username)?.[0] ?? null,
     suspendedUntil: suspensions.get(username)?.[1] ?? null,
+    suspensionCategory: suspensions.get(username)?.[2] ?? null,
+    suspensionLevel: suspensions.get(username)?.[3] ?? null,
   }),
 );
 
