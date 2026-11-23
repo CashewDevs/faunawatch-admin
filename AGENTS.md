@@ -205,6 +205,12 @@ directory. Do not create large generic folders with unrelated code.
   `.webp` version replaces the original.
   Exception: `public/og-image.png` (the 1200 × 630 link preview image) stays
   PNG, because some chat apps don't show WebP previews.
+  Exception: `public/email/faunawatch-logo.png` (the yellow fox and
+  "FaunaWatch" on a see-through background, cut from `og-image.png`) stays
+  PNG, because many email apps don't show WebP. The FaunaWatch emails (Supabase
+  Auth templates and the Edge Function emails in the `faunawatch` repo) load it
+  from `https://faunawatch-admin.vercel.app/email/faunawatch-logo.png`, so
+  don't move, rename or remove it; if the domain changes, update those emails.
 - **Preset avatars:** `src/assets/shared/avatars/` holds copies of the
   mobile app's preset avatars (`profiles.avatar_path` = `preset:<name>`).
   Keep the names in `src/core/utils/avatars.ts` in sync with the mobile
