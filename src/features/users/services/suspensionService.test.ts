@@ -1,6 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { getSuspensionErrorKind } from "../models/suspension";
-import { reactivateUser, suspendUser } from "./suspensionService";
+import {
+  reactivateUser,
+  suspendUser,
+  type Suspension,
+} from "./suspensionService";
 
 const rpc = vi.hoisted(() => vi.fn());
 
@@ -13,28 +17,50 @@ beforeEach(() => {
   rpc.mockResolvedValue({ data: null, error: null });
 });
 
+const spam: Suspension = {
+  reason: "spam",
+  level: "restricted",
+  message: "Posted ads in comments.",
+  days: 7,
+};
+
 describe("suspendUser", () => {
-  it("calls admin_suspend_user with the trimmed reason and days", async () => {
-    await suspendUser("user-1", "  Spam: posted ads ", 7);
+  it("calls admin_suspend_user with category, level, trimmed message and days", async () => {
+    await suspendUser("user-1", { ...spam, message: "  Posted ads. " });
 
     expect(rpc).toHaveBeenCalledWith("admin_suspend_user", {
       p_user_id: "user-1",
-      p_reason: "Spam: posted ads",
+      p_category: "spam",
+      p_level: "restricted",
+      p_reason: "Posted ads.",
       p_days: 7,
     });
   });
 
-  it("passes null days for until reactivated", async () => {
-    await suspendUser("user-1", "Spam", null);
+  it("sends the database's category names and null days for until reactivated", async () => {
+    await suspendUser("user-1", {
+      reason: "scamOrImpersonation",
+      level: "locked",
+      message: "Pretended to be a ranger.",
+      days: null,
+    });
     expect(rpc).toHaveBeenCalledWith(
       "admin_suspend_user",
-      expect.objectContaining({ p_days: null }),
+      expect.objectContaining({
+        p_category: "scam_or_impersonation",
+        p_level: "locked",
+        p_days: null,
+      }),
     );
   });
 
-  it("refuses a blank or too-long reason without calling the server", async () => {
-    await expect(suspendUser("user-1", "  ", 7)).rejects.toThrow();
-    await expect(suspendUser("user-1", "a".repeat(501), 7)).rejects.toThrow();
+  it("refuses a blank or too-long message without calling the server", async () => {
+    await expect(
+      suspendUser("user-1", { ...spam, message: "  " }),
+    ).rejects.toThrow();
+    await expect(
+      suspendUser("user-1", { ...spam, message: "a".repeat(501) }),
+    ).rejects.toThrow();
     expect(rpc).not.toHaveBeenCalled();
   });
 
@@ -47,7 +73,7 @@ describe("suspendUser", () => {
   ])("turns error code %s into %s", async (code, kind) => {
     rpc.mockResolvedValue({ data: null, error: { code, message: "x" } });
 
-    const error: unknown = await suspendUser("user-1", "Spam", 7).catch(
+    const error: unknown = await suspendUser("user-1", spam).catch(
       (caught: unknown) => caught,
     );
     expect(getSuspensionErrorKind(error)).toBe(kind);

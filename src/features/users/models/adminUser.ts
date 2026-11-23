@@ -9,6 +9,7 @@
  */
 
 import type { AvatarImage } from "../../../core/utils/avatars";
+import type { SuspensionLevel, SuspensionReason } from "./suspension";
 
 export type UserStatus = "active" | "suspended";
 
@@ -31,8 +32,18 @@ export interface AdminUser {
   avatar: AvatarImage | null;
   /** Admins can't be suspended. */
   isAdmin: boolean;
-  /** Why the active suspension was made; null when not suspended. */
+  /**
+   * The admin's message on the active suspension (older suspensions hold
+   * "Reason: details" text here); null when not suspended.
+   */
   suspensionReason: string | null;
+  /**
+   * The active suspension's reason; null when not suspended or for
+   * suspensions made before categories.
+   */
+  suspensionCategory: SuspensionReason | null;
+  /** The active suspension's level; null when not suspended. */
+  suspensionLevel: SuspensionLevel | null;
   /**
    * ISO 8601 date-time the active suspension ends; null when not suspended
    * or when it lasts until an admin reactivates the user.

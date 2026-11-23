@@ -6,20 +6,25 @@ import { formatDateTime } from "../../../core/utils/formatters";
 import type { AdminUser } from "../models/adminUser";
 import {
   canChangeSuspension,
-  composeSuspensionReason,
+  getPresetLevel,
   getSuspensionAction,
   getSuspensionDays,
   getSuspensionErrorKind,
-  isSuspensionReasonComplete,
-  needsSuspensionDetails,
-  suspensionDetailsMaxLength,
+  isSuspensionComplete,
   suspensionDurations,
+  suspensionLevels,
+  suspensionMessageMaxLength,
   suspensionReasons,
   type SuspensionAction,
   type SuspensionDuration,
+  type SuspensionLevel,
   type SuspensionReason,
 } from "../models/suspension";
-import { reactivateUser, suspendUser } from "../services/suspensionService";
+import {
+  reactivateUser,
+  suspendUser,
+  type Suspension,
+} from "../services/suspensionService";
 
 interface OpenDialog {
   action: SuspensionAction;
@@ -27,7 +32,7 @@ interface OpenDialog {
 }
 
 type Change =
-  | { action: "suspend"; userId: string; reason: string; days: number | null }
+  | { action: "suspend"; userId: string; suspension: Suspension }
   | { action: "reactivate"; userId: string };
 
 const strings = AppStrings.users.suspension;
@@ -38,22 +43,23 @@ function getUserName(user: AdminUser): string {
 }
 
 /**
- * The confirm dialog behind each user's account switch: suspend (length,
- * reason, optional details) or reactivate, saving, refreshing the users
- * and their stats, and the result message.
+ * The confirm dialog behind each user's account switch: suspend (reason,
+ * level, length, message to the user) or reactivate, saving, refreshing
+ * the users and their stats, and the result message.
  */
 export function useSuspensionFlow() {
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<OpenDialog | null>(null);
-  const [duration, setDuration] = useState<SuspensionDuration | null>(null);
   const [reason, setReason] = useState<SuspensionReason | null>(null);
-  const [details, setDetails] = useState("");
+  const [level, setLevel] = useState<SuspensionLevel | null>(null);
+  const [duration, setDuration] = useState<SuspensionDuration | null>(null);
+  const [message, setMessage] = useState("");
   const notice = useNotice();
 
   const mutation = useMutation({
     mutationFn: (change: Change) =>
       change.action === "suspend"
-        ? suspendUser(change.userId, change.reason, change.days)
+        ? suspendUser(change.userId, change.suspension)
         : reactivateUser(change.userId),
   });
 
@@ -63,9 +69,10 @@ export function useSuspensionFlow() {
   const open = (user: AdminUser) => {
     if (!canChangeSuspension(user) || mutation.isPending) return;
     mutation.reset();
-    setDuration(null);
     setReason(null);
-    setDetails("");
+    setLevel(null);
+    setDuration(null);
+    setMessage("");
     notice.dismiss();
     setDialog({ action: getSuspensionAction(user), user });
   };
@@ -76,27 +83,33 @@ export function useSuspensionFlow() {
     setDialog(null);
   };
 
+  /** A reason brings its suggested level (none for Other). */
+  const chooseReason = (next: SuspensionReason) => {
+    setReason(next);
+    setLevel(getPresetLevel(next));
+  };
+
   const canConfirm =
     dialog !== null &&
     !mutation.isPending &&
     (dialog.action === "reactivate" ||
-      (duration !== null && isSuspensionReasonComplete(reason, details)));
+      isSuspensionComplete({ duration, reason, level, message }));
 
   const confirm = () => {
     if (!dialog || !canConfirm) return;
     const { action, user } = dialog;
     let change: Change;
     if (action === "suspend") {
-      if (!duration || !reason) return;
+      if (!duration || !reason || !level) return;
       change = {
         action,
         userId: user.id,
-        reason: composeSuspensionReason(
+        suspension: {
           reason,
-          strings.reasons[reason],
-          details,
-        ),
-        days: getSuspensionDays(duration),
+          level,
+          message,
+          days: getSuspensionDays(duration),
+        },
       };
     } else {
       change = { action, userId: user.id };
@@ -126,8 +139,6 @@ export function useSuspensionFlow() {
     });
   };
 
-  const needsDetails = reason !== null && needsSuspensionDetails(reason);
-
   const dialogView = dialog && {
     action: dialog.action,
     title: `${strings.titlePrefix[dialog.action]} ${getUserName(dialog.user)}${strings.titleSuffix}`,
@@ -136,16 +147,18 @@ export function useSuspensionFlow() {
     current:
       dialog.action === "reactivate"
         ? {
-            reason: dialog.user.suspensionReason ?? strings.noReason,
+            reason: dialog.user.suspensionCategory
+              ? strings.reasons[dialog.user.suspensionCategory]
+              : strings.noReason,
+            level: dialog.user.suspensionLevel
+              ? strings.levels[dialog.user.suspensionLevel]
+              : null,
+            message: dialog.user.suspensionReason,
             ends: dialog.user.suspendedUntil
               ? formatDateTime(dialog.user.suspendedUntil)
               : strings.untilReactivated,
           }
         : null,
-    detailsLabel: needsDetails
-      ? strings.detailsRequiredLabel
-      : strings.detailsLabel,
-    needsDetails,
     confirmLabel: mutation.isPending
       ? strings.saving
       : strings.confirm[dialog.action],
@@ -159,21 +172,28 @@ export function useSuspensionFlow() {
 
   return {
     dialog: dialogView,
+    reasons: suspensionReasons.map((key) => ({
+      key,
+      label: strings.reasons[key],
+    })),
+    reason,
+    chooseReason,
+    levels: suspensionLevels.map((key) => ({
+      key,
+      label: strings.levels[key],
+      description: strings.levelDescriptions[key],
+    })),
+    level,
+    chooseLevel: setLevel,
     durations: suspensionDurations.map((key) => ({
       key,
       label: strings.durations[key],
     })),
     duration,
     chooseDuration: setDuration,
-    reasons: suspensionReasons.map((key) => ({
-      key,
-      label: strings.reasons[key],
-    })),
-    reason,
-    chooseReason: setReason,
-    details,
-    changeDetails: setDetails,
-    detailsMaxLength: suspensionDetailsMaxLength,
+    message,
+    changeMessage: setMessage,
+    messageMaxLength: suspensionMessageMaxLength,
     open,
     cancel,
     confirm,

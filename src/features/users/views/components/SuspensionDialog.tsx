@@ -13,18 +13,21 @@ const buttonClass =
 const optionClass =
   "flex cursor-pointer items-center gap-3 rounded-lg bg-surface-tint px-3 py-2 text-sm leading-5 text-ink transition-colors hover:bg-chip has-checked:bg-chip has-checked:font-semibold has-focus-visible:outline-2 has-focus-visible:outline-primary";
 
+const radioClass = "size-4 shrink-0 cursor-pointer accent-deep-blue";
+
 const legendClass = "mb-2 text-sm leading-5 font-bold text-deep-blue";
 
 /**
- * Confirms suspending a user (length, reason, optional details) or
- * reactivating one (shows the suspension being lifted).
+ * Confirms suspending a user (reason, level, length, message to the user)
+ * or reactivating one (shows the suspension being lifted).
  */
 export function SuspensionDialog({ suspension }: SuspensionDialogProps) {
   const strings = AppStrings.users.suspension;
   const titleId = useId();
   const bodyId = useId();
-  const detailsId = useId();
-  const detailsHintId = useId();
+  const levelHintId = useId();
+  const messageId = useId();
+  const messageHintId = useId();
   const { dialog } = suspension;
 
   return (
@@ -60,6 +63,24 @@ export function SuspensionDialog({ suspension }: SuspensionDialogProps) {
                 {strings.currentReason}
               </dt>
               <dd className="break-words text-ink">{dialog.current.reason}</dd>
+              {dialog.current.level && (
+                <>
+                  <dt className="font-bold text-deep-blue">
+                    {strings.currentLevel}
+                  </dt>
+                  <dd className="text-ink">{dialog.current.level}</dd>
+                </>
+              )}
+              {dialog.current.message && (
+                <>
+                  <dt className="font-bold text-deep-blue">
+                    {strings.currentMessage}
+                  </dt>
+                  <dd className="break-words whitespace-pre-wrap text-ink">
+                    {dialog.current.message}
+                  </dd>
+                </>
+              )}
               <dt className="font-bold text-deep-blue">
                 {strings.currentEnds}
               </dt>
@@ -69,6 +90,73 @@ export function SuspensionDialog({ suspension }: SuspensionDialogProps) {
 
           {dialog.action === "suspend" && (
             <>
+              <fieldset disabled={dialog.isSaving} className="flex flex-col">
+                <legend className={legendClass}>{strings.reasonLabel}</legend>
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {suspension.reasons.map((option) => (
+                    <label key={option.key} className={optionClass}>
+                      <input
+                        type="radio"
+                        name="suspension-reason"
+                        value={option.key}
+                        checked={suspension.reason === option.key}
+                        onChange={() => {
+                          suspension.chooseReason(option.key);
+                        }}
+                        className={radioClass}
+                      />
+                      {option.label}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
+              <fieldset
+                disabled={dialog.isSaving}
+                aria-describedby={levelHintId}
+                className="flex flex-col"
+              >
+                <legend className={legendClass}>{strings.levelLabel}</legend>
+                <p
+                  id={levelHintId}
+                  className="mb-2 text-xs leading-4 text-muted"
+                >
+                  {strings.levelHint}
+                </p>
+                <div className="flex flex-col gap-2">
+                  {suspension.levels.map((option) => (
+                    <label
+                      key={option.key}
+                      className={`${optionClass} items-start`}
+                    >
+                      <input
+                        type="radio"
+                        name="suspension-level"
+                        value={option.key}
+                        checked={suspension.level === option.key}
+                        onChange={() => {
+                          suspension.chooseLevel(option.key);
+                        }}
+                        aria-labelledby={`${levelHintId}-${option.key}-name`}
+                        aria-describedby={`${levelHintId}-${option.key}`}
+                        className={`${radioClass} mt-0.5`}
+                      />
+                      <span className="flex flex-col">
+                        <span id={`${levelHintId}-${option.key}-name`}>
+                          {option.label}
+                        </span>
+                        <span
+                          id={`${levelHintId}-${option.key}`}
+                          className="text-xs leading-4 font-normal text-slate"
+                        >
+                          {option.description}
+                        </span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+
               <fieldset disabled={dialog.isSaving} className="flex flex-col">
                 <legend className={legendClass}>{strings.durationLabel}</legend>
                 <div className="grid grid-cols-2 gap-2">
@@ -82,7 +170,7 @@ export function SuspensionDialog({ suspension }: SuspensionDialogProps) {
                         onChange={() => {
                           suspension.chooseDuration(option.key);
                         }}
-                        className="size-4 cursor-pointer accent-deep-blue"
+                        className={radioClass}
                       />
                       {option.label}
                     </label>
@@ -90,48 +178,26 @@ export function SuspensionDialog({ suspension }: SuspensionDialogProps) {
                 </div>
               </fieldset>
 
-              <fieldset
-                disabled={dialog.isSaving}
-                className="flex flex-col gap-2"
-              >
-                <legend className={legendClass}>{strings.reasonLabel}</legend>
-                {suspension.reasons.map((option) => (
-                  <label key={option.key} className={optionClass}>
-                    <input
-                      type="radio"
-                      name="suspension-reason"
-                      value={option.key}
-                      checked={suspension.reason === option.key}
-                      onChange={() => {
-                        suspension.chooseReason(option.key);
-                      }}
-                      className="size-4 cursor-pointer accent-deep-blue"
-                    />
-                    {option.label}
-                  </label>
-                ))}
-              </fieldset>
-
               <div className="flex flex-col gap-1">
                 <label
-                  htmlFor={detailsId}
+                  htmlFor={messageId}
                   className="text-sm leading-5 font-bold text-deep-blue"
                 >
-                  {dialog.detailsLabel}
+                  {strings.messageLabel}
                 </label>
-                <p id={detailsHintId} className="text-xs leading-4 text-muted">
-                  {strings.detailsHint}
+                <p id={messageHintId} className="text-xs leading-4 text-muted">
+                  {strings.messageHint}
                 </p>
                 <textarea
-                  id={detailsId}
-                  rows={2}
-                  value={suspension.details}
-                  maxLength={suspension.detailsMaxLength}
-                  required={dialog.needsDetails}
+                  id={messageId}
+                  rows={3}
+                  value={suspension.message}
+                  maxLength={suspension.messageMaxLength}
+                  required
                   disabled={dialog.isSaving}
-                  aria-describedby={detailsHintId}
+                  aria-describedby={messageHintId}
                   onChange={(event) => {
-                    suspension.changeDetails(event.target.value);
+                    suspension.changeMessage(event.target.value);
                   }}
                   className="mt-1 resize-y rounded-lg bg-surface-tint px-3 py-2 text-sm leading-5 text-ink placeholder:text-muted focus:outline-2 focus:outline-primary disabled:opacity-50"
                 />

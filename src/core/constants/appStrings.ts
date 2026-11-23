@@ -95,6 +95,8 @@ export const AppStrings = {
         active: "Active",
         suspended: "Suspended",
       },
+      /** After "Suspended" when the level is known: "Suspended · Locked". */
+      levelSeparator: " · ",
       toggleStatus: "Account active",
       /** Added to an admin's disabled switch, which can't be changed. */
       adminLocked: "Admins can't be suspended",
@@ -115,9 +117,32 @@ export const AppStrings = {
       titleSuffix: "?",
       body: {
         suspend:
-          "They can still sign in, but can't post reports, comments or community responses until the suspension ends.",
+          "Choose why and how strictly. They get an in-app notice and an email with the reason, your message and the end date.",
         reactivate:
-          "They can post reports, comments and community responses again straight away.",
+          "Their account works fully again straight away, and they get an in-app notice and an email.",
+      },
+      reasonLabel: "Reason",
+      /** Same labels as the app, the in-app notice and the email. */
+      reasons: {
+        spam: "Spam",
+        misleadingReports: "Fake or misleading reports",
+        inappropriateContent: "Inappropriate content",
+        harassment: "Harassment or bullying",
+        hateOrThreats: "Hate speech or threats",
+        scamOrImpersonation: "Scam or impersonation",
+        other: "Other",
+      },
+      levelLabel: "Level",
+      levelHint:
+        "Each reason suggests a level; you can change it. Choose one for Other.",
+      levels: {
+        restricted: "Restricted",
+        locked: "Locked",
+      },
+      levelDescriptions: {
+        restricted:
+          "Can browse, but can't post, comment, like, message or edit their profile.",
+        locked: "Can't use the app at all; sees only the suspension screen.",
       },
       durationLabel: "Length",
       durations: {
@@ -126,22 +151,17 @@ export const AppStrings = {
         thirtyDays: "30 days",
         untilReactivated: "Until reactivated",
       },
-      reasonLabel: "Reason",
-      reasons: {
-        spam: "Spam",
-        harassment: "Harassment or abuse",
-        misleadingReports: "Fake or misleading reports",
-        inappropriateContent: "Inappropriate content",
-        other: "Other",
-      },
-      detailsLabel: "Details (optional)",
-      detailsRequiredLabel: "Details",
-      detailsHint: "The user can see the reason and these details.",
+      messageLabel: "Message to the user",
+      messageHint:
+        "Required. The user sees it on the suspension screen and in the email, so write it for them.",
       /** The active suspension, shown before reactivating. */
       currentReason: "Reason",
+      currentLevel: "Level",
+      currentMessage: "Message",
       currentEnds: "Ends",
       untilReactivated: "When an admin reactivates them",
-      noReason: "No reason recorded",
+      /** Suspensions made before reasons were stored separately. */
+      noReason: "Not recorded",
       cancel: "Cancel",
       confirm: {
         suspend: "Suspend",
