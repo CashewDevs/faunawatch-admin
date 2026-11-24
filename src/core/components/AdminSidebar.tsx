@@ -25,6 +25,11 @@ const navItems = [
     label: AppStrings.layout.navAnalytics,
     icon: AppAssets.shared.iconAnalytics,
   },
+  {
+    to: AppRoutes.admins,
+    label: AppStrings.layout.navAdmins,
+    icon: AppAssets.shared.iconAdmins,
+  },
 ] as const;
 
 /**

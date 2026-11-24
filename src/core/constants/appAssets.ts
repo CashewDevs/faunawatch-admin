@@ -29,6 +29,7 @@ import sharedIconBell from "../../assets/shared/icon-bell.svg";
 import sharedIconLogout from "../../assets/shared/icon-logout.svg";
 import sharedIconMap from "../../assets/shared/icon-map.svg";
 import sharedIconUsers from "../../assets/shared/icon-users.svg";
+import sharedIconAdmins from "../../assets/shared/icon-admins.svg";
 import analyticsIconCategory from "../../assets/analytics/icon-category.svg";
 import analyticsIconClipboardCheck from "../../assets/analytics/icon-clipboard-check.svg";
 import analyticsIconExport from "../../assets/analytics/icon-export.svg";
@@ -107,6 +108,7 @@ export const AppAssets = {
     iconChevronRight: sharedIconChevronRight,
     iconLogout: sharedIconLogout,
     iconUsers: sharedIconUsers,
+    iconAdmins: sharedIconAdmins,
     iconApprove: sharedIconApprove,
     iconDecline: sharedIconDecline,
     iconPostApprovals: sharedIconPostApprovals,

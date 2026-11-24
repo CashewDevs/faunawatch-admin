@@ -111,7 +111,7 @@ describe("saving", () => {
 
     await save(result);
 
-    expect(verifyRecoveryToken).toHaveBeenCalledWith("token-1");
+    expect(verifyRecoveryToken).toHaveBeenCalledWith("token-1", "recovery");
     expect(clearRecoveryUrl).toHaveBeenCalledOnce();
     expect(updatePassword).toHaveBeenCalledWith(goodPassword);
     expect(signOut).toHaveBeenCalledOnce();

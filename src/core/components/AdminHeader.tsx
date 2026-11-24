@@ -13,6 +13,7 @@ const pageTitles = [
   { path: AppRoutes.posts, title: AppStrings.posts.heading },
   { path: AppRoutes.map, title: AppStrings.postsMap.heading },
   { path: AppRoutes.analytics, title: AppStrings.analytics.heading },
+  { path: AppRoutes.admins, title: AppStrings.admins.heading },
 ] as const;
 
 function getPageTitle(pathname: string): string | undefined {

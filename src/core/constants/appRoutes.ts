@@ -5,6 +5,8 @@ export const AppRoutes = {
   login: "/login",
   forgotPassword: "/forgot-password",
   resetPassword: "/reset-password",
+  acceptInvite: "/accept-invite",
+  admins: "/admins",
   users: "/users",
   posts: "/posts",
   postDetail: "/posts/:postId",

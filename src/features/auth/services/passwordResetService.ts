@@ -113,17 +113,18 @@ export function endRecovery(): void {
 }
 
 /**
- * Uses a custom template link's token, which signs this browser in as the
- * account. The session is kept in this tab only and ends when the browser
+ * Uses a custom template link's token (a reset link, or an admin invitation
+ * with [type] "invite"), which signs this browser in as the account. The session is kept in this tab only and ends when the browser
  * closes.
  */
 export async function verifyRecoveryToken(
   tokenHash: string,
+  type: "recovery" | "invite" = "recovery",
 ): Promise<SessionUser> {
   setSessionPersistence(false);
   const { data, error } = await supabase.auth.verifyOtp({
     token_hash: tokenHash,
-    type: "recovery",
+    type,
   });
   if (error || !data.user) {
     clearSessionPersistence();
