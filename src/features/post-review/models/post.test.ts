@@ -29,6 +29,7 @@ import {
   toPostStatus,
   toReportCategory,
   toSpeciesOrigin,
+  isEditedAfterApproval,
   type PhotoExif,
   type PostComment,
   type PostSummary,
@@ -60,6 +61,8 @@ function makePost(overrides: Partial<PostSummary>): PostSummary {
       username: "mdelacruz",
       storedAvatar: null,
     },
+    isHiddenByOwner: false,
+    isEditedAfterApproval: false,
     ...overrides,
   };
 }
@@ -593,5 +596,33 @@ describe("getPinPhotoUrl", () => {
   it("falls back to the logo (null) without a usable first photo", () => {
     expect(getPinPhotoUrl([])).toBeNull();
     expect(getPinPhotoUrl([{ url: null }, { url: "b.jpg" }])).toBeNull();
+  });
+});
+
+describe("isEditedAfterApproval", () => {
+  const approvedAt = ["2026-11-23T09:00:00Z"];
+
+  it("is a pending post whose photos changed after an approval", () => {
+    expect(
+      isEditedAfterApproval("pending", "2026-11-24T09:00:00Z", approvedAt),
+    ).toBe(true);
+  });
+
+  it("is not a post edited before its first review", () => {
+    expect(isEditedAfterApproval("pending", "2026-11-24T09:00:00Z", [])).toBe(
+      false,
+    );
+    expect(
+      isEditedAfterApproval("pending", "2026-11-22T09:00:00Z", approvedAt),
+    ).toBe(false);
+  });
+
+  it("is not a post reviewed again or never edited", () => {
+    for (const status of ["approved", "declined"] as const) {
+      expect(
+        isEditedAfterApproval(status, "2026-11-24T09:00:00Z", approvedAt),
+      ).toBe(false);
+    }
+    expect(isEditedAfterApproval("pending", null, approvedAt)).toBe(false);
   });
 });

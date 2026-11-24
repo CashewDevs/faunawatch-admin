@@ -298,6 +298,23 @@ is changed. In development only, `VITE_ENABLE_REQUEST_CHANGES=true` in a
 local env file (never committed) turns it on without editing code. Tests mock
 the module instead of reading the variable.
 
+## Reporter changes from the app
+
+The app lets reporters hide, edit and delete their own posts (`faunawatch`
+migration `20261124170000_add_edit_hide_delete_posts.sql`, applied by hand).
+The posts query (`postsService.ts`) reads `reports.hidden_at` and
+`reports.photos_edited_at`, plus `report_reviews(decision, decided_at)`.
+
+- `PostOwnerChangePills` shows the labels on each post card and in the
+  review page header:
+  - **"Hidden by owner"** whenever `hidden_at` is set.
+  - **"Edited after approval"** while the post is pending and its photos
+    changed after an approval (`isEditedAfterApproval` in `post.ts`).
+- On a database without those columns, both queries read again without
+  them (`isMissingOwnerChangeColumn`), so the posts still load.
+- A deleted post is simply gone.
+- Admins keep seeing hidden posts. Moderation does not change.
+
 ## Hosting (Vercel)
 
 The site is hosted on Vercel's free Hobby plan (non-commercial use only),

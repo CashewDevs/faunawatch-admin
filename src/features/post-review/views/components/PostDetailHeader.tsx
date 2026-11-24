@@ -3,6 +3,7 @@ import { AppAssets } from "../../../../core/constants/appAssets";
 import { postDetailPath } from "../../../../core/constants/appRoutes";
 import { AppStrings } from "../../../../core/constants/appStrings";
 import type { PostDetailViewModel } from "../../viewmodels/usePostDetailViewModel";
+import { PostOwnerChangePills } from "./PostOwnerChangePills";
 import { PostStatusPill } from "./PostStatusPill";
 
 interface PostDetailHeaderProps {
@@ -59,6 +60,7 @@ export function PostDetailHeader({ viewModel }: PostDetailHeaderProps) {
               </ol>
             </nav>
             <PostStatusPill status={post.status} />
+            <PostOwnerChangePills post={post} />
           </>
         )}
       </div>

@@ -87,6 +87,16 @@ export interface PostSummary {
   /** The species the reporter named themselves, if any. */
   reporterSpecies: string | null;
   reporter: PostReporter;
+  /**
+   * The reporter hid the post in the app: only they and admins can see it
+   * (it is out of the app's feed, map and public profile).
+   */
+  isHiddenByOwner: boolean;
+  /**
+   * Pending again because the reporter changed the photos after an admin
+   * approved the post. See isEditedAfterApproval.
+   */
+  isEditedAfterApproval: boolean;
 }
 
 /** A summary with its cover photo and reporter avatar ready to show. */
@@ -740,4 +750,20 @@ export function toPostListParams(query: PostListQuery): URLSearchParams {
       .filter(([, value, fallback]) => value !== fallback)
       .map(([key, value]) => [key, value]),
   );
+}
+
+/**
+ * Whether a post is waiting for review again because its reporter changed
+ * the photos after an admin approved it: it is pending, and an approval
+ * was decided before the photo edit. A post edited while it was still
+ * waiting for its first review is not.
+ */
+export function isEditedAfterApproval(
+  status: PostStatus,
+  photosEditedAt: string | null,
+  approvedAt: readonly string[],
+): boolean {
+  if (status !== "pending" || !photosEditedAt) return false;
+  const edited = Date.parse(photosEditedAt);
+  return approvedAt.some((decided) => Date.parse(decided) < edited);
 }

@@ -95,6 +95,8 @@ export const testPosts: readonly PostSummary[] = Array.from(
       aiMatch: severity === "unrated" ? null : match,
       reporterSpecies: index % 5 === 0 ? "Tarsier" : null,
       reporter: reporterAt(index),
+      isHiddenByOwner: false,
+      isEditedAfterApproval: false,
     };
   },
 );
