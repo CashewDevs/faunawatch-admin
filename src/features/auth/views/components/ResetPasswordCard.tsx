@@ -8,17 +8,34 @@ import { AuthTextLink } from "./AuthTextLink";
 import { LoginInputField } from "./LoginInputField";
 import { PasswordVisibilityToggle } from "./PasswordVisibilityToggle";
 
+/** The card's wording: a password reset, or accepting an admin invitation. */
+export interface PasswordCardStrings {
+  heading: string;
+  subheading: string;
+  passwordLabel: string;
+  passwordPlaceholder: string;
+  confirmationLabel: string;
+  confirmationPlaceholder: string;
+  submit: string;
+  submitting: string;
+  blockedHeading: string;
+  requestNewLink: string;
+  backToLogin: string;
+}
+
 interface ResetPasswordCardProps {
   viewModel: ResetPasswordViewModel;
+  strings?: PasswordCardStrings;
 }
 
 /**
  * The new-password form, or why it can't be offered. No Figma design exists
  * for this screen; it reuses the login card's layout and fields.
  */
-export function ResetPasswordCard({ viewModel }: ResetPasswordCardProps) {
-  const strings = AppStrings.resetPassword;
-
+export function ResetPasswordCard({
+  viewModel,
+  strings = AppStrings.resetPassword,
+}: ResetPasswordCardProps) {
   if (viewModel.blockedMessage) {
     return (
       <AuthCard

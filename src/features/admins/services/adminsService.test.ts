@@ -67,8 +67,12 @@ describe("admin members", () => {
 
   it("an invitation expires after an hour", () => {
     const member = toAdminMember(row);
-    expect(isInviteExpired(member, new Date("2026-11-24T10:59:00Z"))).toBe(false);
-    expect(isInviteExpired(member, new Date("2026-11-24T11:00:00Z"))).toBe(true);
+    expect(isInviteExpired(member, new Date("2026-11-24T10:59:00Z"))).toBe(
+      false,
+    );
+    expect(isInviteExpired(member, new Date("2026-11-24T11:00:00Z"))).toBe(
+      true,
+    );
     expect(
       isInviteExpired({ ...member, status: "active" }, new Date("2027-01-01")),
     ).toBe(false);
@@ -84,7 +88,10 @@ describe("listAdmins and removeAdmin", () => {
   });
 
   it("a non-admin may not list", async () => {
-    rpc.mockResolvedValue({ data: null, error: { code: "42501", message: "x" } });
+    rpc.mockResolvedValue({
+      data: null,
+      error: { code: "42501", message: "x" },
+    });
     expect(await kindOf(listAdmins())).toBe("notAllowed");
   });
 

@@ -18,11 +18,16 @@ import {
  */
 
 export async function listAdmins(): Promise<AdminMember[]> {
-  const { data, error } = await supabase.rpc("admin_list_admins");
+  const response = await supabase.rpc("admin_list_admins");
+  const data: unknown = response.data;
+  const error = response.error;
   if (error) {
-    throw new AdminActionError(error.code === "42501" ? "notAllowed" : "unknown", {
-      cause: error,
-    });
+    throw new AdminActionError(
+      error.code === "42501" ? "notAllowed" : "unknown",
+      {
+        cause: error,
+      },
+    );
   }
   return ((data ?? []) as AdminMemberRow[]).map(toAdminMember);
 }
@@ -39,11 +44,15 @@ export async function removeAdmin(userId: string): Promise<void> {
 
 type ManageResult = "invited" | "restored" | "resent" | "cancelled";
 
-async function manageAdmins(body: Record<string, string>): Promise<ManageResult> {
-  const { data, error } = await supabase.functions.invoke<{ result: ManageResult }>(
+async function manageAdmins(
+  body: Record<string, string>,
+): Promise<ManageResult> {
+  const response = await supabase.functions.invoke<{ result: ManageResult }>(
     "manage-admins",
     { body },
   );
+  const data = response.data;
+  const error: unknown = response.error;
   if (error) {
     if (error instanceof FunctionsFetchError) {
       throw new AdminActionError("network", { cause: error });
@@ -84,7 +93,11 @@ export function inviteAdmin(email: string): Promise<"invited" | "restored"> {
 
 /** Sends a new invitation link; the old one stops working. */
 export async function resendInvite(userId: string): Promise<void> {
-  await manageAdmins({ action: "resend", userId, redirectTo: acceptInviteUrl() });
+  await manageAdmins({
+    action: "resend",
+    userId,
+    redirectTo: acceptInviteUrl(),
+  });
 }
 
 /** Cancels an invitation; the unused account is deleted. */

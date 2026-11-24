@@ -14,6 +14,8 @@ import { ResetPasswordScreen } from "../features/auth/views/screens/ResetPasswor
 import { PostApprovalsScreen } from "../features/post-review/views/screens/PostApprovalsScreen";
 import { PostDetailScreen } from "../features/post-review/views/screens/PostDetailScreen";
 import { PostsMapScreen } from "../features/posts-map/views/screens/PostsMapScreen";
+import { AcceptInviteScreen } from "../features/auth/views/screens/AcceptInviteScreen";
+import { AdminsScreen } from "../features/admins/views/screens/AdminsScreen";
 import { UserManagementScreen } from "../features/users/views/screens/UserManagementScreen";
 import { preloadFontDescriptors, preloadImageUrls } from "./preloadManifest";
 import { queryClient } from "./queryClient";
@@ -56,6 +58,10 @@ function App() {
               path={AppRoutes.resetPassword}
               element={<ResetPasswordScreen />}
             />
+            <Route
+              path={AppRoutes.acceptInvite}
+              element={<AcceptInviteScreen />}
+            />
             <Route element={<RequireAdmin />}>
               <Route element={<AdminLayout />}>
                 <Route
@@ -71,6 +77,7 @@ function App() {
                   element={<PostDetailScreen />}
                 />
                 <Route path={AppRoutes.map} element={<PostsMapScreen />} />
+                <Route path={AppRoutes.admins} element={<AdminsScreen />} />
                 <Route
                   path={AppRoutes.analytics}
                   element={

@@ -45,11 +45,89 @@ export const AppStrings = {
     navPosts: "Post Approvals",
     navMap: "Map",
     navAnalytics: "Analytics",
+    navAdmins: "Admins",
     notifications: "Notifications",
     logout: "Log out",
     /** Shown when the signed-in admin has no name or email to display. */
     profileFallbackName: "Admin",
     profileRole: "Administrator",
+  },
+  admins: {
+    heading: "Admins",
+    intro:
+      "People who can sign in to this site. Invitations are emailed and their link works for 1 hour.",
+    invite: "Invite admin",
+    columns: {
+      admin: "Admin",
+      status: "Status",
+      activity: "Activity",
+      actions: "Actions",
+    },
+    you: "You",
+    statusActive: "Active",
+    statusInvited: "Invited",
+    statusExpired: "Invite expired",
+    lastSignIn: "Last signed in",
+    neverSignedIn: "Not signed in yet",
+    invitedAgo: "Invited",
+    loading: "Loading admins…",
+    loadFailed: "Couldn't load the admins. Reload the page to try again.",
+    actions: {
+      resend: "Resend invite",
+      cancel: "Cancel invite",
+      remove: "Remove",
+    },
+    inviteDialog: {
+      title: "Invite an admin",
+      description:
+        "They get an email with a link to choose a password. Use an email that isn't used in the FaunaWatch app: admin accounts are separate.",
+      emailLabel: "Email address",
+      emailPlaceholder: "name@example.com",
+      submit: "Send invitation",
+      submitting: "Sending…",
+      cancel: "Cancel",
+    },
+    confirm: {
+      removeTitle: "Remove this admin?",
+      removeBody:
+        "{email} will no longer be able to sign in to this site. Their account and their name on past decisions stay. To give access back, invite the same email again.",
+      removeConfirm: "Remove admin",
+      cancelTitle: "Cancel this invitation?",
+      cancelBody:
+        "The link sent to {email} will stop working and the unused account is deleted.",
+      cancelConfirm: "Cancel invitation",
+      keep: "Keep",
+      working: "Working…",
+    },
+    success: {
+      invited: "Invitation sent to {email}.",
+      restored:
+        "{email} is an admin again and can sign in with their old password.",
+      resent:
+        "A new invitation was sent to {email}. The old link no longer works.",
+      cancelled: "The invitation to {email} was cancelled.",
+      removed: "{email} is no longer an admin.",
+    },
+    errors: {
+      notAllowed: "Only admins can do this. Sign in again and try once more.",
+      invalidEmail: "Enter a valid email address.",
+      alreadyAdmin: "That email is already an admin.",
+      alreadyInvited:
+        "That email already has an invitation. Use Resend invite on its row.",
+      hasAccount:
+        "That email already has a FaunaWatch app account. Admins need a separate email.",
+      notInvited:
+        "That invitation was already accepted or cancelled. The list is updated.",
+      cannotRemoveYourself: "You can't remove yourself. Ask another admin.",
+      lastAdmin: "The last active admin can't be removed.",
+      invitePending:
+        "This admin hasn't accepted yet. Cancel the invitation instead.",
+      notAdmin: "That person is no longer an admin. The list is updated.",
+      rateLimited:
+        "Too many emails were sent just now. Wait a few minutes and try again.",
+      network: "Can't reach the server. Check your connection and try again.",
+      unknown: "Something went wrong. Please try again.",
+    },
   },
   users: {
     heading: "User Management",
@@ -871,6 +949,30 @@ export const AppStrings = {
       ", we've sent a reset link to that address. You can open it in any browser. The link lasts 1 hour, and only the newest one works. If you don't see it, check your spam folder.",
     sendAgain: "Send again",
     sendAgainIn: "in",
+  },
+  acceptInvite: {
+    heading: "Welcome to FaunaWatch Admin",
+    subheading:
+      "Choose a password for your admin account. You'll use it with your email to log in.",
+    passwordLabel: "Password",
+    passwordPlaceholder: "At least 8 characters",
+    confirmationLabel: "Confirm password",
+    confirmationPlaceholder: "Re-enter your password",
+    submit: "Set password",
+    submitting: "Saving…",
+    blockedHeading: "This invitation can't be used",
+    requestNewLink: "",
+    backToLogin: "Go to log in",
+    blocked: {
+      linkInvalid:
+        "Invitation links last 1 hour and work once, and only the newest one works. Ask the admin who invited you to resend it. If you already set your password, log in.",
+      otherBrowser:
+        "This invitation couldn't be opened here. Ask the admin who invited you to resend it.",
+      notAdmin:
+        "This account doesn't have admin access. Ask the admin who invited you to invite you again.",
+      checkFailed:
+        "We couldn't confirm your invitation, so no password was set. Please try the link again.",
+    },
   },
   resetPassword: {
     heading: "Set a new password",

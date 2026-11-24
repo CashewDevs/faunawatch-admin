@@ -31,8 +31,18 @@ type PasswordFieldError = NewPasswordError | "weakPassword" | "samePassword";
 
 type FormError = "rateLimited" | "network" | "unknown";
 
-const { errors: errorStrings, blocked: blockedStrings } =
-  AppStrings.resetPassword;
+const errorStrings = AppStrings.resetPassword.errors;
+
+/**
+ * Which link opened the page: a password reset, or an admin invitation
+ * (the Accept invite page). Both set a password the same way.
+ */
+export type PasswordLinkMode = "recovery" | "invite";
+
+const blockedStringsByMode = {
+  recovery: AppStrings.resetPassword.blocked,
+  invite: AppStrings.acceptInvite.blocked,
+} as const;
 
 const passwordErrorMessages: Record<PasswordFieldError, string> = {
   required: errorStrings.passwordRequired,
@@ -107,7 +117,8 @@ async function openLink(
  * out before anything changes, a refused password can be retried without a new
  * link, and after saving the admin logs in again with the new password.
  */
-export function useResetPasswordViewModel() {
+export function useResetPasswordViewModel(mode: PasswordLinkMode = "recovery") {
+  const blockedStrings = blockedStringsByMode[mode];
   const queryClient = useQueryClient();
   const navigate = useNavigate();
   const [arrival] = useState(readRecoveryArrival);
@@ -158,7 +169,7 @@ export function useResetPasswordViewModel() {
 
   /** Uses a custom template link. False means the screen is now blocked. */
   const openWithToken = async (tokenHash: string): Promise<boolean> => {
-    const user = await verifyRecoveryToken(tokenHash);
+    const user = await verifyRecoveryToken(tokenHash, mode);
     setHasSession(true);
     clearRecoveryUrl();
     const reason = await refuseNonAdmin(queryClient, user);
@@ -215,7 +226,8 @@ export function useResetPasswordViewModel() {
     /** Set when the form can't be offered; explains why. */
     blockedMessage: blockReason ? blockedStrings[blockReason] : undefined,
     /** A new link can't help a non-admin. */
-    canRequestNewLink: blockReason !== null && blockReason !== "notAdmin",
+    canRequestNewLink:
+      mode === "recovery" && blockReason !== null && blockReason !== "notAdmin",
     changePassword,
     changeConfirmation,
     togglePasswordVisibility,
