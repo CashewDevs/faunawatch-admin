@@ -94,6 +94,9 @@ const listRow = {
     // The query filters these out; the Service ignores them anyway.
     { ...completedAnalysis, status: "failed", created_at: "2026-10-21" },
   ],
+  report_reviews: [],
+  hidden_at: null,
+  photos_edited_at: null,
 };
 
 beforeEach(() => {
@@ -159,8 +162,90 @@ describe("fetchAllPosts", () => {
           username: "msantos",
           storedAvatar: { kind: "preset", name: "bunny" },
         },
+        isHiddenByOwner: false,
+        isEditedAfterApproval: false,
       },
     ]);
+    expect(query.select).toHaveBeenCalledWith(
+      expect.stringContaining("hidden_at, photos_edited_at"),
+    );
+    expect(query.select).toHaveBeenCalledWith(
+      expect.stringContaining("report_reviews(decision, decided_at)"),
+    );
+  });
+
+  it("marks posts the reporter hid or edited after approval", async () => {
+    from.mockReturnValue(
+      mockQuery({
+        data: [
+          {
+            ...listRow,
+            id: "hidden",
+            status: "approved",
+            hidden_at: "2026-11-24T08:00:00Z",
+          },
+          {
+            ...listRow,
+            id: "edited",
+            photos_edited_at: "2026-11-24T09:00:00Z",
+            report_reviews: [
+              { decision: "approved", decided_at: "2026-11-23T09:00:00Z" },
+            ],
+          },
+        ],
+        error: null,
+      }),
+    );
+
+    const posts = await fetchAllPosts();
+
+    expect(
+      posts.map(({ isHiddenByOwner, isEditedAfterApproval }) => ({
+        isHiddenByOwner,
+        isEditedAfterApproval,
+      })),
+    ).toEqual([
+      { isHiddenByOwner: true, isEditedAfterApproval: false },
+      { isHiddenByOwner: false, isEditedAfterApproval: true },
+    ]);
+  });
+
+  it("loads without the new columns on a database that lacks them", async () => {
+    const missing = mockQuery({
+      data: null,
+      error: {
+        code: "42703",
+        message: "column reports.hidden_at does not exist",
+      },
+    });
+    const older = mockQuery({
+      data: [{ ...listRow, hidden_at: undefined, photos_edited_at: undefined }],
+      error: null,
+    });
+    from.mockReset();
+    from.mockReturnValueOnce(missing).mockReturnValueOnce(older);
+
+    const [post] = await fetchAllPosts();
+
+    expect(older.select).toHaveBeenCalledWith(
+      expect.not.stringContaining("hidden_at"),
+    );
+    expect(post).toMatchObject({
+      isHiddenByOwner: false,
+      isEditedAfterApproval: false,
+    });
+  });
+
+  it("does not retry other errors", async () => {
+    from.mockReset();
+    from.mockReturnValue(
+      mockQuery({
+        data: null,
+        error: { code: "42501", message: "permission denied" },
+      }),
+    );
+    await expect(fetchAllPosts()).rejects.toThrow("Couldn't load posts.");
+    expect(from).toHaveBeenCalledTimes(1);
   });
 
   it("leaves a report without a completed analysis unrated", async () => {
@@ -218,6 +303,8 @@ describe("fetchPostCardMedia", () => {
     aiMatch: null,
     reporterSpecies: null,
     reporter: { id: "u", fullName: "", username: null, storedAvatar: null },
+    isHiddenByOwner: false,
+    isEditedAfterApproval: false,
     ...overrides,
   });
 
@@ -278,6 +365,8 @@ describe("fetchPostCoverUrls", () => {
     aiMatch: null,
     reporterSpecies: null,
     reporter: { id: "u", fullName: "", username: null, storedAvatar: null },
+    isHiddenByOwner: false,
+    isEditedAfterApproval: false,
   });
 
   it("signs every cover in one request, keyed by post", async () => {

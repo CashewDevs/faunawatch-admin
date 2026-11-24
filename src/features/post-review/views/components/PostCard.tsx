@@ -13,6 +13,7 @@ import {
   type PostSeverity,
 } from "../../models/post";
 import { toPostLinkState } from "../../viewmodels/postNavigation";
+import { PostOwnerChangePills } from "./PostOwnerChangePills";
 import { PostStatusPill } from "./PostStatusPill";
 import { ReporterAvatar } from "./ReporterAvatar";
 
@@ -78,6 +79,7 @@ export function PostCard({
                 {strings.card.invasive}
               </span>
             )}
+            <PostOwnerChangePills post={post} />
           </div>
           {onToggleSelect && isPending && (
             <label className="relative z-10 flex size-6 shrink-0 cursor-pointer items-center justify-center rounded-md bg-white/90 shadow-xs">

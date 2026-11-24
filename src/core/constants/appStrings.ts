@@ -351,6 +351,15 @@ export const AppStrings = {
       decline: "Decline",
       approve: "Approve",
     },
+    /** Labels for what the reporter did to their post in the app. */
+    ownerChange: {
+      hidden: "Hidden by owner",
+      hiddenHint:
+        "The reporter hid this post. It is out of the app's feed, map and public profile; only admins and the reporter can see it.",
+      edited: "Edited after approval",
+      editedHint:
+        "The reporter changed the photos after this post was approved, so it needs another review. The AI analysis is of the new cover photo.",
+    },
     /** The approve / decline / take-down dialog and its result messages. */
     moderation: {
       title: {

@@ -8,6 +8,7 @@ import { getProfileDisplayName } from "../../../core/utils/names";
 import {
   countReporterPosts,
   getExifLocationCheck,
+  isEditedAfterApproval,
   parsePossibleSpecies,
   parseValidation,
   pickTopSpecies,
@@ -69,6 +70,10 @@ interface ReportListRow {
   reporter: ProfileRow;
   report_images: { storage_path: string; created_at: string }[];
   ai_analyses: AnalysisRow[];
+  report_reviews: { decision: string; decided_at: string }[];
+  /** Missing on a database without 20261124170000_add_edit_hide_delete_posts. */
+  hidden_at?: string | null;
+  photos_edited_at?: string | null;
 }
 
 interface ExifRow {
@@ -127,24 +132,61 @@ const profileColumns = "full_name, username, display_name, avatar_path";
 const reportColumns =
   "id, category, description, status, created_at, latitude, longitude, place_name, user_species, user_id";
 
+/**
+ * Added by the app's 20261124170000_add_edit_hide_delete_posts migration,
+ * which is applied by hand. Until it is, the posts load without them.
+ */
+const ownerChangeColumns = "hidden_at, photos_edited_at";
+
+/** When admins approved the post, for "Edited after approval". */
+const reviewColumns = "report_reviews(decision, decided_at)";
+
 const analysisColumns =
   "status, possible_species, severity, possible_invasive, created_at";
 
-const listColumns = [
-  reportColumns,
-  `reporter:profiles!user_id(${profileColumns})`,
-  "report_images(storage_path, created_at)",
-  `ai_analyses(${analysisColumns})`,
-].join(", ");
+function listColumns(withOwnerChanges: boolean): string {
+  return [
+    reportColumns,
+    ...(withOwnerChanges ? [ownerChangeColumns] : []),
+    `reporter:profiles!user_id(${profileColumns})`,
+    "report_images(storage_path, created_at)",
+    `ai_analyses(${analysisColumns})`,
+    reviewColumns,
+  ].join(", ");
+}
 
-const detailColumns = [
-  reportColumns,
-  "elevation_m, user_notes, perch_height_m, host_tree, is_night_observation",
-  `reporter:profiles!user_id(${profileColumns}, created_at)`,
-  "report_images(storage_path, created_at, report_image_exif(gps_latitude, gps_longitude, device_make, device_model, camera_settings, flash_fired))",
-  `ai_analyses(${analysisColumns}, species_origin, validation, visual_condition_assessment, incident_summary, safety_recommendations)`,
-  `report_comments(id, body, created_at, author:profiles!user_id(${profileColumns}), comment_moderation(is_flagged, note, removed_at, moderated_by, moderator:profiles!moderated_by(full_name, username, display_name)))`,
-].join(", ");
+function detailColumns(withOwnerChanges: boolean): string {
+  return [
+    reportColumns,
+    ...(withOwnerChanges ? [ownerChangeColumns] : []),
+    reviewColumns,
+    "elevation_m, user_notes, perch_height_m, host_tree, is_night_observation",
+    `reporter:profiles!user_id(${profileColumns}, created_at)`,
+    "report_images(storage_path, created_at, report_image_exif(gps_latitude, gps_longitude, device_make, device_model, camera_settings, flash_fired))",
+    `ai_analyses(${analysisColumns}, species_origin, validation, visual_condition_assessment, incident_summary, safety_recommendations)`,
+    `report_comments(id, body, created_at, author:profiles!user_id(${profileColumns}), comment_moderation(is_flagged, note, removed_at, moderated_by, moderator:profiles!moderated_by(full_name, username, display_name)))`,
+  ].join(", ");
+}
+
+/**
+ * PostgREST's answer when a selected column doesn't exist: the owner-change
+ * columns on a database without the migration that adds them.
+ */
+function isMissingOwnerChangeColumn(
+  error: { code?: string; message?: string } | null,
+): boolean {
+  if (!error) return false;
+  const text = `${error.code ?? ""} ${error.message ?? ""}`.toLowerCase();
+  const missingColumn =
+    text.includes("42703") ||
+    text.includes("pgrst204") ||
+    text.includes("does not exist") ||
+    text.includes("schema cache");
+  return (
+    missingColumn &&
+    (text.includes("hidden_at") || text.includes("photos_edited_at"))
+  );
+}
 
 const uuidPattern =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -214,17 +256,29 @@ function toSummary(
       username: textOrNull(row.reporter.username),
       storedAvatar: parseAvatarPath(row.reporter.avatar_path),
     },
+    isHiddenByOwner: Boolean(row.hidden_at),
+    isEditedAfterApproval: isEditedAfterApproval(
+      toPostStatus(row.status),
+      row.photos_edited_at ?? null,
+      row.report_reviews
+        .filter((review) => review.decision === "approved")
+        .map((review) => review.decided_at),
+    ),
   };
 }
 
 /** Every report, newest first, without signed images. */
 export async function fetchAllPosts(): Promise<PostSummary[]> {
-  const { data, error } = await supabase
-    .from("reports")
-    .select(listColumns)
-    .eq("ai_analyses.status", "completed")
-    .order("created_at", { ascending: false })
-    .overrideTypes<ReportListRow[], { merge: false }>();
+  const query = (withOwnerChanges: boolean) =>
+    supabase
+      .from("reports")
+      .select(listColumns(withOwnerChanges))
+      .eq("ai_analyses.status", "completed")
+      .order("created_at", { ascending: false })
+      .overrideTypes<ReportListRow[], { merge: false }>();
+  let result = await query(true);
+  if (isMissingOwnerChangeColumn(result.error)) result = await query(false);
+  const { data, error } = result;
   if (error) throw new Error("Couldn't load posts.", { cause: error });
   return data.map((row) => toSummary(row, newestCompleted(row.ai_analyses)));
 }
@@ -297,12 +351,16 @@ export async function fetchPost(postId: string): Promise<PostDetail | null> {
   // Postgres rejects a malformed uuid with an error; that's "not found".
   if (!uuidPattern.test(postId)) return null;
 
-  const { data: row, error } = await supabase
-    .from("reports")
-    .select(detailColumns)
-    .eq("id", postId)
-    .eq("ai_analyses.status", "completed")
-    .maybeSingle<ReportDetailRow>();
+  const query = (withOwnerChanges: boolean) =>
+    supabase
+      .from("reports")
+      .select(detailColumns(withOwnerChanges))
+      .eq("id", postId)
+      .eq("ai_analyses.status", "completed")
+      .maybeSingle<ReportDetailRow>();
+  let result = await query(true);
+  if (isMissingOwnerChangeColumn(result.error)) result = await query(false);
+  const { data: row, error } = result;
   if (error) throw new Error("Couldn't load this post.", { cause: error });
   if (!row) return null;
 
